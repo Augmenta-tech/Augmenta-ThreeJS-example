@@ -28,13 +28,16 @@ The viewer requests the richest practical uncompressed stream from the Augmenta 
 
 Three.js renders:
 
-- cluster bounding boxes and centroids;
-- velocity vectors;
+- cluster bounding boxes, centroids and readable IDs;
+- one-second velocity vectors with arrow heads;
+- cluster/point-cloud pairs in distinct colors chosen from a curated palette;
 - point clouds;
-- scene bounds and box/cylinder/sphere zones;
-- orbit camera, world grid and axes.
+- scene bounds, scene floor and box/cylinder/sphere zones;
+- a Pleiades-style orbit camera, world grid and axes.
 
-The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to commit `15b9cac` (the V1 functional base) for reproducible builds. The inspector exposes every field currently surfaced by the SDK; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
+Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. **Reset camera** reframes the received Augmenta scene.
+
+The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to commit `1250cf36`, which includes the V1 base plus the Pleiades hierarchy/update parsing fix, for reproducible builds. The inspector exposes every field currently surfaced by the SDK; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
 
 ## Clone and run locally
 
@@ -82,7 +85,7 @@ Do not open `index.html` directly with `file://`; ES modules need to be served o
 
 1. Enable the Augmenta **WebSocket Output**.
 2. Enter its URL in the viewer. The default is `ws://127.0.0.1:6060`.
-3. Keep **V3** for current servers if you want UUIDs and bundle/scene timestamps. Select **V2** for older compatible outputs.
+3. Keep **Auto** unless you are testing a specific protocol version. Auto starts with V3 and automatically reconnects with the server-reported V2/V3 parser when required.
 4. Press **Connect**. The viewer keeps retrying every second until a connection succeeds, and retries again after a disconnect. While active, the button becomes **Connecting…** or **Connected**; click it again to stop all reconnect attempts.
 
 The example requests:
@@ -138,7 +141,7 @@ The workflow:
 3. assembles a minimal static `_site` artifact;
 4. deploys that artifact with GitHub Pages.
 
-The workflow also asks GitHub to enable Pages when possible. If the organization/repository policy does not permit automatic Pages enablement, enable **Settings → Pages → Source: GitHub Actions** once and rerun the workflow.
+GitHub Pages must use **Settings → Pages → Source: GitHub Actions**. The workflow assumes Pages is already enabled and only builds and deploys the site.
 
 ## Updating the SDK submodule
 
@@ -164,7 +167,7 @@ The low-level `AugmentaWebSocketClient` transport currently performs one connect
 
 - `ws://` is appropriate for local HTTP development.
 - an HTTPS-hosted page should use `wss://` for the cleanest browser compatibility;
-- browser mixed-content and private-network protections can prevent a public HTTPPS page from opening a local `ws://192.168.x.x` endpoint;
+- browser mixed-content and private-network protections can prevent a public HTTPS page from opening a local `ws://192.168.x.x` endpoint;
 - CORS does not govern WebSocket framing itself, but the server/browser can still apply Origin, TLS and local-network security rules.
 
 If GitHub Pages cannot reach the Augmenta server, the local HTTP workflow above is the reference way to test the exact same application code.
