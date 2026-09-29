@@ -12,7 +12,7 @@ const SIDEBAR_MAX_WIDTH = 720;
 const SIDEBAR_VIEWPORT_MARGIN = 160;
 const $ = (selector) => document.querySelector(selector);
 const ui = {
-  app: $('#app'), sidebar: $('#sidebar'), sidebarResizer: $('#sidebar-resizer'), endpoint: $('#endpoint'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
+  app: $('#app'), sidebar: $('#sidebar'), sidebarResizer: $('#sidebar-resizer'), serverAddress: $('#server-address'), port: $('#port'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
   demo: $('#demo'), status: $('#status'), note: $('#connection-note'), summary: $('#summary'),
   debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'), scenes: $('#scenes'),
   sidebarToggle: $('#sidebar-toggle'),
@@ -220,6 +220,41 @@ function selectedVersion() {
   return Number(ui.protocol.value);
 }
 
+function normalizeServerHost(value) {
+  let host = String(value ?? '').trim();
+  if (!host) return '';
+
+  // Accept old-style pasted URLs as a convenience, while keeping the UI host-only.
+  host = host.replace(/^(?:wss?|https?):\/\//i, '').split('/')[0];
+
+  // A single label is treated as an Augmenta serial number. An already-prefixed
+  // Augmenta hostname only needs its .local suffix added.
+  if (!host.includes('.') && !host.includes(':')) {
+    return /^augmenta-/i.test(host) ? `${host}.local` : `augmenta-${host}.local`;
+  }
+
+  return host;
+}
+
+function connectionTarget() {
+  const host = normalizeServerHost(ui.serverAddress.value);
+  const port = Number(ui.port.value);
+
+  if (!host) throw new Error('Enter an Augmenta server address.');
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('Enter a valid port between 1 and 65535.');
+  }
+
+  // IPv6 literals need brackets in a WebSocket URL; IPv4/mDNS names do not.
+  const urlHost = host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
+  return {
+    host,
+    port,
+    label: `${host}:${port}`,
+    url: `ws://${urlHost}:${port}`
+  };
+}
+
 // AugmentaWebSocketClient performs one transport attempt. Reconnect policy is
 // deliberately owned by this application rather than hidden inside the SDK.
 function scheduleReconnect(message = 'Connection closed.') {
@@ -253,22 +288,26 @@ function attemptConnection() {
   if (!wantsConnection) return;
 
   clearReconnectTimer();
-  const url = ui.endpoint.value.trim();
-  const version = selectedVersion();
-  const downSample = Math.max(1, Math.floor(Number(ui.downsample.value) || 1));
-  if (!url) {
+  let target;
+  try {
+    target = connectionTarget();
+  } catch (error) {
     stopConnection({ quiet: true });
     setStatus('Error', 'error');
-    ui.note.textContent = 'Enter a WebSocket URL.';
+    ui.note.textContent = error instanceof Error ? error.message : 'Invalid Augmenta server address.';
     return;
   }
+
+  const { url } = target;
+  const version = selectedVersion();
+  const downSample = Math.max(1, Math.floor(Number(ui.downsample.value) || 1));
 
   activeVersion = version;
   socketOpen = false;
   updateConnectionButton();
   if (!retrying) {
     setStatus('Connecting', 'connecting');
-    ui.note.textContent = `Connecting to ${url} with protocol V${version}…`;
+    ui.note.textContent = `Connecting to ${target.label} with protocol V${version}…`;
   }
 
   const connection = new AugmentaWebSocketClient(url, {
@@ -298,7 +337,7 @@ function attemptConnection() {
     socketOpen = true;
     updateConnectionButton();
     setStatus('Connected', 'connected');
-    ui.note.textContent = `Connected to ${url}. Protocol V${activeVersion}; uncompressed debug stream.`;
+    ui.note.textContent = `Connected to ${target.label}. Protocol V${activeVersion}; uncompressed debug stream.`;
   });
 
   connection.on('close', () => {
@@ -486,17 +525,27 @@ window.addEventListener('resize', () => {
     syncPanelCamera(false);
   }
 });
-ui.endpoint.addEventListener('keydown', (event) => {
+function restartForServerChange(reason) {
+  if (!wantsConnection) return;
+  retrying = false;
+  autoNegotiatedVersion = undefined;
+  stopTransport(reason);
+  attemptConnection();
+}
+
+function handleServerFieldEnter(event) {
   if (event.key !== 'Enter') return;
   if (!wantsConnection) {
     toggleConnection();
     return;
   }
-  retrying = false;
-  autoNegotiatedVersion = undefined;
-  stopTransport('Endpoint changed');
-  attemptConnection();
-});
+  restartForServerChange('Server address changed');
+}
+
+ui.serverAddress.addEventListener('keydown', handleServerFieldEnter);
+ui.port.addEventListener('keydown', handleServerFieldEnter);
+ui.serverAddress.addEventListener('change', () => restartForServerChange('Server address changed'));
+ui.port.addEventListener('change', () => restartForServerChange('Server port changed'));
 ui.protocol.addEventListener('change', () => {
   if (!wantsConnection) return;
   retrying = false;

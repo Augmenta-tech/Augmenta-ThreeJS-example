@@ -64,8 +64,21 @@
           <span id="status" class="status idle">Idle</span>
         </div>
 
-        <label for="endpoint">WebSocket URL</label>
-        <input id="endpoint" type="url" value="ws://127.0.0.1:6060" spellcheck="false" autocomplete="off">
+        <div class="server-row">
+          <div class="server-address-field">
+            <div class="field-header">
+              <label for="server-address">Augmenta Server Address</label>
+              <p class="field-subtitle">Enter server serial number or augmenta-XXXXX.local or IP address</p>
+            </div>
+            <input id="server-address" type="text" value="127.0.0.1" spellcheck="false" autocomplete="off" placeholder="12345 or augmenta-12345.local or 192.168.1.42">
+          </div>
+          <div class="server-port-field">
+            <div class="field-header">
+              <label for="port">Port</label>
+            </div>
+            <input id="port" type="number" min="1" max="65535" step="1" value="6060" inputmode="numeric">
+          </div>
+        </div>
 
         <div class="row two-columns">
           <div>

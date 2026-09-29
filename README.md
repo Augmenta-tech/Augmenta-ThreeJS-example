@@ -84,7 +84,7 @@ Do not open `index.html` directly with `file://`; ES modules need to be served o
 ## Connect to Augmenta
 
 1. Enable the Augmenta **WebSocket Output**.
-2. Enter its URL in the viewer. The default is `ws://127.0.0.1:6060`.
+2. Enter the Augmenta server address and port. The address can be a serial number such as `12345`, an mDNS hostname such as `augmenta-12345.local`, or an IP address such as `192.168.1.42`. The default port is `6060`. The viewer builds the WebSocket URL internally, so do not add `ws://`.
 3. Keep **Auto** unless you are testing a specific protocol version. Auto starts with V3 and automatically reconnects with the server-reported V2/V3 parser when required.
 4. The viewer starts in **Connecting…** mode automatically and keeps retrying every second until a connection succeeds. While active, the button becomes **Connected**; click it to stop all reconnect attempts.
 
@@ -121,7 +121,7 @@ The example intentionally keeps protocol responsibilities out of the Three.js la
 
 - **SDK:** registration options, WebSocket transport, V2/V3 parsing, typed Augmenta packets, control/setup hierarchy.
 - **Example controller:** reconnect policy, protocol fallback, Scene selection, demo mode and UI state.
-- **Three.js viewer:** rendering, camera behavior, labels/colors and the temporary setup-coordinate adaptation required because Pleiades currently transforms binary tracking data but not setup JSON with `axisTransform`.
+- **Three.js viewer:** rendering, camera behavior, labels/colors and direct presentation of the SDK values already transformed by Pleiades.
 
 This separation keeps the SDK reusable by non-Three.js applications and keeps rendering/UI decisions out of the protocol library.
 
@@ -181,8 +181,8 @@ The low-level `AugmentaWebSocketClient` transport currently performs one connect
 
 ## Browser / networking notes
 
-- `ws://` is appropriate for local HTTP development.
-- an HTTPS-hosted page should use `wss://` for the cleanest browser compatibility;
+- the UI accepts only the Augmenta server address and port; it constructs the local `ws://` URL internally.
+- an HTTPS-hosted page can still be subject to browser mixed-content/private-network restrictions when connecting to a local `ws://` server;
 - browser mixed-content and private-network protections can prevent a public HTTPS page from opening a local `ws://192.168.x.x` endpoint;
 - CORS does not govern WebSocket framing itself, but the server/browser can still apply Origin, TLS and local-network security rules.
 
