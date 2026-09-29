@@ -41,7 +41,7 @@ The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientS
 Requirements:
 
 - Git
-- Node.js 18 or newer (only needed to build the SDK submodule)
+- Node.js 22 or newer (only needed to build the SDK submodule; matches CI)
 - any local static HTTP server
 
 Clone with the submodule:
