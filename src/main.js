@@ -7,6 +7,7 @@ import { makeDemoFrame, makeDemoSetup } from './demo.js';
 
 const RECONNECT_DELAY_MS = 1000;
 const DISCONNECT_CLEANUP_DELAY_MS = 500;
+const PLEIADES_OSCQUERY_PORT = 20000;
 const $ = (selector) => document.querySelector(selector);
 const ui = {
   app: $('#app'), endpoint: $('#endpoint'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
@@ -30,6 +31,7 @@ let activeVersion;
 let lastFrame;
 let lastControl;
 let setupRoot;
+let worldEndpoints = [];
 let frameTimes = [];
 
 function setStatus(text, kind = 'idle') {
@@ -137,23 +139,130 @@ function clearDisplay() {
 
 function resetWorldSelector() {
   setupRoot = undefined;
+  worldEndpoints = [];
   ui.world.innerHTML = '<option value="">Waiting for world…</option>';
   ui.world.disabled = true;
 }
 
+function normalizeEndpoint(value) {
+  try {
+    const url = new URL(value);
+    url.pathname = '';
+    url.search = '';
+    url.hash = '';
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return value;
+  }
+}
+
+function currentWorldEntry() {
+  return {
+    name: setupRoot?.getName?.() || 'Current World',
+    url: normalizeEndpoint(ui.endpoint.value.trim())
+  };
+}
+
+function renderWorldSelector() {
+  if (!setupRoot) return;
+
+  const current = currentWorldEntry();
+  const worlds = [...worldEndpoints];
+  if (!worlds.some((world) => normalizeEndpoint(world.url) === current.url)) worlds.unshift(current);
+
+  ui.world.innerHTML = worlds.map((world) =>
+    `<option value="${escapeOption(world.url)}">${escapeOption(world.name)}</option>`
+  ).join('');
+  ui.world.value = current.url;
+  ui.world.disabled = worlds.length <= 1;
+}
+
 function refreshWorldSelector(root) {
   setupRoot = root;
-  const name = root?.getName?.() || 'Current World';
-  ui.world.innerHTML = `<option value="current">${escapeOption(name)}</option>`;
-  ui.world.value = 'current';
-  ui.world.disabled = true;
+  renderWorldSelector();
   viewer.renderSetup(root);
 }
 
-function renderSelectedWorld() {
-  if (!setupRoot) return;
-  viewer.clearTracking();
-  viewer.renderSetup(setupRoot);
+function oscValue(node) {
+  return Array.isArray(node?.VALUE) ? node.VALUE[0] : undefined;
+}
+
+function websocketOutputForWorld(worldNode) {
+  const outputs = worldNode?.CONTENTS?.outputs?.CONTENTS;
+  if (!outputs) return undefined;
+
+  return Object.values(outputs).find((output) => {
+    const type = String(output?.TYPE ?? '').toLowerCase();
+    const extendedTypes = Array.isArray(output?.EXTENDED_TYPE) ? output.EXTENDED_TYPE : [];
+    const isWebSocket = type === 'websocket' || extendedTypes.includes('Generic/Websocket');
+    const enabled = oscValue(output?.CONTENTS?.enabled);
+    return isWebSocket && enabled !== false;
+  });
+}
+
+async function discoverWorlds() {
+  let streamUrl;
+  try {
+    streamUrl = new URL(ui.endpoint.value.trim());
+  } catch {
+    return;
+  }
+
+  const oscQueryUrl = `http://${streamUrl.hostname}:${PLEIADES_OSCQUERY_PORT}/worlds`;
+
+  try {
+    const response = await fetch(oscQueryUrl);
+    if (!response.ok) return;
+
+    const worldsNode = await response.json();
+    const contents = worldsNode?.CONTENTS ?? {};
+    const discovered = [];
+
+    for (const [key, worldNode] of Object.entries(contents)) {
+      if (worldNode?.TYPE !== 'World') continue;
+
+      const output = websocketOutputForWorld(worldNode);
+      const port = Number(oscValue(output?.CONTENTS?.localPort));
+      if (!Number.isInteger(port) || port < 1 || port > 65535) continue;
+
+      const url = new URL(ui.endpoint.value.trim());
+      url.port = String(port);
+      url.pathname = '';
+      url.search = '';
+      url.hash = '';
+
+      discovered.push({
+        name: worldNode.DESCRIPTION || key,
+        url: normalizeEndpoint(url.toString())
+      });
+    }
+
+    if (!discovered.length) return;
+    worldEndpoints = discovered;
+    renderWorldSelector();
+  } catch (error) {
+    // World discovery is optional: the Augmenta WebSocket stream itself remains
+    // fully functional if the Pleiades OSCQuery control port is not reachable.
+    console.debug('Pleiades world discovery unavailable', error);
+  }
+}
+
+function switchWorld() {
+  const target = normalizeEndpoint(ui.world.value);
+  if (!target || target === normalizeEndpoint(ui.endpoint.value.trim())) return;
+
+  stopSimulation({ quiet: true });
+  clearTracking();
+  clearDebugData();
+  viewer.clearSetup();
+  setupRoot = undefined;
+
+  ui.endpoint.value = target;
+  autoNegotiatedVersion = undefined;
+  wantsConnection = true;
+  stopTransport('World changed');
+  updateConnectionButton();
+  attemptConnection();
 }
 
 function escapeOption(value) {
@@ -282,6 +391,7 @@ function attemptConnection() {
       return;
     }
     refreshWorldSelector(message.getRootObject());
+    discoverWorlds();
   });
 
   connection.on('update', (message) => {
@@ -350,7 +460,7 @@ ui.connect.addEventListener('click', toggleConnection);
 ui.demo.addEventListener('click', toggleSimulation);
 ui.clear.addEventListener('click', clearDebugData);
 ui.resetCamera.addEventListener('click', viewer.resetCamera);
-ui.world.addEventListener('change', renderSelectedWorld);
+ui.world.addEventListener('change', switchWorld);
 ui.sidebarToggle.addEventListener('click', () => {
   const hidden = ui.app.classList.toggle('sidebar-hidden');
   ui.sidebarToggle.textContent = hidden ? '<' : '>';
