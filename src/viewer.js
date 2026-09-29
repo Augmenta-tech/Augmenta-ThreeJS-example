@@ -114,9 +114,16 @@ export function createViewer(host) {
   }
 
   function updatePoints(view, cloud) {
-    view.points.geometry.setAttribute('position', new THREE.BufferAttribute(cloud.getPointsData(), 3));
+    const data = cloud.getPointsData();
+    const position = view.points.geometry.getAttribute('position');
+    if (position && position.array.length === data.length) {
+      position.array.set(data);
+      position.needsUpdate = true;
+    } else {
+      view.points.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(data), 3));
+    }
     view.points.geometry.computeBoundingSphere();
-    view.points.visible = cloud.getPointCount() > 0;
+    view.points.visible = data.length > 0;
   }
 
   function hideCluster(view) {
