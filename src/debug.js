@@ -9,7 +9,7 @@ export function createDebugPanel(summary, content) {
     lastRender = now;
     if (!frame && !control) return;
 
-    summary.textContent = `${frame?.getObjectCount() ?? 0} objects · ${frame?.getZoneEventCount() ?? 0} zone events · ${fps} fps`;
+    summary.textContent = `${frame?.getObjectCount() ?? 0} objects · ${frame?.getZoneEventCount() ?? 0} zones · ${fps} fps`;
     const blocks = [];
     if (frame) blocks.push(frameBlock(frame, fps), objectsBlock(frame), zonesBlock(frame));
     if (control) blocks.push(controlBlock(control));
@@ -26,7 +26,7 @@ export function createDebugPanel(summary, content) {
 
 function frameBlock(frame, fps) {
   const scene = frame.getSceneInfo();
-  return `<details open><summary>Frame & scene</summary><div class="debug-block">fps (received)      ${fps}\nbundle timestamp    ${esc(frame.timestamp ?? 'n/a')}\nscene address       ${esc(scene.getAddress() || 'n/a')}\nscene timestamp     ${esc(scene.getTimestamp() ?? 'n/a')}\nobjects             ${frame.getObjectCount()}\nzone events         ${frame.getZoneEventCount()}</div></details>`;
+  return `<details open><summary>Frame & scene</summary><div class="debug-block">fps (received)      ${fps}\nscene address       ${esc(scene.getAddress() || 'n/a')}\nobjects             ${frame.getObjectCount()}\nzones               ${frame.getZoneEventCount()}</div></details>`;
 }
 
 function objectsBlock(frame) {
@@ -61,7 +61,7 @@ function objectsBlock(frame) {
 
 function zonesBlock(frame) {
   const zones = frame.getZoneEvents();
-  if (!zones.length) return '<details><summary>Zone events (0)</summary><div class="debug-block muted">No zone events in this frame.</div></details>';
+  if (!zones.length) return '<details><summary>Zones (0)</summary><div class="debug-block muted">No zone data in this frame.</div></details>';
 
   const rows = zones.map((zone) => {
     const props = zone.getProperties().map((p) => {
@@ -80,7 +80,7 @@ function zonesBlock(frame) {
     return `<tr><td>${esc(zone.getEmitterZoneAddress())}</td><td>enter ${zone.getEnters()}<br>leave ${zone.getLeaves()}<br>presence ${zone.getPresence()}<br>density ${fmt(zone.getDensity())}</td><td>${props}</td></tr>`;
   }).join('');
 
-  return `<details open><summary>Zone events (${zones.length})</summary><table class="debug-table"><thead><tr><th>Address</th><th>Occupancy</th><th>Properties</th></tr></thead><tbody>${rows}</tbody></table></details>`;
+  return `<details open><summary>Zones (${zones.length})</summary><table class="debug-table"><thead><tr><th>Address</th><th>Occupancy</th><th>Properties</th></tr></thead><tbody>${rows}</tbody></table></details>`;
 }
 
 function controlBlock(message) {

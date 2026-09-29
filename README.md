@@ -29,13 +29,13 @@ The viewer requests the richest practical uncompressed stream from the Augmenta 
 Three.js renders:
 
 - cluster bounding boxes, centroids and readable IDs;
-- one-second velocity vectors with arrow heads;
+- velocity vectors with arrow heads, drawn at 3× visual scale for readability while debug values remain unmodified;
 - cluster/point-cloud pairs in distinct colors chosen from a curated palette;
 - point clouds;
 - scene bounds, scene floor and box/cylinder/sphere zones;
 - a Pleiades-style orbit camera, 1 × 1 m floor grid and axes.
 
-Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. The camera is not moved when a connection/setup arrives. **Reset camera** or a left-button double-click reframes the current World. The Display panel lists Pleiades Worlds only (not Scenes) and switches to the selected World's WebSocket Output when world discovery is available. On desktop, the full right panel is an overlay on top of the 3D view and can slide in/out with the edge arrow without resizing the 3D viewport.
+Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. The camera is not moved when a connection/setup arrives. **Reset camera** or a left-button double-click reframes the current World. The Display panel lists Pleiades Worlds only (not Scenes) and switches to the selected World's WebSocket Output when world discovery is available. On desktop, the translucent right panel is an overlay on top of the 3D view and can slide in/out with the edge arrow without resizing the renderer. The camera projection shifts with the panel so the orbit target remains centered in the unobscured part of the view.
 
 The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to commit `ab030fee`, which includes the V1 base, Pleiades hierarchy/update parsing, and explicit World containers, for reproducible builds. The inspector exposes every field currently surfaced by the SDK; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
 

@@ -10,7 +10,7 @@ const DISCONNECT_CLEANUP_DELAY_MS = 500;
 const PLEIADES_OSCQUERY_PORT = 20000;
 const $ = (selector) => document.querySelector(selector);
 const ui = {
-  app: $('#app'), endpoint: $('#endpoint'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
+  app: $('#app'), sidebar: $('#sidebar'), endpoint: $('#endpoint'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
   demo: $('#demo'), status: $('#status'), note: $('#connection-note'), summary: $('#summary'),
   debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'), world: $('#world'),
   sidebarToggle: $('#sidebar-toggle'),
@@ -461,12 +461,21 @@ ui.demo.addEventListener('click', toggleSimulation);
 ui.clear.addEventListener('click', clearDebugData);
 ui.resetCamera.addEventListener('click', viewer.resetCamera);
 ui.world.addEventListener('change', switchWorld);
+function syncPanelCamera(animate = false) {
+  const isMobile = window.matchMedia('(max-width: 900px)').matches;
+  const hidden = ui.app.classList.contains('sidebar-hidden');
+  const inset = isMobile || hidden ? 0 : ui.sidebar.getBoundingClientRect().width;
+  viewer.setRightInset(inset, animate);
+}
+
 ui.sidebarToggle.addEventListener('click', () => {
   const hidden = ui.app.classList.toggle('sidebar-hidden');
   ui.sidebarToggle.textContent = hidden ? '<' : '>';
   ui.sidebarToggle.title = hidden ? 'Show panel' : 'Hide panel';
   ui.sidebarToggle.setAttribute('aria-expanded', String(!hidden));
+  syncPanelCamera(true);
 });
+window.addEventListener('resize', () => syncPanelCamera(false));
 ui.endpoint.addEventListener('keydown', (event) => {
   if (event.key !== 'Enter') return;
   if (!wantsConnection) {
@@ -495,4 +504,5 @@ applyVisibility();
 updateConnectionButton();
 updateSimulationButton();
 resetWorldSelector();
+syncPanelCamera(false);
 attemptConnection();

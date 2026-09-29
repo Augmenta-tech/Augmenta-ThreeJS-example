@@ -3,6 +3,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { ClusterState, ShapeType } from 'augmenta-client-sdk';
 
 const FLOOR_Y = 0;
+const VELOCITY_DISPLAY_SCALE = 3;
+const VELOCITY_MIN_DISPLAY_LENGTH = 0.18;
 const SESSION_COLOR_OFFSET = Math.floor(Math.random() * 1000);
 const PALETTE = [
   0x4cc9f0, // cyan
@@ -52,6 +54,8 @@ export function createViewer(host) {
 
   const homePosition = new THREE.Vector3(6.5, 5.5, 7.5);
   const homeTarget = new THREE.Vector3(0, 1.2, 0);
+  let rightInset = 0;
+  let insetAnimationFrame;
 
   function resetCamera() {
     camera.position.copy(homePosition);
@@ -59,12 +63,52 @@ export function createViewer(host) {
     controls.update();
   }
 
+  function updateCameraProjection() {
+    const width = Math.max(host.clientWidth, 1);
+    const height = Math.max(host.clientHeight, 1);
+    camera.clearViewOffset();
+
+    if (rightInset > 0 && width > rightInset + 80) {
+      const virtualWidth = width + rightInset;
+      camera.aspect = Math.max(virtualWidth / height, 0.1);
+      camera.setViewOffset(virtualWidth, height, rightInset, 0, width, height);
+    } else {
+      camera.aspect = Math.max(width / height, 0.1);
+      camera.updateProjectionMatrix();
+    }
+  }
+
   function resize() {
-    const width = host.clientWidth;
+    const width = Math.max(host.clientWidth, 1);
     const height = Math.max(host.clientHeight, 1);
     renderer.setSize(width, height, false);
-    camera.aspect = Math.max(width / height, 0.1);
-    camera.updateProjectionMatrix();
+    updateCameraProjection();
+  }
+
+  function setRightInset(value, animate = false) {
+    const target = Math.max(0, Number(value) || 0);
+    if (insetAnimationFrame) cancelAnimationFrame(insetAnimationFrame);
+
+    if (!animate) {
+      rightInset = target;
+      updateCameraProjection();
+      return;
+    }
+
+    const start = rightInset;
+    const startedAt = performance.now();
+    const duration = 220;
+
+    const tick = (now) => {
+      const t = Math.min((now - startedAt) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      rightInset = start + (target - start) * eased;
+      updateCameraProjection();
+      if (t < 1) insetAnimationFrame = requestAnimationFrame(tick);
+      else insetAnimationFrame = undefined;
+    };
+
+    insetAnimationFrame = requestAnimationFrame(tick);
   }
 
   function renderFrame(frame) {
@@ -307,10 +351,13 @@ export function createViewer(host) {
         new THREE.LineBasicMaterial({
           color: containerColor(container, 0xb78cff),
           transparent: true,
-          opacity: 0.68,
+          opacity: 0.9,
+          depthTest: false,
           depthWrite: false
         })
       );
+      const size = params.getBoxShapeParameters().size;
+      mesh.position.set(size[0] / 2, size[1] / 2, size[2] / 2);
     } else {
       mesh = new THREE.Mesh(
         geometry,
@@ -318,7 +365,8 @@ export function createViewer(host) {
           color: containerColor(container, 0xb78cff),
           wireframe: true,
           transparent: true,
-          opacity: 0.68,
+          opacity: 0.9,
+          depthTest: false,
           depthWrite: false
         })
       );
@@ -328,6 +376,7 @@ export function createViewer(host) {
       mesh.position.y = params.getCylinderShapeParameters().height / 2;
     }
 
+    mesh.renderOrder = 6;
     group.add(mesh);
   }
 
@@ -372,6 +421,11 @@ export function createViewer(host) {
     homePosition.copy(center).add(
       new THREE.Vector3(distance * 0.72, distance * 0.52, distance * 0.92)
     );
+
+    // Keep orbiting around the center of the currently displayed setup without
+    // moving the camera position when setup/connect updates arrive.
+    controls.target.copy(center);
+    controls.update();
 
     if (moveCamera) resetCamera();
   }
@@ -437,6 +491,7 @@ export function createViewer(host) {
     clearTracking,
     clearSetup,
     resetCamera,
+    setRightInset,
     setVisibility
   };
 }
@@ -483,9 +538,10 @@ function updateVelocity(arrow, origin, velocity, color) {
   arrow.position.fromArray(origin);
   arrow.setDirection(vector.normalize());
 
-  const headLength = Math.min(Math.max(speed * 0.28, 0.08), 0.28);
-  const headWidth = Math.min(Math.max(headLength * 0.55, 0.05), 0.16);
-  arrow.setLength(speed, headLength, headWidth);
+  const displayLength = Math.max(speed * VELOCITY_DISPLAY_SCALE, VELOCITY_MIN_DISPLAY_LENGTH);
+  const headLength = Math.min(Math.max(displayLength * 0.22, 0.09), 0.32);
+  const headWidth = Math.min(Math.max(headLength * 0.55, 0.055), 0.18);
+  arrow.setLength(displayLength, headLength, headWidth);
   setArrowColor(arrow, color);
 }
 
