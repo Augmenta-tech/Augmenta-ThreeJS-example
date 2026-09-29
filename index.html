@@ -45,13 +45,14 @@
         </div>
 
         <label for="endpoint">WebSocket URL</label>
-        <input id="endpoint" type="url" value="ws://127.0.0.1:8080" spellcheck="false" autocomplete="off">
+        <input id="endpoint" type="url" value="ws://127.0.0.1:6060" spellcheck="false" autocomplete="off">
 
         <div class="row two-columns">
           <div>
             <label for="protocol">Protocol</label>
             <select id="protocol">
-              <option value="3" selected>V3 — UUID + timestamps</option>
+              <option value="auto" selected>Auto — newest supported</option>
+              <option value="3">V3 — UUID + timestamps</option>
               <option value="2">V2 — legacy IDs</option>
             </select>
           </div>
@@ -62,11 +63,11 @@
         </div>
 
         <div class="button-row">
-          <button id="connect" class="primary">Connect</button>
-          <button id="demo">Run demo</button>
+          <button id="connect" class="primary" aria-pressed="false">Connect</button>
+          <button id="demo" aria-pressed="false">Simulate data</button>
         </div>
 
-        <p id="connection-note" class="hint">Maximum debug stream enabled: clusters, clouds, cluster points, zone points and intensity parsing when present.</p>
+        <p id="connection-note" class="hint">Connect retries every second until stopped. Auto protocol matches the server version; maximum debug stream stays enabled.</p>
       </section>
 
       <section class="panel display-panel">

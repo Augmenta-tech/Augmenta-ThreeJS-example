@@ -8,7 +8,7 @@ The example is deliberately both a **reference integration** and a **debug viewe
 
 **GitHub Pages:** https://augmenta-tech.github.io/Augmenta-ThreeJS-example/
 
-The page includes a **Run demo** button, so the UI and rendering can be tested without an Augmenta server.
+The page includes a **Simulate data** toggle, so the UI and rendering can be tested without an Augmenta server. While active, the button reads **Simulating** and clicking it again stops the simulation.
 
 > GitHub Pages is served over HTTPS. Browsers can block a plain `ws://` WebSocket or access from a public HTTPS page to a local-network device. For a real Augmenta stream, use `wss://` when available or run this example locally over HTTP.
 
@@ -16,7 +16,7 @@ The page includes a **Run demo** button, so the UI and rendering can be tested w
 
 The viewer requests the richest practical uncompressed stream from the Augmenta WebSocket Output:
 
-- protocol V3 by default, with a V2 fallback in the UI;
+- automatic protocol selection: try V3 first, then reconnect with the server-reported V2/V3 parser when needed;
 - clusters and stable IDs / UUIDs;
 - centroid, velocity, state, weight and look-at vector;
 - bounding-box center, size and quaternion rotation;
@@ -81,9 +81,9 @@ Do not open `index.html` directly with `file://`; ES modules need to be served o
 ## Connect to Augmenta
 
 1. Enable the Augmenta **WebSocket Output**.
-2. Enter its URL in the viewer. The SDK browser example currently uses `ws://127.0.0.1:8080` as the local default.
+2. Enter its URL in the viewer. The default is `ws://127.0.0.1:6060`.
 3. Keep **V3** for current servers if you want UUIDs and bundle/scene timestamps. Select **V2** for older compatible outputs.
-4. Press **Connect**.
+4. Press **Connect**. The viewer keeps retrying every second until a connection succeeds, and retries again after a disconnect. While active, the button becomes **Connecting…** or **Connected**; click it again to stop all reconnect attempts.
 
 The example requests:
 
@@ -154,7 +154,11 @@ git add vendor/AugmentaClientSDK-JS
 git commit -m "chore: update Augmenta JS SDK submodule"
 ```
 
-Run the example again after each SDK update and verify both protocol V2 and V3 if backwards compatibility matters for the release.
+Run the example again after each SDK update and verify automatic protocol negotiation plus explicit V2/V3 modes if backwards compatibility matters for the release.
+
+### Reconnection behavior
+
+The low-level `AugmentaWebSocketClient` transport currently performs one connection attempt per `connect()` call. This example intentionally adds a lightweight 1-second retry loop at the application level, matching the auto-reconnect behavior used by Augmenta client integrations such as the Unity client. Clicking **Connected** / **Connecting…** stops that loop cleanly.
 
 ## Browser / networking notes
 

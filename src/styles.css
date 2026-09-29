@@ -91,6 +91,8 @@ button {
 button:hover { background: #222834; }
 button.primary { border-color: #4b82dc; background: #2f6bc8; }
 button.primary:hover { background: #3877d6; }
+button.active { border-color: #3f8d68; background: #1c4d36; }
+button.active:hover { background: #245f43; }
 button.text-button { min-height: auto; padding: 3px 0; border: 0; color: #8db8ff; background: transparent; font-size: 11px; }
 button.text-button:hover { color: #b7d3ff; background: transparent; }
 
