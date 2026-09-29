@@ -35,7 +35,7 @@ Three.js renders:
 - scene bounds, scene floor and box/cylinder/sphere zones;
 - a Pleiades-style orbit camera, 1 × 1 m floor grid and axes.
 
-Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. The camera is not moved when a connection/setup arrives. **Reset camera** or a left-button double-click reframes the currently selected scope. The Display panel lets you show the complete World or one of its received Scenes. On desktop, the full right panel is an overlay on top of the 3D view and can slide in/out with the edge arrow without resizing the 3D viewport.
+Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. The camera is not moved when a connection/setup arrives. **Reset camera** or a left-button double-click reframes the current World. The Display panel lists Pleiades Worlds only (not Scenes) and switches to the selected World's WebSocket Output when world discovery is available. On desktop, the full right panel is an overlay on top of the 3D view and can slide in/out with the edge arrow without resizing the 3D viewport.
 
 The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to commit `ab030fee`, which includes the V1 base, Pleiades hierarchy/update parsing, and explicit World containers, for reproducible builds. The inspector exposes every field currently surfaced by the SDK; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
 
@@ -88,6 +88,10 @@ Do not open `index.html` directly with `file://`; ES modules need to be served o
 3. Keep **Auto** unless you are testing a specific protocol version. Auto starts with V3 and automatically reconnects with the server-reported V2/V3 parser when required.
 4. The viewer starts in **Connecting…** mode automatically and keeps retrying every second until a connection succeeds. While active, the button becomes **Connected**; click it to stop all reconnect attempts.
 
+### World discovery
+
+An Augmenta WebSocket Output belongs to one Pleiades World, so a single stream cannot advertise the other Worlds by itself. The example therefore makes a best-effort read-only discovery request to Pleiades OSCQuery on port `20000`, the same control port used by the current Pleiades Web UI. It lists each World that has an enabled WebSocket Output and switches the connection to that World's `localPort` when selected. If OSCQuery is not reachable, the selector safely falls back to the World reported by the current WebSocket stream.
+
 The example requests:
 
 ```js
@@ -120,6 +124,7 @@ The requested transform matches Three.js directly: **Y up, right handed, absolut
 .
 ├── .github/workflows/pages.yml        # Build SDK + deploy GitHub Pages
 ├── index.html                          # Static entry point + import map
+├── favicon.png                         # White Augmenta symbol
 ├── src/
 │   ├── main.js                         # Connection / application controller
 │   ├── viewer.js                       # Three.js scene + Augmenta rendering
