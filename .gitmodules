@@ -1,0 +1,3 @@
+[submodule "vendor/AugmentaClientSDK-JS"]
+  path = vendor/AugmentaClientSDK-JS
+  url = https://github.com/Augmenta-tech/AugmentaClientSDK-JS.git

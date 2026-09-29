@@ -1,3 +1,170 @@
 # Augmenta Three.js Example
 
-Initial repository setup.
+A small, dependency-light Three.js application showing how to consume Augmenta real-time tracking data with the official [Augmenta Client JavaScript SDK](https://github.com/Augmenta-tech/AugmentaClientSDK-JS).
+
+The example is deliberately both a **reference integration** and a **debug viewer**: it visualizes tracking data in 3D while exposing the main values received from Augmenta in a readable side panel.
+
+## Live demo
+
+**GitHub Pages:** https://augmenta-tech.github.io/Augmenta-ThreeJS-example/
+
+The page includes a **Run demo** button, so the UI and rendering can be tested without an Augmenta server.
+
+> GitHub Pages is served over HTTPS. Browsers can block a plain `ws://` WebSocket or access from a public HTTPS page to a local-network device. For a real Augmenta stream, use `wss://` when available or run this example locally over HTTP.
+
+## What it shows
+
+The viewer requests the richest practical uncompressed stream from the Augmenta WebSocket Output:
+
+- protocol V3 by default, with a V2 fallback in the UI;
+- clusters and stable IDs / UUIDs;
+- centroid, velocity, state, weight and look-at vector;
+- bounding-box center, size and quaternion rotation;
+- object point clouds and point-intensity data when present;
+- scene address and V3 timestamps;
+- zone enter, leave, presence and density values;
+- slider, XY pad and zone point-cloud properties;
+- setup/update hierarchy with scene and zone position, rotation, color and supported shapes.
+
+Three.js renders:
+
+- cluster bounding boxes and centroids;
+- velocity vectors;
+- point clouds;
+- scene bounds and box/cylinder/sphere zones;
+- orbit camera, world grid and axes.
+
+The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to commit `15b9cac` (the V1 functional base) for reproducible builds. The inspector exposes every field currently surfaced by the SDK; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
+
+## Clone and run locally
+
+Requirements:
+
+- Git
+- Node.js 18 or newer (only needed to build the SDK submodule)
+- any local static HTTP server
+
+Clone with the submodule:
+
+```bash
+git clone --recurse-submodules https://github.com/Augmenta-tech/Augmenta-ThreeJS-example.git
+cd Augmenta-ThreeJS-example
+```
+
+If the repository was already cloned without submodules:
+
+```bash
+git submodule update --init --recursive
+```
+
+Build the SDK:
+
+```bash
+npm install --prefix vendor/AugmentaClientSDK-JS --no-audit --no-fund
+npm run build --prefix vendor/AugmentaClientSDK-JS
+```
+
+Serve the repository root. For example with Python:
+
+```bash
+python3 -m http.server 8000
+```
+
+Then open:
+
+```text
+http://localhost:8000
+```
+
+Do not open `index.html` directly with `file://`; ES modules need to be served over HTTP(S).
+
+## Connect to Augmenta
+
+1. Enable the Augmenta **WebSocket Output**.
+2. Enter its URL in the viewer. The SDK browser example currently uses `ws://127.0.0.1:8080` as the local default.
+3. Keep **V3** for current servers if you want UUIDs and bundle/scene timestamps. Select **V2** for older compatible outputs.
+4. Press **Connect**.
+
+The example requests:
+
+```js
+{
+  version: 3,
+  streamClouds: true,
+  streamClusters: true,
+  streamClusterPoints: true,
+  streamZonePoints: true,
+  useCompression: false,
+  displayPointIntensity: true,
+  boxRotationMode: RotationMode.Quaternions,
+  axisTransform: {
+    axis: AxisMode.YUpRightHanded,
+    origin: OriginMode.BottomLeft,
+    coordinateSpace: CoordinateSpace.Absolute
+  }
+}
+```
+
+Compression is disabled because the browser example intentionally stays dependency-free. Applications that need compressed streams can provide the SDK with a Zstd decompressor.
+
+## Project structure
+
+```text
+.
+├── .github/workflows/pages.yml        # Build SDK + deploy GitHub Pages
+├── index.html                          # Static entry point + import map
+├── src/
+│   ├── main.js                         # Connection / application controller
+│   ├── viewer.js                       # Three.js scene + Augmenta rendering
+│   ├── debug.js                        # Live debug inspector
+│   ├── demo.js                         # SDK-based synthetic test stream
+│   └── styles.css                      # Debug UI
+├── vendor/AugmentaClientSDK-JS         # Git submodule
+├── LICENSE
+├── THIRD_PARTY_LICENSES
+└── README.md
+```
+
+Three.js is loaded as an ES module from jsDelivr and pinned to `0.186.1`. The Augmenta SDK is built from the submodule and imported directly from its generated ESM output.
+
+## GitHub Pages deployment
+
+Every push to `main` triggers `.github/workflows/pages.yml`.
+
+The workflow:
+
+1. checks out this repository and its submodule;
+2. installs the SDK development dependency and builds its ESM output;
+3. assembles a minimal static `_site` artifact;
+4. deploys that artifact with GitHub Pages.
+
+The workflow also asks GitHub to enable Pages when possible. If the organization/repository policy does not permit automatic Pages enablement, enable **Settings → Pages → Source: GitHub Actions** once and rerun the workflow.
+
+## Updating the SDK submodule
+
+To move the example to a newer SDK revision:
+
+```bash
+cd vendor/AugmentaClientSDK-JS
+git fetch origin
+git checkout main
+git pull --ff-only
+cd ../..
+git add vendor/AugmentaClientSDK-JS
+git commit -m "chore: update Augmenta JS SDK submodule"
+```
+
+Run the example again after each SDK update and verify both protocol V2 and V3 if backwards compatibility matters for the release.
+
+## Browser / networking notes
+
+- `ws://` is appropriate for local HTTP development.
+- an HTTPS-hosted page should use `wss://` for the cleanest browser compatibility;
+- browser mixed-content and private-network protections can prevent a public HTTPPS page from opening a local `ws://192.168.x.x` endpoint;
+- CORS does not govern WebSocket framing itself, but the server/browser can still apply Origin, TLS and local-network security rules.
+
+If GitHub Pages cannot reach the Augmenta server, the local HTTP workflow above is the reference way to test the exact same application code.
+
+## License
+
+Augmenta-authored example code is distributed under the Augmenta SDK license in [LICENSE](LICENSE). Third-party notices, including the Three.js MIT license, are in [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES).

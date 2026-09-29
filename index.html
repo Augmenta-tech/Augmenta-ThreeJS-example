@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111318">
+  <title>Augmenta × Three.js Debug Viewer</title>
+  <meta name="description" content="Three.js example and debug viewer for the Augmenta JavaScript SDK.">
+  <link rel="stylesheet" href="./src/styles.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/",
+      "augmenta-client-sdk": "./vendor/AugmentaClientSDK-JS/dist/esm/index.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <main id="app">
+    <section id="viewer" aria-label="Augmenta 3D viewer">
+      <div id="canvas-host"></div>
+      <div class="viewer-overlay">
+        <div>
+          <h1>Augmenta × Three.js</h1>
+          <p>Real-time tracking debug viewer</p>
+        </div>
+        <div class="legend" aria-label="3D legend">
+          <span><i class="legend-dot cluster"></i>Clusters</span>
+          <span><i class="legend-dot points"></i>Point clouds</span>
+          <span><i class="legend-dot zones"></i>Zones</span>
+        </div>
+      </div>
+    </section>
+
+    <aside id="sidebar">
+      <section class="panel connection-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Connection</h2>
+            <p>Augmenta WebSocket Output</p>
+          </div>
+          <span id="status" class="status idle">Idle</span>
+        </div>
+
+        <label for="endpoint">WebSocket URL</label>
+        <input id="endpoint" type="url" value="ws://127.0.0.1:8080" spellcheck="false" autocomplete="off">
+
+        <div class="row two-columns">
+          <div>
+            <label for="protocol">Protocol</label>
+            <select id="protocol">
+              <option value="3" selected>V3 — UUID + timestamps</option>
+              <option value="2">V2 — legacy IDs</option>
+            </select>
+          </div>
+          <div>
+            <label for="downsample">Point downsample</label>
+            <input id="downsample" type="number" min="1" step="1" value="1">
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button id="connect" class="primary">Connect</button>
+          <button id="demo">Run demo</button>
+        </div>
+
+        <p id="connection-note" class="hint">Maximum debug stream enabled: clusters, clouds, cluster points, zone points and intensity parsing when present.</p>
+      </section>
+
+      <section class="panel display-panel">
+        <div class="panel-heading compact">
+          <h2>Display</h2>
+          <button id="reset-camera" class="text-button">Reset camera</button>
+        </div>
+        <div class="toggles">
+          <label><input id="show-clusters" type="checkbox" checked> Clusters</label>
+          <label><input id="show-points" type="checkbox" checked> Point clouds</label>
+          <label><input id="show-zones" type="checkbox" checked> Scene & zones</label>
+          <label><input id="show-vectors" type="checkbox" checked> Velocity vectors</label>
+        </div>
+      </section>
+
+      <section class="panel debug-panel">
+        <div class="panel-heading compact sticky-heading">
+          <div>
+            <h2>Live debug data</h2>
+            <p id="summary">No data yet</p>
+          </div>
+          <button id="clear" class="text-button">Clear</button>
+        </div>
+        <div id="debug-content" class="debug-content">
+          <div class="empty-state">Connect to Augmenta or run the demo to inspect the stream.</div>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
