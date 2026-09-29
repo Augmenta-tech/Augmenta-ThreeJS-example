@@ -357,7 +357,7 @@ export function createViewer(host) {
     if (!geometry) return;
 
     let mesh;
-    if (params.isBox()) {
+    if (params.isBox() || params.isCylinder()) {
       const edges = new THREE.EdgesGeometry(geometry);
       geometry.dispose();
       mesh = new THREE.LineSegments(
@@ -370,8 +370,11 @@ export function createViewer(host) {
           depthWrite: false
         })
       );
-      const size = params.getBoxShapeParameters().size;
-      mesh.position.set(size[0] / 2, size[1] / 2, size[2] / 2);
+
+      if (params.isBox()) {
+        const size = params.getBoxShapeParameters().size;
+        mesh.position.set(size[0] / 2, size[1] / 2, size[2] / 2);
+      }
     } else {
       mesh = new THREE.Mesh(
         geometry,

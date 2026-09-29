@@ -36,7 +36,9 @@ function objectsBlock(frame) {
     let cluster = '<span class="muted">No cluster property</span>';
     if (object.hasCluster()) {
       const c = object.getCluster();
-      cluster = `state ${esc(ClusterState[c.getState()] ?? c.getState())}<br>centroid ${esc(vec(c.getCentroid()))}<br>velocity ${esc(vec(c.getVelocity()))}<br>box center ${esc(vec(c.getBoundingBoxCenter()))}<br>box size ${esc(vec(c.getBoundingBoxSize()))}<br>rotation ${esc(vec(c.getBoundingBoxRotationEuler()))}<br>weight ${fmt(c.getWeight())}<br>lookAt ${esc(vec(c.getLookAt()))}`;
+      const velocity = c.getVelocity();
+      const speed = Math.hypot(...velocity);
+      cluster = `state ${esc(ClusterState[c.getState()] ?? c.getState())}<br>centroid ${esc(vec(c.getCentroid()))}<br>velocity ${esc(vec(velocity))}<br>speed ${fmt(speed)} m/s<br>box center ${esc(vec(c.getBoundingBoxCenter()))}<br>box size ${esc(vec(c.getBoundingBoxSize()))}<br>rotation ${esc(vec(c.getBoundingBoxRotationEuler()))}<br>weight ${fmt(c.getWeight())}<br>lookAt ${esc(vec(c.getLookAt()))}`;
     }
 
     let points = '—';
@@ -55,7 +57,7 @@ function objectsBlock(frame) {
     return `<tr><td>${esc(object.getID() ?? '—')}<br><span class="muted">${esc(object.getUUID() ?? '—')}</span></td><td>${cluster}</td><td>${points}</td></tr>`;
   }).join('');
 
-  return `<details open><summary>Objects (${objects.length})</summary><table class="debug-table"><thead><tr><th>ID / UUID</th><th>Cluster</th><th>Point cloud</th></tr></thead><tbody>${rows}</tbody></table></details>`;
+  return `<details open><summary>Objects (${objects.length})</summary><table class="debug-table objects-table"><colgroup><col class="id-column"><col class="cluster-column"><col class="points-column"></colgroup><thead><tr><th>ID / UUID</th><th>Cluster</th><th>Point cloud</th></tr></thead><tbody>${rows}</tbody></table></details>`;
 }
 
 function zonesBlock(frame) {

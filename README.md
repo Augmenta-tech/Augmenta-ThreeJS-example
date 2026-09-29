@@ -19,6 +19,7 @@ The viewer requests the richest practical uncompressed stream from the Augmenta 
 - automatic protocol selection: try V3 first, then reconnect with the server-reported V2/V3 parser when needed;
 - clusters and stable IDs / UUIDs;
 - centroid, velocity, state, weight and look-at vector;
+- raw velocity vector plus velocity magnitude in m/s in the debug inspector;
 - bounding-box center, size and rotation;
 - object point clouds and point-intensity data when present;
 - scene dimensions from setup data and protocol V3 timestamps when useful to the data model;

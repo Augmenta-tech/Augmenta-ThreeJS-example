@@ -225,24 +225,16 @@ button.text-button:hover { color: #b7d3ff; background: transparent; }
 
 .server-row > * { min-width: 0; }
 
-.field-header {
-  min-height: 39px;
-  margin-bottom: 6px;
-}
-
-.field-header label { margin-bottom: 2px; }
-
 .field-subtitle {
-  margin: 0;
+  margin: 5px 0 0;
   color: #737d8e;
   font-size: 9.5px;
   font-weight: 400;
   line-height: 1.25;
 }
 
-.server-port-field .field-header {
-  display: flex;
-  align-items: flex-start;
+.server-port-field {
+  align-self: start;
 }
 
 .display-scenes { margin-bottom: 12px; }
@@ -261,6 +253,11 @@ summary { padding: 10px 11px; color: #dbe1eb; cursor: pointer; font-size: 11px; 
 details[open] summary { border-bottom: 1px solid #2b313d; }
 .debug-block { padding: 10px 11px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 10px; line-height: 1.55; color: #aeb8c9; white-space: pre-wrap; overflow-wrap: anywhere; }
 .debug-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.objects-table { table-layout: fixed; }
+.objects-table .id-column { width: 19%; }
+.objects-table .cluster-column { width: 55%; }
+.objects-table .points-column { width: 26%; }
+.objects-table td:nth-child(2) { white-space: nowrap; }
 .debug-table th, .debug-table td { padding: 6px 8px; border-bottom: 1px solid #262c37; text-align: left; vertical-align: top; }
 .debug-table th { color: #7f8b9f; font-weight: 650; }
 .debug-table td { color: #c4ccd8; font-family: "SFMono-Regular", Consolas, monospace; overflow-wrap: anywhere; }
