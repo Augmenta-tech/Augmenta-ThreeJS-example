@@ -33,11 +33,11 @@ Three.js renders:
 - cluster/point-cloud pairs in distinct colors chosen from a curated palette;
 - point clouds;
 - scene bounds, scene floor and box/cylinder/sphere zones;
-- a Pleiades-style orbit camera, world grid and axes.
+- a Pleiades-style orbit camera, 1 × 1 m floor grid and axes.
 
-Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. **Reset camera** reframes the received Augmenta scene.
+Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. **Reset camera** reframes the received Augmenta scene. The Display panel exposes the received World selector, and the right debug panel can be folded with its edge handle.
 
-The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to commit `1250cf36`, which includes the V1 base plus the Pleiades hierarchy/update parsing fix, for reproducible builds. The inspector exposes every field currently surfaced by the SDK; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
+The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to commit `ab030fee`, which includes the V1 base, Pleiades hierarchy/update parsing, and explicit World containers, for reproducible builds. The inspector exposes every field currently surfaced by the SDK; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
 
 ## Clone and run locally
 
@@ -175,3 +175,8 @@ If GitHub Pages cannot reach the Augmenta server, the local HTTP workflow above 
 ## License
 
 Augmenta-authored example code is distributed under the Augmenta SDK license in [LICENSE](LICENSE). Third-party notices, including the Three.js MIT license, are in [THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES).
+
+
+## Live viewer behavior
+
+If the server-side WebSocket connection disappears unexpectedly, stale live tracking/debug data is cleared after 500 ms while the application keeps retrying the connection. The static scene setup is preserved. The **Clear** button only clears the debug inspector; it does not stop the WebSocket connection or remove the 3D tracking view.

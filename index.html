@@ -26,13 +26,10 @@
           <h1>Augmenta × Three.js</h1>
           <p>Real-time tracking debug viewer</p>
         </div>
-        <div class="legend" aria-label="3D legend">
-          <span><i class="legend-dot cluster"></i>Clusters</span>
-          <span><i class="legend-dot points"></i>Point clouds</span>
-          <span><i class="legend-dot zones"></i>Zones</span>
-        </div>
       </div>
     </section>
+
+    <button id="sidebar-toggle" class="sidebar-toggle" type="button" aria-expanded="true" aria-controls="sidebar" title="Collapse debug panel">›</button>
 
     <aside id="sidebar">
       <section class="panel connection-panel">
@@ -74,6 +71,12 @@
         <div class="panel-heading compact">
           <h2>Display</h2>
           <button id="reset-camera" class="text-button">Reset camera</button>
+        </div>
+        <div class="display-world">
+          <label for="world">World</label>
+          <select id="world" disabled>
+            <option value="">Waiting for setup…</option>
+          </select>
         </div>
         <div class="toggles">
           <label><input id="show-clusters" type="checkbox" checked> Clusters</label>

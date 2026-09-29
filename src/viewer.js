@@ -47,6 +47,7 @@ export function createViewer(host) {
 
   const views = new Map();
   const unitBox = new THREE.BoxGeometry(1, 1, 1);
+  const unitBoxEdges = new THREE.EdgesGeometry(unitBox);
   const centroidGeometry = new THREE.SphereGeometry(0.045, 12, 8);
 
   const homePosition = new THREE.Vector3(6.5, 5.5, 7.5);
@@ -96,11 +97,10 @@ export function createViewer(host) {
 
   function createObjectView(key, id) {
     const color = objectColor(key, id);
-    const box = new THREE.Mesh(
-      unitBox,
-      new THREE.MeshBasicMaterial({
+    const box = new THREE.LineSegments(
+      unitBoxEdges,
+      new THREE.LineBasicMaterial({
         color,
-        wireframe: true,
         transparent: true,
         opacity: 0.95
       })
@@ -295,16 +295,31 @@ export function createViewer(host) {
     const geometry = zoneGeometry(params);
     if (!geometry) return;
 
-    const mesh = new THREE.Mesh(
-      geometry,
-      new THREE.MeshBasicMaterial({
-        color: containerColor(container, 0xb78cff),
-        wireframe: true,
-        transparent: true,
-        opacity: 0.68,
-        depthWrite: false
-      })
-    );
+    let mesh;
+    if (params.isBox()) {
+      const edges = new THREE.EdgesGeometry(geometry);
+      geometry.dispose();
+      mesh = new THREE.LineSegments(
+        edges,
+        new THREE.LineBasicMaterial({
+          color: containerColor(container, 0xb78cff),
+          transparent: true,
+          opacity: 0.68,
+          depthWrite: false
+        })
+      );
+    } else {
+      mesh = new THREE.Mesh(
+        geometry,
+        new THREE.MeshBasicMaterial({
+          color: containerColor(container, 0xb78cff),
+          wireframe: true,
+          transparent: true,
+          opacity: 0.68,
+          depthWrite: false
+        })
+      );
+    }
 
     if (params.isCylinder()) {
       mesh.position.y = params.getCylinderShapeParameters().height / 2;
@@ -395,6 +410,7 @@ export function createViewer(host) {
   resetCamera();
   resize();
   window.addEventListener('resize', resize);
+  new ResizeObserver(resize).observe(host);
 
   renderer.setAnimationLoop(() => {
     controls.update();

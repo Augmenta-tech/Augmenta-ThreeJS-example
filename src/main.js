@@ -6,11 +6,13 @@ import { createDebugPanel } from './debug.js';
 import { makeDemoFrame, makeDemoSetup } from './demo.js';
 
 const RECONNECT_DELAY_MS = 1000;
+const DISCONNECT_CLEANUP_DELAY_MS = 500;
 const $ = (selector) => document.querySelector(selector);
 const ui = {
-  endpoint: $('#endpoint'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
+  app: $('#app'), endpoint: $('#endpoint'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
   demo: $('#demo'), status: $('#status'), note: $('#connection-note'), summary: $('#summary'),
-  debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'),
+  debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'), world: $('#world'),
+  sidebarToggle: $('#sidebar-toggle'),
   showClusters: $('#show-clusters'), showPoints: $('#show-points'), showZones: $('#show-zones'), showVectors: $('#show-vectors')
 };
 
@@ -19,6 +21,7 @@ const debug = createDebugPanel(ui.summary, ui.debug);
 
 let augmenta;
 let reconnectTimer;
+let disconnectCleanupTimer;
 let demoTimer;
 let wantsConnection = false;
 let socketOpen = false;
@@ -26,6 +29,8 @@ let autoNegotiatedVersion;
 let activeVersion;
 let lastFrame;
 let lastControl;
+let setupRoot;
+let availableWorlds = [];
 let frameTimes = [];
 
 function setStatus(text, kind = 'idle') {
@@ -64,8 +69,24 @@ function clearReconnectTimer() {
   reconnectTimer = undefined;
 }
 
+function clearDisconnectCleanupTimer() {
+  if (disconnectCleanupTimer) window.clearTimeout(disconnectCleanupTimer);
+  disconnectCleanupTimer = undefined;
+}
+
+function scheduleDisconnectCleanup() {
+  clearDisconnectCleanupTimer();
+  disconnectCleanupTimer = window.setTimeout(() => {
+    disconnectCleanupTimer = undefined;
+    if (socketOpen || !wantsConnection) return;
+    clearTracking();
+    clearDebugData();
+  }, DISCONNECT_CLEANUP_DELAY_MS);
+}
+
 function stopTransport(reason = 'User disconnect') {
   clearReconnectTimer();
+  clearDisconnectCleanupTimer();
   socketOpen = false;
   const client = augmenta;
   augmenta = undefined;
@@ -99,15 +120,57 @@ function clearTracking() {
   frameTimes = [];
 }
 
-function clearAll() {
-  stopConnection({ quiet: true });
-  stopSimulation({ quiet: true });
-  clearTracking();
-  viewer.clearSetup();
+function clearDebugData() {
+  lastFrame = undefined;
   lastControl = undefined;
+  frameTimes = [];
   debug.clear();
-  setStatus('Idle');
-  ui.note.textContent = 'Ready.';
+}
+
+function resetWorldSelector() {
+  setupRoot = undefined;
+  availableWorlds = [];
+  ui.world.innerHTML = '<option value="">Waiting for setup…</option>';
+  ui.world.disabled = true;
+}
+
+function collectWorlds(container, worlds = []) {
+  if (!container) return worlds;
+  if (container.isWorld?.()) worlds.push(container);
+  for (const child of container.getChildren?.() ?? []) collectWorlds(child, worlds);
+  return worlds;
+}
+
+function refreshWorldSelector(root) {
+  const previousName = availableWorlds[Number(ui.world.value)]?.getName();
+  setupRoot = root;
+  availableWorlds = collectWorlds(root);
+  if (!availableWorlds.length) availableWorlds = [root];
+
+  ui.world.innerHTML = availableWorlds.map((world, index) => {
+    const label = world.getName?.() || world.getAddress?.() || `World ${index + 1}`;
+    return `<option value="${index}">${escapeOption(label)}</option>`;
+  }).join('');
+
+  const preservedIndex = previousName
+    ? availableWorlds.findIndex((world) => world.getName?.() === previousName)
+    : -1;
+  ui.world.value = String(preservedIndex >= 0 ? preservedIndex : 0);
+  ui.world.disabled = availableWorlds.length <= 1;
+  renderSelectedWorld();
+}
+
+function renderSelectedWorld() {
+  const selected = availableWorlds[Number(ui.world.value)] ?? setupRoot;
+  if (selected) viewer.renderSetup(selected);
+}
+
+function escapeOption(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
 }
 
 function selectedVersion() {
@@ -180,6 +243,7 @@ function attemptConnection() {
 
   connection.on('open', () => {
     if (augmenta !== connection || !wantsConnection) return;
+    clearDisconnectCleanupTimer();
     socketOpen = true;
     updateConnectionButton();
     setStatus('Connected', 'connected');
@@ -191,6 +255,7 @@ function attemptConnection() {
     augmenta = undefined;
     socketOpen = false;
     updateConnectionButton();
+    scheduleDisconnectCleanup();
     scheduleReconnect('Connection closed.');
   });
 
@@ -223,7 +288,7 @@ function attemptConnection() {
       restartForProtocol(serverVersion);
       return;
     }
-    viewer.renderSetup(message.getRootObject());
+    refreshWorldSelector(message.getRootObject());
   });
 
   connection.on('update', (message) => {
@@ -252,6 +317,7 @@ function toggleConnection() {
   stopSimulation({ quiet: true });
   clearTracking();
   viewer.clearSetup();
+  resetWorldSelector();
   lastControl = undefined;
   autoNegotiatedVersion = undefined;
   wantsConnection = true;
@@ -266,7 +332,7 @@ function startSimulation() {
   setStatus('Simulating', 'demo');
   ui.note.textContent = 'Local synthetic stream using the Augmenta SDK data model. Click Simulating to stop.';
   lastControl = makeDemoSetup();
-  viewer.renderSetup(lastControl.getRootObject());
+  refreshWorldSelector(lastControl.getRootObject());
   const start = performance.now();
   const tick = () => trackFrame(makeDemoFrame((performance.now() - start) / 1000));
   tick();
@@ -290,8 +356,15 @@ function applyVisibility() {
 
 ui.connect.addEventListener('click', toggleConnection);
 ui.demo.addEventListener('click', toggleSimulation);
-ui.clear.addEventListener('click', clearAll);
+ui.clear.addEventListener('click', clearDebugData);
 ui.resetCamera.addEventListener('click', viewer.resetCamera);
+ui.world.addEventListener('change', renderSelectedWorld);
+ui.sidebarToggle.addEventListener('click', () => {
+  const collapsed = ui.app.classList.toggle('sidebar-collapsed');
+  ui.sidebarToggle.textContent = collapsed ? '‹' : '›';
+  ui.sidebarToggle.title = collapsed ? 'Open debug panel' : 'Collapse debug panel';
+  ui.sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
+});
 ui.endpoint.addEventListener('keydown', (event) => {
   if (event.key !== 'Enter') return;
   if (!wantsConnection) {
@@ -319,6 +392,7 @@ ui.downsample.addEventListener('change', () => {
 applyVisibility();
 updateConnectionButton();
 updateSimulationButton();
+resetWorldSelector();
 
 if (location.protocol === 'https:' && ui.endpoint.value.startsWith('ws://')) {
   ui.note.textContent = 'GitHub Pages uses HTTPS. If your browser blocks ws://, use wss:// or run the same example locally over HTTP.';
