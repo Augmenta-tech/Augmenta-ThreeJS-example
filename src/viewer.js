@@ -167,7 +167,10 @@ export function createViewer(host) {
     view.box.visible = true;
     view.box.position.fromArray(center);
     view.box.scale.set(...size.map((v) => Math.max(Math.abs(v), 0.001)));
-    view.box.quaternion.set(...rotation).normalize();
+    // Pleiades currently sends OBB quaternions in native Y-up/left-handed
+    // space even when positions are requested as Y-up/right-handed.
+    // Reflect the quaternion across Z so it matches the Three.js frame.
+    view.box.quaternion.set(-rotation[0], -rotation[1], rotation[2], rotation[3]).normalize();
 
     view.centroid.visible = true;
     view.centroid.position.fromArray(centroid);
@@ -270,7 +273,7 @@ export function createViewer(host) {
     geometry.dispose();
 
     edges.name = 'Scene bounds';
-    edges.position.set(size[0] / 2, size[1] / 2, size[2] / 2);
+    edges.position.set(size[0] / 2, size[1] / 2, -size[2] / 2);
     edges.renderOrder = 1;
     group.add(edges);
 
@@ -286,7 +289,7 @@ export function createViewer(host) {
     );
     floor.name = 'Scene floor';
     floor.rotation.x = -Math.PI / 2;
-    floor.position.set(size[0] / 2, 0.002, size[2] / 2);
+    floor.position.set(size[0] / 2, 0.002, -size[2] / 2);
     group.add(floor);
   }
 

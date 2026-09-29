@@ -13,22 +13,17 @@ button, input, select { font: inherit; }
 
 #app {
   --sidebar-width: 430px;
-  --sidebar-space: var(--sidebar-width);
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--sidebar-space);
+  grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
   background: #0b0d11;
-  transition: grid-template-columns 220ms ease;
-}
-
-#app.sidebar-hidden {
-  --sidebar-space: 0px;
 }
 
 #viewer {
   position: relative;
   min-width: 0;
+  height: 100%;
   overflow: hidden;
   background: radial-gradient(circle at 50% 35%, #202532 0%, #11141b 42%, #090b0f 100%);
 }
@@ -52,6 +47,10 @@ button, input, select { font: inherit; }
 .viewer-overlay h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.02em; }
 .viewer-overlay p { margin: 4px 0 0; color: #aeb6c5; font-size: 12px; }
 #sidebar {
+  position: absolute;
+  z-index: 15;
+  top: 0;
+  right: 0;
   width: var(--sidebar-width);
   min-width: 0;
   height: 100%;
@@ -73,7 +72,7 @@ button, input, select { font: inherit; }
   position: absolute;
   z-index: 20;
   top: 50%;
-  right: var(--sidebar-space);
+  right: var(--sidebar-width);
   width: 26px;
   height: 64px;
   min-height: 64px;
@@ -91,6 +90,10 @@ button, input, select { font: inherit; }
 .sidebar-toggle:hover {
   color: #eef2f8;
   background: #222834;
+}
+
+#app.sidebar-hidden .sidebar-toggle {
+  right: 0;
 }
 
 .panel { padding: 18px; border-bottom: 1px solid #252a35; }
@@ -164,7 +167,6 @@ details[open] summary { border-bottom: 1px solid #2b313d; }
   body { overflow: auto; }
   #app,
   #app.sidebar-hidden {
-    --sidebar-space: auto;
     height: auto;
     min-height: 100%;
     grid-template-columns: 1fr;
@@ -173,6 +175,7 @@ details[open] summary { border-bottom: 1px solid #2b313d; }
   }
   #sidebar,
   #app.sidebar-hidden #sidebar {
+    position: static;
     width: auto;
     height: auto;
     overflow: visible;

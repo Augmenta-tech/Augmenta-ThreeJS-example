@@ -86,7 +86,7 @@ Do not open `index.html` directly with `file://`; ES modules need to be served o
 1. Enable the Augmenta **WebSocket Output**.
 2. Enter its URL in the viewer. The default is `ws://127.0.0.1:6060`.
 3. Keep **Auto** unless you are testing a specific protocol version. Auto starts with V3 and automatically reconnects with the server-reported V2/V3 parser when required.
-4. Press **Connect**. The viewer keeps retrying every second until a connection succeeds, and retries again after a disconnect. While active, the button becomes **Connecting…** or **Connected**; click it again to stop all reconnect attempts.
+4. The viewer starts in **Connecting…** mode automatically and keeps retrying every second until a connection succeeds. While active, the button becomes **Connected**; click it to stop all reconnect attempts.
 
 The example requests:
 
@@ -102,13 +102,17 @@ The example requests:
   boxRotationMode: RotationMode.Quaternions,
   axisTransform: {
     axis: AxisMode.YUpRightHanded,
-    origin: OriginMode.BottomLeft,
+    flipX: false,
+    flipY: false,
+    flipZ: false,
     coordinateSpace: CoordinateSpace.Absolute
   }
 }
 ```
 
 Compression is disabled because the browser example intentionally stays dependency-free. Applications that need compressed streams can provide the SDK with a Zstd decompressor.
+
+The requested transform matches Three.js directly: **Y up, right handed, absolute coordinates**, so one coordinate unit remains one meter. Pleiades currently emits OBB quaternions in its native Y-up/left-handed basis; the viewer converts those quaternions to the requested Three.js basis before drawing the boxes. Scene bounds are likewise extended toward negative Z after the handedness change so they occupy the same spatial range as the streamed points/clusters.
 
 ## Project structure
 
@@ -179,4 +183,4 @@ Augmenta-authored example code is distributed under the Augmenta SDK license in 
 
 ## Live viewer behavior
 
-If the server-side WebSocket connection disappears unexpectedly, the 3D display, setup and debug data are cleared after 500 ms while the application keeps retrying the connection. Clicking **Connected** to disconnect from the current interface clears the display immediately. The **Clear** button only clears the debug inspector; it does not stop the WebSocket connection or remove the 3D tracking view.
+If the server-side WebSocket connection disappears unexpectedly, live clusters, point clouds, velocity vectors and debug data are cleared after 500 ms while the application keeps retrying. The static scene/zones remain visible. Clicking **Connected** to disconnect manually stops retries and immediately removes only live tracking/debug data; the scene/zones remain visible. The **Clear** button only clears the debug inspector.

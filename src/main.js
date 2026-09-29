@@ -1,5 +1,5 @@
 import {
-  AugmentaWebSocketClient, AxisMode, CoordinateSpace, OriginMode, RotationMode
+  AugmentaWebSocketClient, AxisMode, CoordinateSpace, RotationMode
 } from 'augmenta-client-sdk';
 import { createViewer } from './viewer.js';
 import { createDebugPanel } from './debug.js';
@@ -23,7 +23,7 @@ let augmenta;
 let reconnectTimer;
 let disconnectCleanupTimer;
 let demoTimer;
-let wantsConnection = false;
+let wantsConnection = true;
 let socketOpen = false;
 let autoNegotiatedVersion;
 let activeVersion;
@@ -88,7 +88,8 @@ function scheduleDisconnectCleanup() {
   disconnectCleanupTimer = window.setTimeout(() => {
     disconnectCleanupTimer = undefined;
     if (socketOpen || !wantsConnection) return;
-    clearDisplay();
+    clearTracking();
+    clearDebugData();
   }, DISCONNECT_CLEANUP_DELAY_MS);
 }
 
@@ -106,10 +107,11 @@ function stopConnection({ quiet = false } = {}) {
   wantsConnection = false;
   autoNegotiatedVersion = undefined;
   stopTransport();
-  clearDisplay();
+  clearTracking();
+  clearDebugData();
   if (!quiet) {
     setStatus('Idle');
-    ui.note.textContent = 'Connection stopped.';
+    ui.note.textContent = 'Connection stopped. Scene and zones are kept visible.';
   }
 }
 
@@ -268,7 +270,9 @@ function attemptConnection() {
       useCompression: false, displayPointIntensity: true, boxRotationMode: RotationMode.Quaternions,
       axisTransform: {
         axis: AxisMode.YUpRightHanded,
-        origin: OriginMode.BottomLeft,
+        flipX: false,
+        flipY: false,
+        flipZ: false,
         coordinateSpace: CoordinateSpace.Absolute
       }
     }
@@ -352,7 +356,8 @@ function toggleConnection() {
   }
 
   stopSimulation({ quiet: true });
-  clearDisplay();
+  clearTracking();
+  clearDebugData();
   autoNegotiatedVersion = undefined;
   wantsConnection = true;
   updateConnectionButton();
@@ -427,7 +432,4 @@ applyVisibility();
 updateConnectionButton();
 updateSimulationButton();
 resetWorldSelector();
-
-if (location.protocol === 'https:' && ui.endpoint.value.startsWith('ws://')) {
-  ui.note.textContent = 'GitHub Pages uses HTTPS. If your browser blocks ws://, use wss:// or run the same example locally over HTTP.';
-}
+attemptConnection();
