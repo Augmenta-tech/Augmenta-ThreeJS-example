@@ -35,7 +35,7 @@ Three.js renders:
 - scene bounds, scene floor and box/cylinder/sphere zones;
 - a Pleiades-style orbit camera, 1 × 1 m floor grid and axes.
 
-Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. **Reset camera** reframes the received Augmenta scene. The Display panel exposes the received World selector, and the right debug panel can be folded with its edge handle.
+Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. **Reset camera** reframes the received Augmenta scene. The Display panel exposes the received World selector.
 
 The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to commit `ab030fee`, which includes the V1 base, Pleiades hierarchy/update parsing, and explicit World containers, for reproducible builds. The inspector exposes every field currently surfaced by the SDK; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
 

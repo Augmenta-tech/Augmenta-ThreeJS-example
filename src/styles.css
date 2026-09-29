@@ -12,17 +12,9 @@ body { overflow: hidden; }
 button, input, select { font: inherit; }
 
 #app {
-  --sidebar-width: 430px;
-  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--sidebar-width);
+  grid-template-columns: minmax(0, 1fr) 430px;
   background: #0b0d11;
-}
-
-#app.sidebar-collapsed { --sidebar-width: 0px; }
-#app.sidebar-collapsed #sidebar {
-  visibility: hidden;
-  border-left: 0;
 }
 
 #viewer {
@@ -52,32 +44,12 @@ button, input, select { font: inherit; }
 .viewer-overlay p { margin: 4px 0 0; color: #aeb6c5; font-size: 12px; }
 #sidebar {
   min-width: 0;
-  width: var(--sidebar-width);
   height: 100%;
   overflow-y: auto;
   border-left: 1px solid #252a35;
   background: #11141a;
   scrollbar-color: #414858 transparent;
 }
-
-.sidebar-toggle {
-  position: absolute;
-  z-index: 20;
-  top: 50%;
-  right: var(--sidebar-width);
-  width: 24px;
-  height: 64px;
-  min-height: 64px;
-  padding: 0;
-  transform: translateY(-50%);
-  border-right: 0;
-  border-radius: 8px 0 0 8px;
-  color: #aeb8c9;
-  background: #171b23;
-  font-size: 18px;
-  line-height: 1;
-}
-.sidebar-toggle:hover { background: #222834; color: #eef2f8; }
 
 .panel { padding: 18px; border-bottom: 1px solid #252a35; }
 .panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 15px; }
@@ -148,8 +120,7 @@ details[open] summary { border-bottom: 1px solid #2b313d; }
 
 @media (max-width: 900px) {
   body { overflow: auto; }
-  #app, #app.sidebar-collapsed { height: auto; min-height: 100%; grid-template-columns: 1fr; grid-template-rows: 58vh auto; }
-  #sidebar, #app.sidebar-collapsed #sidebar { width: auto; height: auto; visibility: visible; overflow: visible; border-left: 0; border-top: 1px solid #252a35; }
-  .sidebar-toggle { display: none; }
+  #app { height: auto; min-height: 100%; grid-template-columns: 1fr; grid-template-rows: 58vh auto; }
+  #sidebar { height: auto; overflow: visible; border-left: 0; border-top: 1px solid #252a35; }
   .viewer-overlay { padding: 16px; }
 }

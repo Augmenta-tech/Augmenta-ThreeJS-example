@@ -410,7 +410,6 @@ export function createViewer(host) {
   resetCamera();
   resize();
   window.addEventListener('resize', resize);
-  new ResizeObserver(resize).observe(host);
 
   renderer.setAnimationLoop(() => {
     controls.update();
