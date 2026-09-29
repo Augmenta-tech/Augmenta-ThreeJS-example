@@ -42,6 +42,14 @@
     >&gt;</button>
 
     <aside id="sidebar">
+      <div
+        id="sidebar-resizer"
+        class="sidebar-resizer"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize debug panel"
+        title="Drag to resize panel"
+      ></div>
       <section class="panel connection-panel">
         <div class="panel-heading">
           <div>
@@ -82,7 +90,7 @@
           <h2>Display</h2>
           <button id="reset-camera" class="text-button">Reset camera</button>
         </div>
-        <div class="display-world">
+        <div class="display-scenes">
           <label for="scenes">Scenes</label>
           <select id="scenes" disabled>
             <option value="all">All scenes</option>

@@ -3,15 +3,15 @@ import { ClusterState, ShapeType, ZonePropertyType } from 'augmenta-client-sdk';
 export function createDebugPanel(summary, content) {
   let lastRender = 0;
 
-  function render(frame, control, fps, force = false) {
+  function render(frame, control, fps, sceneSize, force = false) {
     const now = performance.now();
     if (!force && now - lastRender < 120) return;
     lastRender = now;
     if (!frame && !control) return;
 
-    summary.textContent = `${frame?.getObjectCount() ?? 0} objects · ${frame?.getZoneEventCount() ?? 0} zones · ${fps} fps`;
+    summary.textContent = frame ? `${fps} fps` : 'Waiting for tracking data';
     const blocks = [];
-    if (frame) blocks.push(frameBlock(frame, fps), objectsBlock(frame), zonesBlock(frame));
+    if (frame) blocks.push(frameBlock(frame, fps, sceneSize), objectsBlock(frame), zonesBlock(frame));
     if (control) blocks.push(controlBlock(control));
     content.innerHTML = blocks.join('');
   }
@@ -24,8 +24,8 @@ export function createDebugPanel(summary, content) {
   return { render, clear };
 }
 
-function frameBlock(frame, fps) {
-  return `<details open><summary>Frame</summary><div class="debug-block">fps (received)      ${fps}\nobjects             ${frame.getObjectCount()}\nzones               ${frame.getZoneEventCount()}</div></details>`;
+function frameBlock(frame, fps, sceneSize) {
+  return `<details open><summary>Frame</summary><div class="debug-block">fps (received)      ${fps}\nscene size          ${sceneSizeText(sceneSize)}\nobjects             ${frame.getObjectCount()}\nzones               ${frame.getZoneEventCount()}</div></details>`;
 }
 
 function objectsBlock(frame) {
@@ -118,6 +118,16 @@ function cloudSummary(cloud) {
     value += `; intensity min/avg/max ${fmt(min)} / ${fmt(sum / intensity.length)} / ${fmt(max)}`;
   }
   return value;
+}
+
+function sceneSizeText(size) {
+  if (!size?.length) return '—';
+  return Array.from(size, (value) => `${compact(value)}m`).join(' × ');
+}
+
+function compact(value) {
+  if (!Number.isFinite(value)) return '—';
+  return Number.isInteger(value) ? String(value) : Number(value).toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
 function shapeName(value) { return typeof value === 'string' ? value : ShapeType[value] ?? String(value); }

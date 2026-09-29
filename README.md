@@ -21,7 +21,7 @@ The viewer requests the richest practical uncompressed stream from the Augmenta 
 - centroid, velocity, state, weight and look-at vector;
 - bounding-box center, size and quaternion rotation;
 - object point clouds and point-intensity data when present;
-- scene address and V3 timestamps;
+- scene dimensions from setup data and protocol V3 timestamps when useful to the data model;
 - zone enter, leave, presence and density values;
 - slider, XY pad and zone point-cloud properties;
 - setup/update hierarchy with scene and zone position, rotation, color and supported shapes.
@@ -35,7 +35,7 @@ Three.js renders:
 - scene bounds, scene floor and box/cylinder/sphere zones;
 - a Pleiades-style orbit camera, 1 × 1 m floor grid and axes.
 
-Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. The camera is not moved when a connection/setup arrives. **Reset camera** or a left-button double-click reframes the current World. The Display panel lists Pleiades Worlds only (not Scenes) and switches to the selected World's WebSocket Output when world discovery is available. On desktop, the translucent right panel is an overlay on top of the 3D view and can slide in/out with the edge arrow without resizing the renderer. The camera projection shifts with the panel so the orbit target remains centered in the unobscured part of the view.
+Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. The camera is not moved when a connection/setup arrives. **Reset camera** or a left-button double-click reframes the displayed setup. The Display panel offers **All scenes** plus every Scene in the received World. On desktop, the translucent right panel overlays the 3D view, can slide in/out with the edge arrow, and can be resized by dragging its left border. The camera projection follows the visible panel width so the orbit target stays centered in the unobscured part of the view.
 
 The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to commit `ab030fee`, which includes the V1 base, Pleiades hierarchy/update parsing, and explicit World containers, for reproducible builds. The inspector exposes every field currently surfaced by the SDK; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
 
@@ -88,9 +88,6 @@ Do not open `index.html` directly with `file://`; ES modules need to be served o
 3. Keep **Auto** unless you are testing a specific protocol version. Auto starts with V3 and automatically reconnects with the server-reported V2/V3 parser when required.
 4. The viewer starts in **Connecting…** mode automatically and keeps retrying every second until a connection succeeds. While active, the button becomes **Connected**; click it to stop all reconnect attempts.
 
-### World discovery
-
-An Augmenta WebSocket Output belongs to one Pleiades World, so a single stream cannot advertise the other Worlds by itself. The example therefore makes a best-effort read-only discovery request to Pleiades OSCQuery on port `20000`, the same control port used by the current Pleiades Web UI. It lists each World that has an enabled WebSocket Output and switches the connection to that World's `localPort` when selected. If OSCQuery is not reachable, the selector safely falls back to the World reported by the current WebSocket stream.
 
 The example requests:
 
@@ -118,13 +115,23 @@ Compression is disabled because the browser example intentionally stays dependen
 
 The requested live-data transform matches Three.js directly: **Y up, right handed, absolute coordinates**, so one coordinate unit remains one meter. Pleiades applies that transform to binary tracking data, while setup JSON (Scenes/Zones) remains in Pleiades' native Y-up/left-handed basis; the viewer converts setup positions and rotations into the same Three.js basis before drawing them. Pleiades currently emits OBB quaternions in its native Y-up/left-handed basis; the viewer converts those quaternions to the requested Three.js basis before drawing the boxes. Scene bounds are likewise extended toward negative Z after the handedness change so they occupy the same spatial range as the streamed points/clusters.
 
+## SDK / example boundary
+
+The example intentionally keeps protocol responsibilities out of the Three.js layer:
+
+- **SDK:** registration options, WebSocket transport, V2/V3 parsing, typed Augmenta packets, control/setup hierarchy.
+- **Example controller:** reconnect policy, protocol fallback, Scene selection, demo mode and UI state.
+- **Three.js viewer:** rendering, camera behavior, labels/colors and the temporary setup-coordinate adaptation required because Pleiades currently transforms binary tracking data but not setup JSON with `axisTransform`.
+
+This separation keeps the SDK reusable by non-Three.js applications and keeps rendering/UI decisions out of the protocol library.
+
 ## Project structure
 
 ```text
 .
 ├── .github/workflows/pages.yml        # Build SDK + deploy GitHub Pages
 ├── index.html                          # Static entry point + import map
-├── favicon.png                         # White Augmenta symbol
+├── augmenta-favicon.png                # White Augmenta symbol used by the page
 ├── src/
 │   ├── main.js                         # Connection / application controller
 │   ├── viewer.js                       # Three.js scene + Augmenta rendering

@@ -112,15 +112,19 @@ export function createViewer(host) {
   }
 
   function renderFrame(frame) {
+    const sceneAddress = frame.getSceneInfo().getAddress() || '';
     const active = new Set();
 
     frame.getObjects().forEach((object, index) => {
       const id = object.getID();
       const uuid = object.getUUID();
-      const key = uuid || `id:${id ?? index}`;
+      // IDs can repeat across scenes. Prefix by scene so "All scenes" can keep
+      // multiple live scenes visible without one frame deleting another.
+      const objectKey = uuid || `id:${id ?? index}`;
+      const key = `${sceneAddress}|${objectKey}`;
       active.add(key);
 
-      const view = views.get(key) || createObjectView(key, id);
+      const view = views.get(key) || createObjectView(key, id, sceneAddress);
       views.set(key, view);
       updateLabel(view, id, uuid);
 
@@ -132,14 +136,14 @@ export function createViewer(host) {
     });
 
     for (const [key, view] of views) {
-      if (!active.has(key)) {
+      if (view.sceneAddress === sceneAddress && !active.has(key)) {
         disposeView(view);
         views.delete(key);
       }
     }
   }
 
-  function createObjectView(key, id) {
+  function createObjectView(key, id, sceneAddress) {
     const color = objectColor(key, id);
     const box = new THREE.LineSegments(
       unitBoxEdges,
@@ -184,7 +188,7 @@ export function createViewer(host) {
     pointGroup.add(points);
     labelGroup.add(label);
 
-    return { box, centroid, velocity, points, label, labelText: id === undefined ? '' : String(id), color };
+    return { box, centroid, velocity, points, label, labelText: id === undefined ? '' : String(id), color, sceneAddress };
   }
 
   function updateLabel(view, id, uuid) {
@@ -639,6 +643,9 @@ function hashString(value) {
   return hash;
 }
 
+// Pleiades applies axisTransform to streamed binary tracking data, but setup
+// JSON currently remains in its native Y-up/left-handed basis. Keep that
+// protocol-specific adaptation here in the example renderer, not in the SDK.
 function setupPosition(position) {
   const [x = 0, y = 0, z = 0] = position || [];
   return [x, y, -z];

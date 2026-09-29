@@ -7,9 +7,11 @@ import { makeDemoFrame, makeDemoSetup } from './demo.js';
 
 const RECONNECT_DELAY_MS = 1000;
 const DISCONNECT_CLEANUP_DELAY_MS = 500;
+const SIDEBAR_MIN_WIDTH = 320;
+const SIDEBAR_MAX_WIDTH = 720;
 const $ = (selector) => document.querySelector(selector);
 const ui = {
-  app: $('#app'), sidebar: $('#sidebar'), endpoint: $('#endpoint'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
+  app: $('#app'), sidebar: $('#sidebar'), sidebarResizer: $('#sidebar-resizer'), endpoint: $('#endpoint'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
   demo: $('#demo'), status: $('#status'), note: $('#connection-note'), summary: $('#summary'),
   debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'), scenes: $('#scenes'),
   sidebarToggle: $('#sidebar-toggle'),
@@ -68,7 +70,7 @@ function trackFrame(frame) {
   frameTimes.push(now);
   frameTimes = frameTimes.filter((time) => time >= now - 1000);
   viewer.renderFrame(frame);
-  debug.render(lastFrame, lastControl, fps());
+  renderDebug();
 }
 
 function clearReconnectTimer() {
@@ -137,13 +139,6 @@ function clearDebugData() {
   debug.clear();
 }
 
-function clearDisplay() {
-  clearTracking();
-  viewer.clearSetup();
-  clearDebugData();
-  resetSceneSelector();
-}
-
 function resetSceneSelector() {
   setupRoot = undefined;
   scenes = [];
@@ -162,6 +157,18 @@ function collectScenes(container, output = []) {
 function selectedScene() {
   const address = ui.scenes.value;
   return address === 'all' ? undefined : scenes.find((scene) => scene.getAddress() === address);
+}
+
+function sceneSizeForFrame(frame) {
+  const address = frame?.getSceneInfo().getAddress();
+  const scene = scenes.find((candidate) => candidate.getAddress() === address)
+    ?? selectedScene()
+    ?? (scenes.length === 1 ? scenes[0] : undefined);
+  return scene?.getSceneParameters().size;
+}
+
+function renderDebug(force = false) {
+  debug.render(lastFrame, lastControl, fps(), sceneSizeForFrame(lastFrame), force);
 }
 
 function refreshSceneSelector(root) {
@@ -318,7 +325,7 @@ function attemptConnection() {
   connection.on('controlMessage', (message) => {
     if (augmenta !== connection) return;
     lastControl = message;
-    debug.render(lastFrame, lastControl, fps(), true);
+    renderDebug(true);
   });
 
   connection.on('setup', (message) => {
@@ -399,6 +406,9 @@ ui.demo.addEventListener('click', toggleSimulation);
 ui.clear.addEventListener('click', clearDebugData);
 ui.resetCamera.addEventListener('click', viewer.resetCamera);
 ui.scenes.addEventListener('change', renderSelectedScenes);
+
+// The panel overlays the renderer. Shift the camera projection by the visible
+// panel width so the orbit target stays centered in the unobscured viewport.
 function syncPanelCamera(animate = false) {
   const isMobile = window.matchMedia('(max-width: 900px)').matches;
   const hidden = ui.app.classList.contains('sidebar-hidden');
@@ -413,7 +423,44 @@ ui.sidebarToggle.addEventListener('click', () => {
   ui.sidebarToggle.setAttribute('aria-expanded', String(!hidden));
   syncPanelCamera(true);
 });
-window.addEventListener('resize', () => syncPanelCamera(false));
+
+function resizeSidebar(event) {
+  if (window.matchMedia('(max-width: 900px)').matches) return;
+  const maxWidth = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, window.innerWidth - 120));
+  const width = Math.min(maxWidth, Math.max(SIDEBAR_MIN_WIDTH, window.innerWidth - event.clientX));
+  ui.app.style.setProperty('--sidebar-width', `${width}px`);
+  syncPanelCamera(false);
+}
+
+ui.sidebarResizer.addEventListener('pointerdown', (event) => {
+  if (window.matchMedia('(max-width: 900px)').matches) return;
+  event.preventDefault();
+  ui.sidebarResizer.setPointerCapture(event.pointerId);
+  ui.app.classList.add('sidebar-resizing');
+});
+
+ui.sidebarResizer.addEventListener('pointermove', (event) => {
+  if (!ui.sidebarResizer.hasPointerCapture(event.pointerId)) return;
+  resizeSidebar(event);
+});
+
+function stopSidebarResize(event) {
+  if (ui.sidebarResizer.hasPointerCapture(event.pointerId)) {
+    ui.sidebarResizer.releasePointerCapture(event.pointerId);
+  }
+  ui.app.classList.remove('sidebar-resizing');
+}
+ui.sidebarResizer.addEventListener('pointerup', stopSidebarResize);
+ui.sidebarResizer.addEventListener('pointercancel', stopSidebarResize);
+
+window.addEventListener('resize', () => {
+  const maxWidth = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, window.innerWidth - 120));
+  const width = ui.sidebar.getBoundingClientRect().width;
+  if (!window.matchMedia('(max-width: 900px)').matches && width > maxWidth) {
+    ui.app.style.setProperty('--sidebar-width', `${maxWidth}px`);
+  }
+  syncPanelCamera(false);
+});
 ui.endpoint.addEventListener('keydown', (event) => {
   if (event.key !== 'Enter') return;
   if (!wantsConnection) {
