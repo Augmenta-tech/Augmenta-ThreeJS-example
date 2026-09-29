@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#111318">
+  <link rel="icon" type="image/png" href="./favicon.png">
   <title>Augmenta × Three.js Debug Viewer</title>
   <meta name="description" content="Three.js example and debug viewer for the Augmenta JavaScript SDK.">
   <link rel="stylesheet" href="./src/styles.css">
@@ -68,7 +69,7 @@
 
         <div class="button-row">
           <button id="connect" class="primary" aria-pressed="false">Connect</button>
-          <button id="demo" aria-pressed="false">Simulate data</button>
+          <button id="demo" class="subtle-button" aria-pressed="false">Simulate data</button>
         </div>
 
         <p id="connection-note" class="hint">Connect retries every second until stopped. Auto protocol matches the server version; maximum debug stream stays enabled.</p>
@@ -80,7 +81,7 @@
           <button id="reset-camera" class="text-button">Reset camera</button>
         </div>
         <div class="display-world">
-          <label for="world">World / Scene</label>
+          <label for="world">World</label>
           <select id="world" disabled>
             <option value="">Waiting for setup…</option>
           </select>

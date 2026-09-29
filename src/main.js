@@ -30,7 +30,6 @@ let activeVersion;
 let lastFrame;
 let lastControl;
 let setupRoot;
-let displayTargets = [];
 let frameTimes = [];
 
 function setStatus(text, kind = 'idle') {
@@ -56,15 +55,6 @@ function updateSimulationButton() {
 function fps() { return frameTimes.length; }
 
 function trackFrame(frame) {
-  const target = selectedDisplayTarget();
-  if (target?.isScene?.()) {
-    const sceneAddress = frame.getSceneInfo().getAddress();
-    if (sceneAddress && sceneAddress !== target.getAddress()) {
-      viewer.clearTracking();
-      return;
-    }
-  }
-
   lastFrame = frame;
   const now = performance.now();
   frameTimes.push(now);
@@ -147,59 +137,23 @@ function clearDisplay() {
 
 function resetWorldSelector() {
   setupRoot = undefined;
-  displayTargets = [];
-  ui.world.innerHTML = '<option value="">Waiting for setup…</option>';
+  ui.world.innerHTML = '<option value="">Waiting for world…</option>';
   ui.world.disabled = true;
 }
 
-function collectScenes(container, scenes = []) {
-  if (!container) return scenes;
-  if (container.isScene?.()) scenes.push(container);
-  for (const child of container.getChildren?.() ?? []) collectScenes(child, scenes);
-  return scenes;
-}
-
-function selectedDisplayTarget() {
-  return displayTargets[Number(ui.world.value)] ?? setupRoot;
-}
-
 function refreshWorldSelector(root) {
-  const previous = selectedDisplayTarget();
-  const previousKey = previous ? `${previous.getType?.()}|${previous.getAddress?.()}|${previous.getName?.()}` : '';
-
   setupRoot = root;
-  const scenes = collectScenes(root);
-  displayTargets = root.isWorld?.() ? [root, ...scenes] : scenes.length ? scenes : [root];
-
-  ui.world.innerHTML = displayTargets.map((target, index) => {
-    const type = target.isWorld?.() ? 'World' : target.isScene?.() ? 'Scene' : 'Scope';
-    const name = target.getName?.() || target.getAddress?.() || `${type} ${index + 1}`;
-    return `<option value="${index}">${escapeOption(type)} — ${escapeOption(name)}</option>`;
-  }).join('');
-
-  const preservedIndex = previousKey
-    ? displayTargets.findIndex((target) =>
-        `${target.getType?.()}|${target.getAddress?.()}|${target.getName?.()}` === previousKey)
-    : -1;
-
-  ui.world.value = String(preservedIndex >= 0 ? preservedIndex : 0);
-  ui.world.disabled = displayTargets.length <= 1;
-  renderSelectedWorld();
+  const name = root?.getName?.() || 'Current World';
+  ui.world.innerHTML = `<option value="current">${escapeOption(name)}</option>`;
+  ui.world.value = 'current';
+  ui.world.disabled = true;
+  viewer.renderSetup(root);
 }
 
 function renderSelectedWorld() {
-  const selected = selectedDisplayTarget();
-  if (!selected) return;
+  if (!setupRoot) return;
   viewer.clearTracking();
-  viewer.renderSetup(selected);
-}
-
-function updateBelongsToSelectedTarget(container) {
-  const selected = selectedDisplayTarget();
-  if (!selected || selected.isWorld?.()) return true;
-  const selectedAddress = selected.getAddress?.() || '';
-  const updateAddress = container.getAddress?.() || '';
-  return updateAddress === selectedAddress || updateAddress.startsWith(`${selectedAddress}/`);
+  viewer.renderSetup(setupRoot);
 }
 
 function escapeOption(value) {
@@ -332,8 +286,7 @@ function attemptConnection() {
 
   connection.on('update', (message) => {
     if (augmenta !== connection) return;
-    const container = message.getRootObject();
-    if (updateBelongsToSelectedTarget(container)) viewer.upsertSetup(container);
+    viewer.upsertSetup(message.getRootObject());
   });
 
   connection.on('data', (frame) => {

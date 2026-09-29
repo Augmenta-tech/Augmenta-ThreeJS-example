@@ -131,6 +131,27 @@ button.primary { border-color: #4b82dc; background: #2f6bc8; }
 button.primary:hover { background: #3877d6; }
 button.active { border-color: #3f8d68; background: #1c4d36; }
 button.active:hover { background: #245f43; }
+button.subtle-button {
+  border-color: transparent;
+  color: #8b95a6;
+  background: transparent;
+  font-size: 12px;
+}
+button.subtle-button:hover {
+  border-color: #2b313d;
+  color: #c7cfdb;
+  background: #171b23;
+}
+button.subtle-button.active {
+  border-color: rgba(77, 151, 111, .28);
+  color: #8ec8a8;
+  background: rgba(28, 77, 54, .28);
+}
+button.subtle-button.active:hover {
+  border-color: rgba(77, 151, 111, .42);
+  color: #a8d9bd;
+  background: rgba(28, 77, 54, .42);
+}
 button.text-button { min-height: auto; padding: 3px 0; border: 0; color: #8db8ff; background: transparent; font-size: 11px; }
 button.text-button:hover { color: #b7d3ff; background: transparent; }
 
