@@ -37,6 +37,13 @@ jobs:
           npm install --prefix vendor/AugmentaClientSDK-JS --no-audit --no-fund
           npm run build --prefix vendor/AugmentaClientSDK-JS
 
+      - name: Validate example JavaScript
+        shell: bash
+        run: |
+          for file in src/*.js; do
+            node --input-type=module --check < "$file"
+          done
+
       - name: Assemble static site
         shell: bash
         run: |

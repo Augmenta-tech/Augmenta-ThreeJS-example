@@ -292,7 +292,16 @@ ui.connect.addEventListener('click', toggleConnection);
 ui.demo.addEventListener('click', toggleSimulation);
 ui.clear.addEventListener('click', clearAll);
 ui.resetCamera.addEventListener('click', viewer.resetCamera);
-ui.endpoint.addEventListener('keydown', (event) => { if (event.key === 'Enter') toggleConnection(); });
+ui.endpoint.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter') return;
+  if (!wantsConnection) {
+    toggleConnection();
+    return;
+  }
+  autoNegotiatedVersion = undefined;
+  stopTransport('Endpoint changed');
+  attemptConnection();
+});
 ui.protocol.addEventListener('change', () => {
   if (!wantsConnection) return;
   autoNegotiatedVersion = undefined;
