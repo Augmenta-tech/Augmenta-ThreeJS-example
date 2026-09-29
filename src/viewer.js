@@ -226,7 +226,7 @@ export function createViewer(host) {
   function renderSetup(root) {
     clearGroup(setupGroup);
     addContainer(root, setupGroup);
-    updateHomeFromSetup();
+    updateHomeFromSetup(false);
   }
 
   function upsertSetup(container) {
@@ -410,6 +410,9 @@ export function createViewer(host) {
   resetCamera();
   resize();
   window.addEventListener('resize', resize);
+  renderer.domElement.addEventListener('dblclick', (event) => {
+    if (event.button === 0) resetCamera();
+  });
 
   renderer.setAnimationLoop(() => {
     controls.update();

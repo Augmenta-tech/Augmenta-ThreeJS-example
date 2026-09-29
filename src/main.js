@@ -29,7 +29,7 @@ let activeVersion;
 let lastFrame;
 let lastControl;
 let setupRoot;
-let availableWorlds = [];
+let displayTargets = [];
 let frameTimes = [];
 
 function setStatus(text, kind = 'idle') {
@@ -55,6 +55,15 @@ function updateSimulationButton() {
 function fps() { return frameTimes.length; }
 
 function trackFrame(frame) {
+  const target = selectedDisplayTarget();
+  if (target?.isScene?.()) {
+    const sceneAddress = frame.getSceneInfo().getAddress();
+    if (sceneAddress && sceneAddress !== target.getAddress()) {
+      viewer.clearTracking();
+      return;
+    }
+  }
+
   lastFrame = frame;
   const now = performance.now();
   frameTimes.push(now);
@@ -78,8 +87,7 @@ function scheduleDisconnectCleanup() {
   disconnectCleanupTimer = window.setTimeout(() => {
     disconnectCleanupTimer = undefined;
     if (socketOpen || !wantsConnection) return;
-    clearTracking();
-    clearDebugData();
+    clearDisplay();
   }, DISCONNECT_CLEANUP_DELAY_MS);
 }
 
@@ -97,6 +105,7 @@ function stopConnection({ quiet = false } = {}) {
   wantsConnection = false;
   autoNegotiatedVersion = undefined;
   stopTransport();
+  clearDisplay();
   if (!quiet) {
     setStatus('Idle');
     ui.note.textContent = 'Connection stopped.';
@@ -126,42 +135,68 @@ function clearDebugData() {
   debug.clear();
 }
 
+function clearDisplay() {
+  clearTracking();
+  viewer.clearSetup();
+  clearDebugData();
+  resetWorldSelector();
+}
+
 function resetWorldSelector() {
   setupRoot = undefined;
-  availableWorlds = [];
+  displayTargets = [];
   ui.world.innerHTML = '<option value="">Waiting for setup…</option>';
   ui.world.disabled = true;
 }
 
-function collectWorlds(container, worlds = []) {
-  if (!container) return worlds;
-  if (container.isWorld?.()) worlds.push(container);
-  for (const child of container.getChildren?.() ?? []) collectWorlds(child, worlds);
-  return worlds;
+function collectScenes(container, scenes = []) {
+  if (!container) return scenes;
+  if (container.isScene?.()) scenes.push(container);
+  for (const child of container.getChildren?.() ?? []) collectScenes(child, scenes);
+  return scenes;
+}
+
+function selectedDisplayTarget() {
+  return displayTargets[Number(ui.world.value)] ?? setupRoot;
 }
 
 function refreshWorldSelector(root) {
-  const previousName = availableWorlds[Number(ui.world.value)]?.getName();
-  setupRoot = root;
-  availableWorlds = collectWorlds(root);
-  if (!availableWorlds.length) availableWorlds = [root];
+  const previous = selectedDisplayTarget();
+  const previousKey = previous ? `${previous.getType?.()}|${previous.getAddress?.()}|${previous.getName?.()}` : '';
 
-  ui.world.innerHTML = availableWorlds.map((world, index) => {
-    const label = world.getName?.() || world.getAddress?.() || `World ${index + 1}`;
-    return `<option value="${index}">${escapeOption(label)}</option>`;
+  setupRoot = root;
+  const scenes = collectScenes(root);
+  displayTargets = root.isWorld?.() ? [root, ...scenes] : scenes.length ? scenes : [root];
+
+  ui.world.innerHTML = displayTargets.map((target, index) => {
+    const type = target.isWorld?.() ? 'World' : target.isScene?.() ? 'Scene' : 'Scope';
+    const name = target.getName?.() || target.getAddress?.() || `${type} ${index + 1}`;
+    return `<option value="${index}">${escapeOption(type)} — ${escapeOption(name)}</option>`;
   }).join('');
 
-  const preservedIndex = previousName
-    ? availableWorlds.findIndex((world) => world.getName?.() === previousName)
+  const preservedIndex = previousKey
+    ? displayTargets.findIndex((target) =>
+        `${target.getType?.()}|${target.getAddress?.()}|${target.getName?.()}` === previousKey)
     : -1;
+
   ui.world.value = String(preservedIndex >= 0 ? preservedIndex : 0);
-  ui.world.disabled = availableWorlds.length <= 1;
+  ui.world.disabled = displayTargets.length <= 1;
   renderSelectedWorld();
 }
 
 function renderSelectedWorld() {
-  const selected = availableWorlds[Number(ui.world.value)] ?? setupRoot;
-  if (selected) viewer.renderSetup(selected);
+  const selected = selectedDisplayTarget();
+  if (!selected) return;
+  viewer.clearTracking();
+  viewer.renderSetup(selected);
+}
+
+function updateBelongsToSelectedTarget(container) {
+  const selected = selectedDisplayTarget();
+  if (!selected || selected.isWorld?.()) return true;
+  const selectedAddress = selected.getAddress?.() || '';
+  const updateAddress = container.getAddress?.() || '';
+  return updateAddress === selectedAddress || updateAddress.startsWith(`${selectedAddress}/`);
 }
 
 function escapeOption(value) {
@@ -291,7 +326,9 @@ function attemptConnection() {
   });
 
   connection.on('update', (message) => {
-    if (augmenta === connection) viewer.upsertSetup(message.getRootObject());
+    if (augmenta !== connection) return;
+    const container = message.getRootObject();
+    if (updateBelongsToSelectedTarget(container)) viewer.upsertSetup(container);
   });
 
   connection.on('data', (frame) => {
@@ -314,10 +351,7 @@ function toggleConnection() {
   }
 
   stopSimulation({ quiet: true });
-  clearTracking();
-  viewer.clearSetup();
-  resetWorldSelector();
-  lastControl = undefined;
+  clearDisplay();
   autoNegotiatedVersion = undefined;
   wantsConnection = true;
   updateConnectionButton();
