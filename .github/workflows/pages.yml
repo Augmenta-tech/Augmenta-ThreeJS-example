@@ -31,11 +31,11 @@ jobs:
         with:
           node-version: 22
 
-      - name: Build Augmenta JS SDK
+      - name: Build and test Augmenta JS SDK
         shell: bash
         run: |
           npm install --prefix vendor/AugmentaClientSDK-JS --no-audit --no-fund
-          npm run build --prefix vendor/AugmentaClientSDK-JS
+          npm test --prefix vendor/AugmentaClientSDK-JS
 
       - name: Validate example JavaScript
         shell: bash

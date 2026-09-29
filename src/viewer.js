@@ -50,6 +50,7 @@ export function createViewer(host) {
   const views = new Map();
   const unitBox = new THREE.BoxGeometry(1, 1, 1);
   const unitBoxEdges = new THREE.EdgesGeometry(unitBox);
+  unitBox.dispose();
   const centroidGeometry = new THREE.SphereGeometry(0.045, 12, 8);
 
   const homePosition = new THREE.Vector3(6.5, 5.5, 7.5);
@@ -210,15 +211,14 @@ export function createViewer(host) {
     const size = cluster.getBoundingBoxSize();
     const centroid = cluster.getCentroid();
     const velocity = cluster.getVelocity();
-    const rotation = cluster.getBoundingBoxRotationQuaternions();
+    const rotation = cluster.getBoundingBoxRotationEuler();
 
     view.box.visible = true;
     view.box.position.fromArray(center);
     view.box.scale.set(...size.map((v) => Math.max(Math.abs(v), 0.001)));
-    // Pleiades currently sends OBB quaternions in native Y-up/left-handed
-    // space even when positions are requested as Y-up/right-handed.
-    // Reflect the quaternion across Z so it matches the Three.js frame.
-    view.box.quaternion.set(-rotation[0], -rotation[1], rotation[2], rotation[3]).normalize();
+    // RotationMode.Radians lets Pleiades apply the requested axis transform
+    // before transmission, matching Three.js' native Euler unit.
+    view.box.rotation.set(rotation[0], rotation[1], rotation[2], 'XYZ');
 
     view.centroid.visible = true;
     view.centroid.position.fromArray(centroid);
@@ -281,19 +281,29 @@ export function createViewer(host) {
   }
 
   function upsertSetup(container) {
-    const existing = setupGroup.getObjectByName(`augmenta:${container.getAddress()}`);
-    const parent = existing?.parent || setupGroup;
+    const address = container.getAddress();
+    const existing = setupGroup.getObjectByName(`augmenta:${address}`);
+    const parent = existing?.parent || setupParentForAddress(address) || setupGroup;
+
     if (existing) disposeObject(existing);
     addContainer(container, parent);
     updateHomeFromSetup(false);
   }
 
+  function setupParentForAddress(address) {
+    const separator = address.lastIndexOf('/');
+    if (separator <= 0) return undefined;
+    return setupGroup.getObjectByName(`augmenta:${address.slice(0, separator)}`);
+  }
+
   function addContainer(container, parent) {
     const group = new THREE.Group();
     group.name = `augmenta:${container.getAddress()}`;
-    group.position.fromArray(setupPosition(container.getPosition()));
 
-    const r = setupRotation(container.getRotation());
+    // Pleiades applies AxisTransform to setup JSON too. The example only maps
+    // SDK values into Three.js objects; it does not reimplement axis conversion.
+    group.position.fromArray(container.getPosition());
+    const r = container.getRotation().map(THREE.MathUtils.degToRad);
     group.rotation.set(r[0], r[1], r[2], 'XYZ');
     parent.add(group);
 
@@ -321,7 +331,7 @@ export function createViewer(host) {
     geometry.dispose();
 
     edges.name = 'Scene bounds';
-    edges.position.set(size[0] / 2, size[1] / 2, -size[2] / 2);
+    edges.position.set(size[0] / 2, size[1] / 2, size[2] / 2);
     edges.renderOrder = 1;
     group.add(edges);
 
@@ -337,7 +347,7 @@ export function createViewer(host) {
     );
     floor.name = 'Scene floor';
     floor.rotation.x = -Math.PI / 2;
-    floor.position.set(size[0] / 2, 0.002, -size[2] / 2);
+    floor.position.set(size[0] / 2, 0.002, size[2] / 2);
     group.add(floor);
   }
 
@@ -361,7 +371,7 @@ export function createViewer(host) {
         })
       );
       const size = params.getBoxShapeParameters().size;
-      mesh.position.set(size[0] / 2, size[1] / 2, -size[2] / 2);
+      mesh.position.set(size[0] / 2, size[1] / 2, size[2] / 2);
     } else {
       mesh = new THREE.Mesh(
         geometry,
@@ -646,20 +656,6 @@ function hashString(value) {
 // Pleiades applies axisTransform to streamed binary tracking data, but setup
 // JSON currently remains in its native Y-up/left-handed basis. Keep that
 // protocol-specific adaptation here in the example renderer, not in the SDK.
-function setupPosition(position) {
-  const [x = 0, y = 0, z = 0] = position || [];
-  return [x, y, -z];
-}
-
-function setupRotation(rotationDegrees) {
-  const [x = 0, y = 0, z = 0] = rotationDegrees || [];
-  return [
-    -THREE.MathUtils.degToRad(x),
-    -THREE.MathUtils.degToRad(y),
-    THREE.MathUtils.degToRad(z)
-  ];
-}
-
 function positiveSize(size) {
   return size.map((v) => Math.max(Math.abs(v), 0.001));
 }

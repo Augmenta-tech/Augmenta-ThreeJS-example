@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import {
   ClusterProperty, ClusterState, Container, ContainerType, ControlMessage, ControlMessageStatus,
   ControlMessageType, DataBlob, ObjectPacket, PointCloudProperty, SceneInfoPacket, ShapeType,
@@ -6,9 +5,9 @@ import {
 } from 'augmenta-client-sdk';
 
 export function makeDemoSetup() {
-  const zoneA = new Container(ContainerType.Zone, 'Welcome zone', '/Demo/Welcome', [2.9, 0.01, -2.8], [0, 12, 0], [0.42, 0.69, 1, 1], new ZoneParameters(ShapeType.Box, { size: [2.8, 0.05, 2.4] }), []);
+  const zoneA = new Container(ContainerType.Zone, 'Welcome zone', '/Demo/Welcome', [2.9, 0.01, -2.8], [0, 12, 0], [0.42, 0.69, 1, 1], new ZoneParameters(ShapeType.Box, { size: [2.8, 0.05, -2.4] }), []);
   const zoneB = new Container(ContainerType.Zone, 'Interaction zone', '/Demo/Interaction', [6.7, 0, -5.3], [0, 0, 0], [0.75, 0.48, 1, 1], new ZoneParameters(ShapeType.Cylinder, { radius: 1.2, height: 1.6 }), []);
-  const root = new Container(ContainerType.Scene, 'Three.js demo scene', '/Demo', [-5, 0, 4], [0, 0, 0], [0.35, 0.4, 0.5, 1], { size: [10, 4, 8] }, [zoneA, zoneB]);
+  const root = new Container(ContainerType.Scene, 'Three.js demo scene', '/Demo', [-5, 0, 4], [0, 0, 0], [0.35, 0.4, 0.5, 1], { size: [10, 4, -8] }, [zoneA, zoneB]);
   return new ControlMessage(ControlMessageType.Setup, root, ControlMessageStatus.Ok, '', 3);
 }
 
@@ -28,11 +27,10 @@ function demoObject(index, t) {
   const velocity = [-Math.sin(phase) * 0.75, 0, Math.cos(phase) * 0.65];
   const size = [0.5 + index * 0.05, 1.65 + index * 0.08, 0.48 + index * 0.04];
   const yaw = phase * 0.35;
-  const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0));
   const cluster = new ClusterProperty(
     index === 2 && Math.sin(t * 0.7) < -0.75 ? ClusterState.Ghost : ClusterState.Updated,
     centroid, velocity, [centroid[0], size[1] / 2, centroid[2]], size, 0.82 + index * 0.06,
-    [q.x, q.y, q.z, q.w], [Math.sin(yaw), 0, Math.cos(yaw)]
+    [0, yaw, 0], [Math.sin(yaw), 0, Math.cos(yaw)]
   );
   return new ObjectPacket(index + 1, cluster, demoCloud(centroid, size, index, t), `00000000-0000-4000-8000-00000000000${index + 1}`);
 }

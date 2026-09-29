@@ -19,7 +19,7 @@ The viewer requests the richest practical uncompressed stream from the Augmenta 
 - automatic protocol selection: try V3 first, then reconnect with the server-reported V2/V3 parser when needed;
 - clusters and stable IDs / UUIDs;
 - centroid, velocity, state, weight and look-at vector;
-- bounding-box center, size and quaternion rotation;
+- bounding-box center, size and rotation;
 - object point clouds and point-intensity data when present;
 - scene dimensions from setup data and protocol V3 timestamps when useful to the data model;
 - zone enter, leave, presence and density values;
@@ -35,7 +35,7 @@ Three.js renders:
 - scene bounds, scene floor and box/cylinder/sphere zones;
 - a Pleiades-style orbit camera, 1 × 1 m floor grid and axes.
 
-Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. The camera is not moved when a connection/setup arrives. **Reset camera** or a left-button double-click reframes the displayed setup. The Display panel offers **All scenes** plus every Scene in the received World. On desktop, the translucent right panel overlays the 3D view, can slide in/out with the edge arrow, and can be resized by dragging its left border. The camera projection follows the visible panel width so the orbit target stays centered in the unobscured part of the view.
+Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. The camera is not moved when a connection/setup arrives. **Reset camera** or a left-button double-click reframes the displayed setup. The Display panel exposes **All scenes** plus every Scene received in the current World. On desktop, the translucent panel overlays the 3D view: use the edge arrow to hide/show it, or drag its left edge to resize it. The camera projection follows the panel width so the orbit target remains centered in the unobscured part of the view.
 
 The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to commit `ab030fee`, which includes the V1 base, Pleiades hierarchy/update parsing, and explicit World containers, for reproducible builds. The inspector exposes every field currently surfaced by the SDK; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
 
@@ -100,7 +100,7 @@ The example requests:
   streamZonePoints: true,
   useCompression: false,
   displayPointIntensity: true,
-  boxRotationMode: RotationMode.Quaternions,
+  boxRotationMode: RotationMode.Radians,
   axisTransform: {
     axis: AxisMode.YUpRightHanded,
     flipX: false,
@@ -113,7 +113,7 @@ The example requests:
 
 Compression is disabled because the browser example intentionally stays dependency-free. Applications that need compressed streams can provide the SDK with a Zstd decompressor.
 
-The requested live-data transform matches Three.js directly: **Y up, right handed, absolute coordinates**, so one coordinate unit remains one meter. Pleiades applies that transform to binary tracking data, while setup JSON (Scenes/Zones) remains in Pleiades' native Y-up/left-handed basis; the viewer converts setup positions and rotations into the same Three.js basis before drawing them. Pleiades currently emits OBB quaternions in its native Y-up/left-handed basis; the viewer converts those quaternions to the requested Three.js basis before drawing the boxes. Scene bounds are likewise extended toward negative Z after the handedness change so they occupy the same spatial range as the streamed points/clusters.
+The requested transform matches Three.js directly: **Y up, right handed, absolute coordinates**, so one coordinate unit remains one meter. Pleiades applies that transform to both binary tracking data and setup geometry before transmission. The example consumes Scene/Zone positions and sizes directly from the SDK. Bounding-box rotation is requested in **radians**, allowing Pleiades to apply the same axis conversion before Three.js consumes it.
 
 ## SDK / example boundary
 

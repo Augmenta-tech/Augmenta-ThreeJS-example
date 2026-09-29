@@ -24,8 +24,8 @@ export function createDebugPanel(summary, content) {
   return { render, clear };
 }
 
-function frameBlock(frame, fps, sceneSize) {
-  return `<details open><summary>Frame</summary><div class="debug-block">fps (received)      ${fps}\nscene size          ${sceneSizeText(sceneSize)}\nobjects             ${frame.getObjectCount()}\nzones               ${frame.getZoneEventCount()}</div></details>`;
+function frameBlock(_frame, fps, sceneSize) {
+  return `<details open><summary>Frame</summary><div class="debug-block">fps (received)      ${fps}\nscene size          ${sceneSizeText(sceneSize)}</div></details>`;
 }
 
 function objectsBlock(frame) {
@@ -36,7 +36,7 @@ function objectsBlock(frame) {
     let cluster = '<span class="muted">No cluster property</span>';
     if (object.hasCluster()) {
       const c = object.getCluster();
-      cluster = `state ${esc(ClusterState[c.getState()] ?? c.getState())}<br>centroid ${esc(vec(c.getCentroid()))}<br>velocity ${esc(vec(c.getVelocity()))}<br>box center ${esc(vec(c.getBoundingBoxCenter()))}<br>box size ${esc(vec(c.getBoundingBoxSize()))}<br>rotation ${esc(vec(c.boundingBoxRotation))}<br>weight ${fmt(c.getWeight())}<br>lookAt ${esc(vec(c.getLookAt()))}`;
+      cluster = `state ${esc(ClusterState[c.getState()] ?? c.getState())}<br>centroid ${esc(vec(c.getCentroid()))}<br>velocity ${esc(vec(c.getVelocity()))}<br>box center ${esc(vec(c.getBoundingBoxCenter()))}<br>box size ${esc(vec(c.getBoundingBoxSize()))}<br>rotation ${esc(vec(c.getBoundingBoxRotationEuler()))}<br>weight ${fmt(c.getWeight())}<br>lookAt ${esc(vec(c.getLookAt()))}`;
     }
 
     let points = '—';
@@ -85,7 +85,8 @@ function zonesBlock(frame) {
 function controlBlock(message) {
   const lines = [];
   walk(message.getRootObject(), 0, lines);
-  return `<details><summary>Last control message · ${esc(message.type)}</summary><div class="debug-block">status              ${esc(message.getStatus())}\nserver protocol     ${esc(message.getServerProtocolVersion())}\nerror               ${esc(message.getErrorMessage() || '—')}\n\n${lines.join('\n')}</div></details>`;
+  const type = message.isSetup() ? 'setup' : message.isUpdate() ? 'update' : 'unknown';
+  return `<details><summary>Last control message · ${esc(type)}</summary><div class="debug-block">status              ${esc(message.getStatus())}\nserver protocol     ${esc(message.getServerProtocolVersion())}\nerror               ${esc(message.getErrorMessage() || '—')}\n\n${lines.join('\n')}</div></details>`;
 }
 
 function walk(container, depth, lines) {
@@ -121,8 +122,11 @@ function cloudSummary(cloud) {
 }
 
 function sceneSizeText(size) {
-  if (!size?.length) return '—';
-  return Array.from(size, (value) => `${compact(value)}m`).join(' × ');
+  if (!size || size.length < 3) return '—';
+
+  // The stream is requested Y-up. Present dimensions as width × depth × height.
+  const [x, y, z] = size;
+  return [x, z, y].map((value) => `${compact(Math.abs(value))}m`).join(' × ');
 }
 
 function compact(value) {

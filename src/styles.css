@@ -70,15 +70,17 @@ button, input, select { font: inherit; }
   pointer-events: none;
 }
 
+/* Desktop resize strip: invisible until the panel edge is hovered/focused. */
 .sidebar-resizer {
   position: absolute;
-  z-index: 2;
+  z-index: 19;
   top: 0;
-  left: -6px;
+  right: calc(var(--sidebar-width) - 6px);
   width: 12px;
   height: 100%;
-  cursor: ew-resize;
+  cursor: col-resize;
   touch-action: none;
+  outline: none;
 }
 
 .sidebar-resizer::after {
@@ -96,17 +98,26 @@ button, input, select { font: inherit; }
 }
 
 .sidebar-resizer:hover::after,
+.sidebar-resizer:focus-visible::after,
 #app.sidebar-resizing .sidebar-resizer::after {
   opacity: .9;
-  background: #9aabc3;
+  background: #9ebeff;
+}
+
+#app.sidebar-hidden .sidebar-resizer {
+  display: none;
 }
 
 #app.sidebar-resizing,
 #app.sidebar-resizing * {
-  cursor: ew-resize !important;
+  cursor: col-resize !important;
   user-select: none !important;
 }
 
+#app.sidebar-resizing #sidebar,
+#app.sidebar-resizing .sidebar-toggle {
+  transition: none;
+}
 
 .sidebar-toggle {
   position: absolute;

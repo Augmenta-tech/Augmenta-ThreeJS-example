@@ -9,6 +9,7 @@ const RECONNECT_DELAY_MS = 1000;
 const DISCONNECT_CLEANUP_DELAY_MS = 500;
 const SIDEBAR_MIN_WIDTH = 320;
 const SIDEBAR_MAX_WIDTH = 720;
+const SIDEBAR_VIEWPORT_MARGIN = 160;
 const $ = (selector) => document.querySelector(selector);
 const ui = {
   app: $('#app'), sidebar: $('#sidebar'), sidebarResizer: $('#sidebar-resizer'), endpoint: $('#endpoint'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
@@ -193,6 +194,7 @@ function refreshSceneSelector(root) {
 function renderSelectedScenes() {
   if (!setupRoot) return;
   clearTracking();
+  debug.clear();
   const scene = selectedScene();
   viewer.renderSetup(scene ?? setupRoot);
 }
@@ -218,6 +220,8 @@ function selectedVersion() {
   return Number(ui.protocol.value);
 }
 
+// AugmentaWebSocketClient performs one transport attempt. Reconnect policy is
+// deliberately owned by this application rather than hidden inside the SDK.
 function scheduleReconnect(message = 'Connection closed.') {
   if (!wantsConnection) return;
   clearReconnectTimer();
@@ -274,7 +278,7 @@ function attemptConnection() {
     options: {
       version, downSample,
       streamClouds: true, streamClusters: true, streamClusterPoints: true, streamZonePoints: true,
-      useCompression: false, displayPointIntensity: true, boxRotationMode: RotationMode.Quaternions,
+      useCompression: false, displayPointIntensity: true, boxRotationMode: RotationMode.Radians,
       axisTransform: {
         axis: AxisMode.YUpRightHanded,
         flipX: false,
@@ -424,16 +428,31 @@ ui.sidebarToggle.addEventListener('click', () => {
   syncPanelCamera(true);
 });
 
-function resizeSidebar(event) {
-  if (window.matchMedia('(max-width: 900px)').matches) return;
-  const maxWidth = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, window.innerWidth - 120));
-  const width = Math.min(maxWidth, Math.max(SIDEBAR_MIN_WIDTH, window.innerWidth - event.clientX));
-  ui.app.style.setProperty('--sidebar-width', `${width}px`);
+function sidebarWidthBounds() {
+  return {
+    min: SIDEBAR_MIN_WIDTH,
+    max: Math.max(
+      SIDEBAR_MIN_WIDTH,
+      Math.min(SIDEBAR_MAX_WIDTH, window.innerWidth - SIDEBAR_VIEWPORT_MARGIN)
+    )
+  };
+}
+
+function setSidebarWidth(width) {
+  const { min, max } = sidebarWidthBounds();
+  const clamped = Math.min(max, Math.max(min, width));
+  ui.app.style.setProperty('--sidebar-width', `${clamped}px`);
+  ui.sidebarResizer.setAttribute('aria-valuenow', String(Math.round(clamped)));
   syncPanelCamera(false);
 }
 
-ui.sidebarResizer.addEventListener('pointerdown', (event) => {
+function resizeSidebar(event) {
   if (window.matchMedia('(max-width: 900px)').matches) return;
+  setSidebarWidth(window.innerWidth - event.clientX);
+}
+
+ui.sidebarResizer.addEventListener('pointerdown', (event) => {
+  if (window.matchMedia('(max-width: 900px)').matches || ui.app.classList.contains('sidebar-hidden')) return;
   event.preventDefault();
   ui.sidebarResizer.setPointerCapture(event.pointerId);
   ui.app.classList.add('sidebar-resizing');
@@ -452,14 +471,20 @@ function stopSidebarResize(event) {
 }
 ui.sidebarResizer.addEventListener('pointerup', stopSidebarResize);
 ui.sidebarResizer.addEventListener('pointercancel', stopSidebarResize);
+ui.sidebarResizer.addEventListener('keydown', (event) => {
+  if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+  event.preventDefault();
+  const step = event.shiftKey ? 40 : 16;
+  const current = ui.sidebar.getBoundingClientRect().width;
+  setSidebarWidth(current + (event.key === 'ArrowLeft' ? step : -step));
+});
 
 window.addEventListener('resize', () => {
-  const maxWidth = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, window.innerWidth - 120));
-  const width = ui.sidebar.getBoundingClientRect().width;
-  if (!window.matchMedia('(max-width: 900px)').matches && width > maxWidth) {
-    ui.app.style.setProperty('--sidebar-width', `${maxWidth}px`);
+  if (!window.matchMedia('(max-width: 900px)').matches) {
+    setSidebarWidth(ui.sidebar.getBoundingClientRect().width);
+  } else {
+    syncPanelCamera(false);
   }
-  syncPanelCamera(false);
 });
 ui.endpoint.addEventListener('keydown', (event) => {
   if (event.key !== 'Enter') return;
