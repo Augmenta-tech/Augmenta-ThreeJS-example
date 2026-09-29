@@ -410,6 +410,7 @@ export function createViewer(host) {
   resetCamera();
   resize();
   window.addEventListener('resize', resize);
+  new ResizeObserver(resize).observe(host);
   renderer.domElement.addEventListener('dblclick', (event) => {
     if (event.button === 0) resetCamera();
   });

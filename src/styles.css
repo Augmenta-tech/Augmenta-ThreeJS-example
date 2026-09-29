@@ -12,9 +12,18 @@ body { overflow: hidden; }
 button, input, select { font: inherit; }
 
 #app {
+  --sidebar-width: 430px;
+  --sidebar-space: var(--sidebar-width);
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 430px;
+  grid-template-columns: minmax(0, 1fr) var(--sidebar-space);
+  overflow: hidden;
   background: #0b0d11;
+  transition: grid-template-columns 220ms ease;
+}
+
+#app.sidebar-hidden {
+  --sidebar-space: 0px;
 }
 
 #viewer {
@@ -43,12 +52,45 @@ button, input, select { font: inherit; }
 .viewer-overlay h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.02em; }
 .viewer-overlay p { margin: 4px 0 0; color: #aeb6c5; font-size: 12px; }
 #sidebar {
+  width: var(--sidebar-width);
   min-width: 0;
   height: 100%;
   overflow-y: auto;
   border-left: 1px solid #252a35;
   background: #11141a;
   scrollbar-color: #414858 transparent;
+  transform: translateX(0);
+  transition: transform 220ms ease;
+  will-change: transform;
+}
+
+#app.sidebar-hidden #sidebar {
+  transform: translateX(100%);
+  pointer-events: none;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  z-index: 20;
+  top: 50%;
+  right: var(--sidebar-space);
+  width: 26px;
+  height: 64px;
+  min-height: 64px;
+  padding: 0;
+  transform: translateY(-50%);
+  border-right: 0;
+  border-radius: 8px 0 0 8px;
+  color: #aeb8c9;
+  background: #171b23;
+  font-size: 18px;
+  line-height: 1;
+  transition: right 220ms ease, background 120ms ease, color 120ms ease;
+}
+
+.sidebar-toggle:hover {
+  color: #eef2f8;
+  background: #222834;
 }
 
 .panel { padding: 18px; border-bottom: 1px solid #252a35; }
@@ -120,7 +162,25 @@ details[open] summary { border-bottom: 1px solid #2b313d; }
 
 @media (max-width: 900px) {
   body { overflow: auto; }
-  #app { height: auto; min-height: 100%; grid-template-columns: 1fr; grid-template-rows: 58vh auto; }
-  #sidebar { height: auto; overflow: visible; border-left: 0; border-top: 1px solid #252a35; }
+  #app,
+  #app.sidebar-hidden {
+    --sidebar-space: auto;
+    height: auto;
+    min-height: 100%;
+    grid-template-columns: 1fr;
+    grid-template-rows: 58vh auto;
+    overflow: visible;
+  }
+  #sidebar,
+  #app.sidebar-hidden #sidebar {
+    width: auto;
+    height: auto;
+    overflow: visible;
+    border-left: 0;
+    border-top: 1px solid #252a35;
+    transform: none;
+    pointer-events: auto;
+  }
+  .sidebar-toggle { display: none; }
   .viewer-overlay { padding: 16px; }
 }

@@ -9,9 +9,10 @@ const RECONNECT_DELAY_MS = 1000;
 const DISCONNECT_CLEANUP_DELAY_MS = 500;
 const $ = (selector) => document.querySelector(selector);
 const ui = {
-  endpoint: $('#endpoint'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
+  app: $('#app'), endpoint: $('#endpoint'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
   demo: $('#demo'), status: $('#status'), note: $('#connection-note'), summary: $('#summary'),
   debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'), world: $('#world'),
+  sidebarToggle: $('#sidebar-toggle'),
   showClusters: $('#show-clusters'), showPoints: $('#show-points'), showZones: $('#show-zones'), showVectors: $('#show-vectors')
 };
 
@@ -392,6 +393,12 @@ ui.demo.addEventListener('click', toggleSimulation);
 ui.clear.addEventListener('click', clearDebugData);
 ui.resetCamera.addEventListener('click', viewer.resetCamera);
 ui.world.addEventListener('change', renderSelectedWorld);
+ui.sidebarToggle.addEventListener('click', () => {
+  const hidden = ui.app.classList.toggle('sidebar-hidden');
+  ui.sidebarToggle.textContent = hidden ? '<' : '>';
+  ui.sidebarToggle.title = hidden ? 'Show panel' : 'Hide panel';
+  ui.sidebarToggle.setAttribute('aria-expanded', String(!hidden));
+});
 ui.endpoint.addEventListener('keydown', (event) => {
   if (event.key !== 'Enter') return;
   if (!wantsConnection) {
