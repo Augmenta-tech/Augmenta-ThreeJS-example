@@ -7,12 +7,11 @@ import { makeDemoFrame, makeDemoSetup } from './demo.js';
 
 const RECONNECT_DELAY_MS = 1000;
 const DISCONNECT_CLEANUP_DELAY_MS = 500;
-const PLEIADES_OSCQUERY_PORT = 20000;
 const $ = (selector) => document.querySelector(selector);
 const ui = {
   app: $('#app'), sidebar: $('#sidebar'), endpoint: $('#endpoint'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
   demo: $('#demo'), status: $('#status'), note: $('#connection-note'), summary: $('#summary'),
-  debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'), world: $('#world'),
+  debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'), scenes: $('#scenes'),
   sidebarToggle: $('#sidebar-toggle'),
   showClusters: $('#show-clusters'), showPoints: $('#show-points'), showZones: $('#show-zones'), showVectors: $('#show-vectors')
 };
@@ -31,7 +30,8 @@ let activeVersion;
 let lastFrame;
 let lastControl;
 let setupRoot;
-let worldEndpoints = [];
+let scenes = [];
+let retrying = false;
 let frameTimes = [];
 
 function setStatus(text, kind = 'idle') {
@@ -57,6 +57,12 @@ function updateSimulationButton() {
 function fps() { return frameTimes.length; }
 
 function trackFrame(frame) {
+  const scene = selectedScene();
+  if (scene) {
+    const frameSceneAddress = frame.getSceneInfo().getAddress();
+    if (frameSceneAddress && frameSceneAddress !== scene.getAddress()) return;
+  }
+
   lastFrame = frame;
   const now = performance.now();
   frameTimes.push(now);
@@ -97,6 +103,7 @@ function stopTransport(reason = 'User disconnect') {
 
 function stopConnection({ quiet = false } = {}) {
   wantsConnection = false;
+  retrying = false;
   autoNegotiatedVersion = undefined;
   stopTransport();
   clearTracking();
@@ -134,135 +141,61 @@ function clearDisplay() {
   clearTracking();
   viewer.clearSetup();
   clearDebugData();
-  resetWorldSelector();
+  resetSceneSelector();
 }
 
-function resetWorldSelector() {
+function resetSceneSelector() {
   setupRoot = undefined;
-  worldEndpoints = [];
-  ui.world.innerHTML = '<option value="">Waiting for world…</option>';
-  ui.world.disabled = true;
+  scenes = [];
+  ui.scenes.innerHTML = '<option value="all">All scenes</option>';
+  ui.scenes.value = 'all';
+  ui.scenes.disabled = true;
 }
 
-function normalizeEndpoint(value) {
-  try {
-    const url = new URL(value);
-    url.pathname = '';
-    url.search = '';
-    url.hash = '';
-    return url.toString().replace(/\/$/, '');
-  } catch {
-    return value;
-  }
+function collectScenes(container, output = []) {
+  if (!container) return output;
+  if (container.isScene?.()) output.push(container);
+  for (const child of container.getChildren?.() ?? []) collectScenes(child, output);
+  return output;
 }
 
-function currentWorldEntry() {
-  return {
-    name: setupRoot?.getName?.() || 'Current World',
-    url: normalizeEndpoint(ui.endpoint.value.trim())
-  };
+function selectedScene() {
+  const address = ui.scenes.value;
+  return address === 'all' ? undefined : scenes.find((scene) => scene.getAddress() === address);
 }
 
-function renderWorldSelector() {
-  if (!setupRoot) return;
-
-  const current = currentWorldEntry();
-  const worlds = [...worldEndpoints];
-  if (!worlds.some((world) => normalizeEndpoint(world.url) === current.url)) worlds.unshift(current);
-
-  ui.world.innerHTML = worlds.map((world) =>
-    `<option value="${escapeOption(world.url)}">${escapeOption(world.name)}</option>`
-  ).join('');
-  ui.world.value = current.url;
-  ui.world.disabled = worlds.length <= 1;
-}
-
-function refreshWorldSelector(root) {
+function refreshSceneSelector(root) {
+  const previous = ui.scenes.value;
   setupRoot = root;
-  renderWorldSelector();
-  viewer.renderSetup(root);
+  scenes = collectScenes(root);
+
+  ui.scenes.innerHTML = [
+    '<option value="all">All scenes</option>',
+    ...scenes.map((scene, index) => {
+      const name = scene.getName?.() || scene.getAddress?.() || `Scene ${index + 1}`;
+      return `<option value="${escapeOption(scene.getAddress())}">${escapeOption(name)}</option>`;
+    })
+  ].join('');
+
+  const stillAvailable = previous === 'all' || scenes.some((scene) => scene.getAddress() === previous);
+  ui.scenes.value = stillAvailable ? previous : 'all';
+  ui.scenes.disabled = scenes.length === 0;
+  renderSelectedScenes();
 }
 
-function oscValue(node) {
-  return Array.isArray(node?.VALUE) ? node.VALUE[0] : undefined;
-}
-
-function websocketOutputForWorld(worldNode) {
-  const outputs = worldNode?.CONTENTS?.outputs?.CONTENTS;
-  if (!outputs) return undefined;
-
-  return Object.values(outputs).find((output) => {
-    const type = String(output?.TYPE ?? '').toLowerCase();
-    const extendedTypes = Array.isArray(output?.EXTENDED_TYPE) ? output.EXTENDED_TYPE : [];
-    const isWebSocket = type === 'websocket' || extendedTypes.includes('Generic/Websocket');
-    const enabled = oscValue(output?.CONTENTS?.enabled);
-    return isWebSocket && enabled !== false;
-  });
-}
-
-async function discoverWorlds() {
-  let streamUrl;
-  try {
-    streamUrl = new URL(ui.endpoint.value.trim());
-  } catch {
-    return;
-  }
-
-  const oscQueryUrl = `http://${streamUrl.hostname}:${PLEIADES_OSCQUERY_PORT}/worlds`;
-
-  try {
-    const response = await fetch(oscQueryUrl);
-    if (!response.ok) return;
-
-    const worldsNode = await response.json();
-    const contents = worldsNode?.CONTENTS ?? {};
-    const discovered = [];
-
-    for (const [key, worldNode] of Object.entries(contents)) {
-      if (worldNode?.TYPE !== 'World') continue;
-
-      const output = websocketOutputForWorld(worldNode);
-      const port = Number(oscValue(output?.CONTENTS?.localPort));
-      if (!Number.isInteger(port) || port < 1 || port > 65535) continue;
-
-      const url = new URL(ui.endpoint.value.trim());
-      url.port = String(port);
-      url.pathname = '';
-      url.search = '';
-      url.hash = '';
-
-      discovered.push({
-        name: worldNode.DESCRIPTION || key,
-        url: normalizeEndpoint(url.toString())
-      });
-    }
-
-    if (!discovered.length) return;
-    worldEndpoints = discovered;
-    renderWorldSelector();
-  } catch (error) {
-    // World discovery is optional: the Augmenta WebSocket stream itself remains
-    // fully functional if the Pleiades OSCQuery control port is not reachable.
-    console.debug('Pleiades world discovery unavailable', error);
-  }
-}
-
-function switchWorld() {
-  const target = normalizeEndpoint(ui.world.value);
-  if (!target || target === normalizeEndpoint(ui.endpoint.value.trim())) return;
-
-  stopSimulation({ quiet: true });
+function renderSelectedScenes() {
+  if (!setupRoot) return;
   clearTracking();
-  clearDebugData();
-  viewer.clearSetup();
-  setupRoot = undefined;
+  const scene = selectedScene();
+  viewer.renderSetup(scene ?? setupRoot);
+}
 
-  ui.endpoint.value = target;
-  autoNegotiatedVersion = undefined;
-  wantsConnection = true;
-  stopTransport('World changed');
-  updateConnectionButton();
-  attemptConnection();
+function updateBelongsToSelectedScene(container) {
+  const scene = selectedScene();
+  if (!scene) return true;
+  const sceneAddress = scene.getAddress?.() || '';
+  const updateAddress = container.getAddress?.() || '';
+  return updateAddress === sceneAddress || updateAddress.startsWith(`${sceneAddress}/`);
 }
 
 function escapeOption(value) {
@@ -281,6 +214,7 @@ function selectedVersion() {
 function scheduleReconnect(message = 'Connection closed.') {
   if (!wantsConnection) return;
   clearReconnectTimer();
+  retrying = true;
   socketOpen = false;
   updateConnectionButton();
   setStatus('Retrying', 'connecting');
@@ -293,6 +227,7 @@ function scheduleReconnect(message = 'Connection closed.') {
 
 function restartForProtocol(version) {
   if (!wantsConnection || version === activeVersion) return;
+  retrying = false;
   autoNegotiatedVersion = version;
   stopTransport('Protocol negotiation');
   setStatus('Connecting', 'connecting');
@@ -320,8 +255,10 @@ function attemptConnection() {
   activeVersion = version;
   socketOpen = false;
   updateConnectionButton();
-  setStatus('Connecting', 'connecting');
-  ui.note.textContent = `Connecting to ${url} with protocol V${version}…`;
+  if (!retrying) {
+    setStatus('Connecting', 'connecting');
+    ui.note.textContent = `Connecting to ${url} with protocol V${version}…`;
+  }
 
   const connection = new AugmentaWebSocketClient(url, {
     clientName: 'Augmenta Three.js Debug Viewer',
@@ -346,6 +283,7 @@ function attemptConnection() {
   connection.on('open', () => {
     if (augmenta !== connection || !wantsConnection) return;
     clearDisconnectCleanupTimer();
+    retrying = false;
     socketOpen = true;
     updateConnectionButton();
     setStatus('Connected', 'connected');
@@ -390,13 +328,13 @@ function attemptConnection() {
       restartForProtocol(serverVersion);
       return;
     }
-    refreshWorldSelector(message.getRootObject());
-    discoverWorlds();
+    refreshSceneSelector(message.getRootObject());
   });
 
   connection.on('update', (message) => {
     if (augmenta !== connection) return;
-    viewer.upsertSetup(message.getRootObject());
+    const container = message.getRootObject();
+    if (updateBelongsToSelectedScene(container)) viewer.upsertSetup(container);
   });
 
   connection.on('data', (frame) => {
@@ -434,7 +372,7 @@ function startSimulation() {
   setStatus('Simulating', 'demo');
   ui.note.textContent = 'Local synthetic stream using the Augmenta SDK data model. Click Simulating to stop.';
   lastControl = makeDemoSetup();
-  refreshWorldSelector(lastControl.getRootObject());
+  refreshSceneSelector(lastControl.getRootObject());
   const start = performance.now();
   const tick = () => trackFrame(makeDemoFrame((performance.now() - start) / 1000));
   tick();
@@ -460,7 +398,7 @@ ui.connect.addEventListener('click', toggleConnection);
 ui.demo.addEventListener('click', toggleSimulation);
 ui.clear.addEventListener('click', clearDebugData);
 ui.resetCamera.addEventListener('click', viewer.resetCamera);
-ui.world.addEventListener('change', switchWorld);
+ui.scenes.addEventListener('change', renderSelectedScenes);
 function syncPanelCamera(animate = false) {
   const isMobile = window.matchMedia('(max-width: 900px)').matches;
   const hidden = ui.app.classList.contains('sidebar-hidden');
@@ -482,18 +420,21 @@ ui.endpoint.addEventListener('keydown', (event) => {
     toggleConnection();
     return;
   }
+  retrying = false;
   autoNegotiatedVersion = undefined;
   stopTransport('Endpoint changed');
   attemptConnection();
 });
 ui.protocol.addEventListener('change', () => {
   if (!wantsConnection) return;
+  retrying = false;
   autoNegotiatedVersion = undefined;
   stopTransport('Protocol changed');
   attemptConnection();
 });
 ui.downsample.addEventListener('change', () => {
   if (!wantsConnection) return;
+  retrying = false;
   stopTransport('Downsample changed');
   attemptConnection();
 });
@@ -503,6 +444,6 @@ ui.downsample.addEventListener('change', () => {
 applyVisibility();
 updateConnectionButton();
 updateSimulationButton();
-resetWorldSelector();
+resetSceneSelector();
 syncPanelCamera(false);
 attemptConnection();

@@ -118,8 +118,10 @@ input, select {
 input:focus, select:focus { border-color: #6ba8ff; box-shadow: 0 0 0 2px rgba(107, 168, 255, .14); }
 
 .row { display: grid; gap: 10px; margin-top: 11px; }
-.two-columns { grid-template-columns: 1.5fr .8fr; }
-.button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 13px; }
+.two-columns { grid-template-columns: minmax(0, 1.5fr) minmax(0, .8fr); }
+.two-columns > * { min-width: 0; }
+.button-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 9px; margin-top: 13px; }
+.button-row button { width: 100%; min-width: 0; }
 button {
   min-height: 36px;
   border: 1px solid #353c4b;
@@ -157,7 +159,7 @@ button.subtle-button.active:hover {
 button.text-button { min-height: auto; padding: 3px 0; border: 0; color: #8db8ff; background: transparent; font-size: 11px; }
 button.text-button:hover { color: #b7d3ff; background: transparent; }
 
-.status { padding: 4px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
+.status { min-width: 76px; padding: 4px 8px; border-radius: 999px; text-align: center; font-size: 10px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
 .status.idle { color: #aeb6c5; background: #272d38; }
 .status.connecting { color: #f4ce78; background: #3a2f19; }
 .status.connected, .status.demo { color: #92efbb; background: #173627; }

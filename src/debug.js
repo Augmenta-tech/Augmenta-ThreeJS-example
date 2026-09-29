@@ -25,8 +25,7 @@ export function createDebugPanel(summary, content) {
 }
 
 function frameBlock(frame, fps) {
-  const scene = frame.getSceneInfo();
-  return `<details open><summary>Frame & scene</summary><div class="debug-block">fps (received)      ${fps}\nscene address       ${esc(scene.getAddress() || 'n/a')}\nobjects             ${frame.getObjectCount()}\nzones               ${frame.getZoneEventCount()}</div></details>`;
+  return `<details open><summary>Frame</summary><div class="debug-block">fps (received)      ${fps}\nobjects             ${frame.getObjectCount()}\nzones               ${frame.getZoneEventCount()}</div></details>`;
 }
 
 function objectsBlock(frame) {

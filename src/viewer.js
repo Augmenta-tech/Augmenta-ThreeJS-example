@@ -287,9 +287,9 @@ export function createViewer(host) {
   function addContainer(container, parent) {
     const group = new THREE.Group();
     group.name = `augmenta:${container.getAddress()}`;
-    group.position.fromArray(container.getPosition());
+    group.position.fromArray(setupPosition(container.getPosition()));
 
-    const r = container.getRotation().map(THREE.MathUtils.degToRad);
+    const r = setupRotation(container.getRotation());
     group.rotation.set(r[0], r[1], r[2], 'XYZ');
     parent.add(group);
 
@@ -357,7 +357,7 @@ export function createViewer(host) {
         })
       );
       const size = params.getBoxShapeParameters().size;
-      mesh.position.set(size[0] / 2, size[1] / 2, size[2] / 2);
+      mesh.position.set(size[0] / 2, size[1] / 2, -size[2] / 2);
     } else {
       mesh = new THREE.Mesh(
         geometry,
@@ -637,6 +637,20 @@ function hashString(value) {
   let hash = 0;
   for (const char of value) hash = ((hash << 5) - hash + char.charCodeAt(0)) | 0;
   return hash;
+}
+
+function setupPosition(position) {
+  const [x = 0, y = 0, z = 0] = position || [];
+  return [x, y, -z];
+}
+
+function setupRotation(rotationDegrees) {
+  const [x = 0, y = 0, z = 0] = rotationDegrees || [];
+  return [
+    -THREE.MathUtils.degToRad(x),
+    -THREE.MathUtils.degToRad(y),
+    THREE.MathUtils.degToRad(z)
+  ];
 }
 
 function positiveSize(size) {

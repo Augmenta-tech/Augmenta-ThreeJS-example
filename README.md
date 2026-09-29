@@ -116,7 +116,7 @@ The example requests:
 
 Compression is disabled because the browser example intentionally stays dependency-free. Applications that need compressed streams can provide the SDK with a Zstd decompressor.
 
-The requested transform matches Three.js directly: **Y up, right handed, absolute coordinates**, so one coordinate unit remains one meter. Pleiades currently emits OBB quaternions in its native Y-up/left-handed basis; the viewer converts those quaternions to the requested Three.js basis before drawing the boxes. Scene bounds are likewise extended toward negative Z after the handedness change so they occupy the same spatial range as the streamed points/clusters.
+The requested live-data transform matches Three.js directly: **Y up, right handed, absolute coordinates**, so one coordinate unit remains one meter. Pleiades applies that transform to binary tracking data, while setup JSON (Scenes/Zones) remains in Pleiades' native Y-up/left-handed basis; the viewer converts setup positions and rotations into the same Three.js basis before drawing them. Pleiades currently emits OBB quaternions in its native Y-up/left-handed basis; the viewer converts those quaternions to the requested Three.js basis before drawing the boxes. Scene bounds are likewise extended toward negative Z after the handedness change so they occupy the same spatial range as the streamed points/clusters.
 
 ## Project structure
 
