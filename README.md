@@ -42,7 +42,7 @@ Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right
 
 Partial setup updates are merged into the cached hierarchy before rendering, so a Scene update that omits its Zone children does not erase them. Scene selection and scene-size debug information therefore always use the latest merged setup.
 
-The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to SDK `1.0.0-beta.1` commit `78e07192` for reproducible builds. The inspector exposes the main fields useful for this example; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
+The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to SDK `1.0.0-beta.1` commit `b84dfc66` for reproducible builds. The SDK lockfile is committed, so CI and local reproducible builds use `npm ci`. The inspector exposes the main fields useful for this example; raw point arrays are rendered in full in Three.js while the text panel is throttled and point-intensity statistics are bounded to a representative sample to stay responsive with large clouds.
 
 ## Clone and run locally
 
@@ -68,7 +68,7 @@ git submodule update --init --recursive
 Build the SDK:
 
 ```bash
-npm install --prefix vendor/AugmentaClientSDK-JS --no-audit --no-fund
+npm ci --prefix vendor/AugmentaClientSDK-JS --no-audit --no-fund
 npm run build --prefix vendor/AugmentaClientSDK-JS
 ```
 
@@ -152,8 +152,9 @@ This separation keeps the SDK reusable by non-Three.js applications and keeps re
 │   ├── connection.js                   # WebSocket/retry/protocol controller
 │   ├── setup-store.js                  # Setup cache + partial update merging
 │   ├── motion.js                       # Consumer-side velocity → speed helper
-│   ├── viewer.js                       # Three.js scene + Augmenta rendering
-│   ├── debug.js                        # Live debug inspector
+│   ├── viewer.js                       # Three.js scene, camera, clusters + points
+│   ├── zones.js                        # Zone geometry, presence + XY pad rendering
+│   ├── debug.js                        # Throttled live debug inspector
 │   ├── demo.js                         # SDK-based synthetic test stream
 │   └── styles.css                      # Debug UI
 ├── tests/
