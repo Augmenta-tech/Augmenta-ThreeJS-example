@@ -40,9 +40,9 @@ Three.js renders:
 
 Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. A successful connection setup and **Simulate data** both initialize the camera with the exact same centered framing used by **Reset camera**. **Reset camera** or a left-button double-click reframes the displayed setup. The Display panel exposes **All scenes** plus every Scene received in the current World. On desktop, the translucent panel overlays the 3D view: use the edge arrow to hide/show it, or drag its left edge to resize it. The camera projection follows the panel width so the orbit target remains centered in the unobscured part of the view.
 
-Partial setup updates are merged into the cached hierarchy before rendering, so a Scene update that omits its Zone children does not erase them. Scene selection and scene-size debug information therefore always use the latest merged setup.
+Partial setup updates are merged into the cached hierarchy before rendering, so a Scene update that omits its Zone children does not erase them. Updates that race ahead of the initial full setup are ignored rather than promoted to an incomplete root. Scene selection and scene-size debug information therefore always use the latest valid merged setup.
 
-The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to SDK `1.0.0-beta.1` commit `e8026f13` for reproducible builds. The SDK lockfile is committed, so CI and local reproducible builds use `npm ci`. The inspector exposes the main fields useful for this example; raw point arrays are rendered in full in Three.js while the text panel is throttled and point-intensity statistics are bounded to a representative sample to stay responsive with large clouds.
+The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to SDK `1.0.0-beta.1` commit `115b77c1` for reproducible builds. The SDK lockfile is committed, so CI and local reproducible builds use `npm ci`. The pinned SDK includes bulk point-cloud parsing, packet-boundary validation, protocol V2/V3 guards and stale-WebSocket-event protection. The inspector exposes the main fields useful for this example; raw point arrays are rendered in full in Three.js while the text panel is throttled and point-intensity statistics are bounded to a representative sample to stay responsive with large clouds.
 
 ## Clone and run locally
 
@@ -154,11 +154,14 @@ This separation keeps the SDK reusable by non-Three.js applications and keeps re
 │   ├── motion.js                       # Consumer-side velocity → speed helper
 │   ├── viewer.js                       # Three.js scene, camera, clusters + points
 │   ├── zones.js                        # Zone geometry, presence + XY pad rendering
+│   ├── zone-state.js                   # Pure zone-event state extraction/cache input
 │   ├── debug.js                        # Throttled live debug inspector
 │   ├── demo.js                         # SDK-based synthetic test stream
 │   └── styles.css                      # Debug UI
 ├── tests/
-│   └── setup-store.test.mjs            # Partial setup update regression tests
+│   ├── connection-targets.test.mjs     # Hostname/IP fallback ordering
+│   ├── setup-store.test.mjs            # Partial setup update regression tests
+│   └── zone-state.test.mjs             # Zone event state regression tests
 ├── vendor/AugmentaClientSDK-JS         # Git submodule
 ├── LICENSE
 ├── THIRD_PARTY_LICENSES

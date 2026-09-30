@@ -20,10 +20,9 @@ export function createSetupStore() {
   function applyUpdate(update) {
     if (!update) return root;
     if (!root) {
-      // Pleiades sends a full setup when a client registers. A partial object
-      // update without that hierarchy has no reliable parent transform, so do
-      // not promote a lone Zone/container to the root.
-      if (update.isWorld?.() || update.isScene?.()) return setRoot(update);
+      // Pleiades sends a full setup when a client registers. Any update that
+      // races ahead of that setup lacks reliable parent transforms, even when
+      // the changed object happens to be a Scene.
       return root;
     }
 
