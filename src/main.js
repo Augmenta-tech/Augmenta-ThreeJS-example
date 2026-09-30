@@ -5,6 +5,7 @@ import { createDebugPanel } from './debug.js';
 import { makeDemoFrame, makeDemoSetup } from './demo.js';
 
 const DISCONNECT_CLEANUP_DELAY_MS = 500;
+const CAMERA_PREFERENCE_SAVE_DELAY_MS = 250;
 const SIDEBAR_MIN_WIDTH = 320;
 const SIDEBAR_MAX_WIDTH = 450;
 const SIDEBAR_VIEWPORT_MARGIN = 160;
@@ -24,6 +25,8 @@ const viewer = createViewer($('#canvas-host'));
 const debug = createDebugPanel(ui.summary, ui.debug);
 
 let disconnectCleanupTimer;
+let cameraPreferenceSaveTimer;
+let hasPersistedCameraView = false;
 let demoTimer;
 let lastFrame;
 let lastControl;
@@ -66,7 +69,8 @@ function savePreferences() {
     },
     ui: {
       sidebarHidden: ui.app.classList.contains('sidebar-hidden'),
-      sidebarWidth: Number.isFinite(sidebarWidth) ? sidebarWidth : SIDEBAR_MAX_WIDTH
+      sidebarWidth: Number.isFinite(sidebarWidth) ? sidebarWidth : SIDEBAR_MAX_WIDTH,
+      cameraView: viewer.getCameraView()
     }
   };
 
@@ -103,6 +107,20 @@ function restorePreferences() {
   const sidebarWidth = Number(uiPreferences.sidebarWidth);
   if (Number.isFinite(sidebarWidth)) setSidebarWidth(sidebarWidth);
   setSidebarHidden(uiPreferences.sidebarHidden === true, false);
+
+  if (viewer.setCameraView(uiPreferences.cameraView)) {
+    hasPersistedCameraView = true;
+  }
+}
+
+function scheduleCameraPreferenceSave() {
+  if (cameraPreferenceSaveTimer) {
+    window.clearTimeout(cameraPreferenceSaveTimer);
+  }
+  cameraPreferenceSaveTimer = window.setTimeout(() => {
+    cameraPreferenceSaveTimer = undefined;
+    savePreferences();
+  }, CAMERA_PREFERENCE_SAVE_DELAY_MS);
 }
 
 function setStatus(text, kind = 'idle') {
@@ -317,7 +335,7 @@ function getConnectionSettings() {
 
 function handleSetup(message) {
   setSetup(message.getRootObject());
-  viewer.resetCamera();
+  if (!hasPersistedCameraView) viewer.resetCamera();
 }
 
 const connection = createConnectionController({
@@ -373,6 +391,8 @@ function applyVisibility() {
     vectors: ui.showVectors.checked
   });
 }
+
+viewer.setCameraChangeHandler(scheduleCameraPreferenceSave);
 
 ui.connect.addEventListener('click', toggleConnection);
 ui.demo.addEventListener('click', toggleSimulation);
@@ -468,6 +488,8 @@ ui.sidebarResizer.addEventListener('keydown', (event) => {
   setSidebarWidth(current + (event.key === 'ArrowLeft' ? step : -step));
   savePreferences();
 });
+
+window.addEventListener('pagehide', savePreferences);
 
 window.addEventListener('resize', () => {
   if (!window.matchMedia(MOBILE_MEDIA_QUERY).matches) {
