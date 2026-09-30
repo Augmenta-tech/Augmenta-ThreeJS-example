@@ -308,7 +308,7 @@ export function buildConnectionTargets(
   }
 
   const hosts = hostCandidates(host);
-  const schemes = pageProtocol === 'https:' ? ['wss', 'ws'] : ['ws', 'wss'];
+  const schemes = ['ws', 'wss'];
 
   return schemes.flatMap((scheme) => hosts.map((candidateHost) => {
     // IPv6 literals need brackets in a WebSocket URL; IPv4/mDNS names do not.
