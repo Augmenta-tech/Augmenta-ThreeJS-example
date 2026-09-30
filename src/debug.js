@@ -1,8 +1,8 @@
-const DEBUG_RENDER_INTERVAL_MS = 250;
-const INTENSITY_SAMPLE_LIMIT = 2048;
-
 import { ClusterState, ShapeType, ZonePropertyType } from 'augmenta-client-sdk';
 import { speedFromVelocity } from './motion.js';
+
+const DEBUG_RENDER_INTERVAL_MS = 250;
+const INTENSITY_SAMPLE_LIMIT = 2048;
 
 export function createDebugPanel(summary, content) {
   let lastRender = 0;
