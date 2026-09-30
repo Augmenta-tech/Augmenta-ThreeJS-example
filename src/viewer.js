@@ -6,6 +6,8 @@ import { speedFromVelocity } from './motion.js';
 const FLOOR_Y = 0;
 const VELOCITY_DISPLAY_SCALE = 3;
 const VELOCITY_MIN_DISPLAY_LENGTH = 0.18;
+const ZONE_PRESENCE_LABEL_GAP = 0.28;
+const ZONE_PRESENCE_LABEL_COLOR = new THREE.Color(0x9aa1ad);
 const GHOST_COLOR = new THREE.Color(0x8a909b);
 const SESSION_COLOR_OFFSET = Math.floor(Math.random() * 1000);
 const PALETTE = [
@@ -353,6 +355,7 @@ export function createViewer(host) {
     const geometry = zoneGeometry(params);
     if (!geometry) return;
 
+    const presenceGeometry = geometry.clone();
     const color = containerColor(container, 0xb78cff);
     let mesh;
     if (params.isBox() || params.isCylinder()) {
@@ -393,25 +396,44 @@ export function createViewer(host) {
       mesh.position.y = params.getCylinderShapeParameters().height / 2;
     }
 
+    const presenceMesh = new THREE.Mesh(
+      presenceGeometry,
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0,
+        side: THREE.DoubleSide,
+        depthTest: false,
+        depthWrite: false
+      })
+    );
+    presenceMesh.name = 'Zone presence';
+    presenceMesh.position.copy(mesh.position);
+    presenceMesh.rotation.copy(mesh.rotation);
+    presenceMesh.renderOrder = 5;
+    presenceMesh.visible = false;
+
     mesh.renderOrder = 6;
-    group.add(mesh);
+    group.add(presenceMesh, mesh);
 
     const address = container.getAddress();
     if (!address) return;
 
-    const label = createLabelSprite('', color);
+    const label = createLabelSprite('', ZONE_PRESENCE_LABEL_COLOR);
+    label.scale.multiplyScalar(0.88);
+    label.material.opacity = 0.72;
     label.visible = false;
     positionZoneLabel(label, params);
     group.add(label);
 
-    const view = { label, labelText: '', color };
+    const view = { label, labelText: '', labelColor: ZONE_PRESENCE_LABEL_COLOR, presenceMesh };
     zoneViews.set(address, view);
     setZonePresence(view, zonePresence.get(address) ?? 0);
   }
 
   function positionZoneLabel(label, params) {
     let x = 0;
-    let y = -0.18;
+    let y = -ZONE_PRESENCE_LABEL_GAP;
     let z = 0;
 
     if (params.isBox()) {
@@ -419,7 +441,7 @@ export function createViewer(host) {
       x = size[0] / 2;
       z = -size[2] / 2;
     } else if (params.isSphere()) {
-      y = -Math.abs(params.getSphereShapeParameters().radius) - 0.18;
+      y = -Math.abs(params.getSphereShapeParameters().radius) - ZONE_PRESENCE_LABEL_GAP;
     }
 
     label.position.set(x, y, z);
@@ -437,14 +459,19 @@ export function createViewer(host) {
   }
 
   function setZonePresence(view, presence) {
-    if (!(presence > 0)) {
+    const active = Number.isFinite(presence) && presence > 0;
+    view.presenceMesh.visible = active;
+    view.presenceMesh.material.opacity =
+      active ? 0.1 + Math.min(Math.sqrt(presence) / 10, 0.5) : 0;
+
+    if (!active) {
       view.label.visible = false;
       return;
     }
 
     const text = String(presence);
     if (view.labelText !== text) {
-      replaceLabelTexture(view.label, text, view.color);
+      replaceLabelTexture(view.label, text, view.labelColor);
       view.labelText = text;
     }
     view.label.visible = true;
@@ -514,7 +541,7 @@ export function createViewer(host) {
     views.clear();
 
     zonePresence.clear();
-    for (const view of zoneViews.values()) view.label.visible = false;
+    for (const view of zoneViews.values()) setZonePresence(view, 0);
   }
 
   function clearSetup() {
