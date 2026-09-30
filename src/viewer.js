@@ -297,29 +297,57 @@ export function createViewer(host) {
     view.points.frustumCulled = false;
   }
 
-  function renderSetup(root) {
+  function renderSetup(root, selectedSceneAddress) {
     clearGroup(setupGroup);
     zoneRenderer.resetViews();
-    addContainer(root, setupGroup);
+    addContainer(root, setupGroup, selectedSceneAddress, false);
     updateLineMaterialResolution();
     updateHomeFromSetup();
   }
 
-  function addContainer(container, parent) {
+  function addContainer(container, parent, selectedSceneAddress, insideSelectedScene) {
+    const address = container.getAddress();
+    const isSelectedScene = Boolean(selectedSceneAddress && address === selectedSceneAddress);
+    const renderContents = !selectedSceneAddress || insideSelectedScene || isSelectedScene;
+
+    // Keep ancestors of the selected Scene so their transforms are preserved,
+    // but skip unrelated branches entirely.
+    if (
+      selectedSceneAddress
+      && !renderContents
+      && !containsAddress(container, selectedSceneAddress)
+    ) {
+      return;
+    }
+
     const group = new THREE.Group();
-    group.name = `augmenta:${container.getAddress()}`;
+    group.name = `augmenta:${address}`;
 
     group.position.fromArray(container.getPosition());
     setSetupRotation(group, container.getRotation());
     parent.add(group);
 
-    if (container.isScene()) {
-      addSceneBox(container, group);
-    } else if (container.isZone()) {
-      zoneRenderer.addZone(container, group);
+    if (renderContents) {
+      if (container.isScene()) {
+        addSceneBox(container, group);
+      } else if (container.isZone()) {
+        zoneRenderer.addZone(container, group);
+      }
     }
 
-    for (const child of container.getChildren()) addContainer(child, group);
+    for (const child of container.getChildren()) {
+      addContainer(
+        child,
+        group,
+        selectedSceneAddress,
+        renderContents
+      );
+    }
+  }
+
+  function containsAddress(container, targetAddress) {
+    if (container.getAddress() === targetAddress) return true;
+    return container.getChildren().some((child) => containsAddress(child, targetAddress));
   }
 
   function addSceneBox(container, group) {
@@ -328,9 +356,9 @@ export function createViewer(host) {
     const edges = new THREE.LineSegments(
       new THREE.EdgesGeometry(geometry),
       new THREE.LineBasicMaterial({
-        color: containerColor(container, 0x8ca6c6),
+        color: 0x7f858e,
         transparent: true,
-        opacity: 0.85,
+        opacity: 0.55,
         depthWrite: false
       })
     );
