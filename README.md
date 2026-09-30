@@ -10,7 +10,7 @@ The example is deliberately both a **reference integration** and a **debug viewe
 
 The page includes a **Simulate data** toggle, so the UI and rendering can be tested without an Augmenta server. While active, the button reads **Simulating** and clicking it again stops the simulation.
 
-Connection settings, display toggles, the preferred Scene, and sidebar state are stored in browser `localStorage` and restored on refresh. Transient runtime state such as connection status, simulation state, received tracking data, and debug contents is intentionally not persisted.
+Connection settings, display toggles, the preferred Scene, sidebar state, and the current camera position/orbit target are stored in browser `localStorage` and restored on refresh. Transient runtime state such as connection status, simulation state, received tracking data, and debug contents is intentionally not persisted.
 
 > GitHub Pages is served over HTTPS. The example still tries `ws://` first, then `wss://`, because local Augmenta outputs commonly expose a plain WebSocket endpoint.
 
@@ -38,7 +38,7 @@ Three.js renders:
 - scene bounds and box/cylinder/sphere zones, with live presence labels shown below occupied zones and slider-volume fill on round zones;
 - a Pleiades-style orbit camera, 1 × 1 m floor grid and axes.
 
-Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. A successful connection setup and **Simulate data** both initialize the camera with the exact same centered framing used by **Reset camera**. **Reset camera** or a left-button double-click reframes the displayed setup. The Display panel exposes **All scenes** plus every Scene received in the current World. On desktop, the translucent panel overlays the 3D view: use the edge arrow to hide/show it, or drag its left edge to resize it. The camera projection follows the panel width so the orbit target remains centered in the unobscured part of the view.
+Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. The camera view is persisted after navigation and restored on refresh; setup updates do not overwrite a restored/user-controlled view. Without a saved view, a successful connection setup initializes the same centered framing used by **Reset camera**. **Simulate data**, **Reset camera**, or a left-button double-click reframes the displayed setup. The Display panel exposes **All scenes** plus every Scene received in the current World. On desktop, the translucent panel overlays the 3D view: use the edge arrow to hide/show it, or drag its left edge to resize it. The camera projection follows the panel width so the orbit target remains centered in the unobscured part of the view.
 
 Partial setup updates are merged into the cached hierarchy before rendering, so a Scene update that omits its Zone children does not erase them. Updates that race ahead of the initial full setup are ignored rather than promoted to an incomplete root. Scene selection and scene-size debug information therefore always use the latest valid merged setup.
 
