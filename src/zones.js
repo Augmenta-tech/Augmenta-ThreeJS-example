@@ -3,6 +3,7 @@ import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { ShapeType } from 'augmenta-client-sdk';
+import { readZoneEventState } from './zone-state.js';
 
 const ZONE_PRESENCE_LABEL_GAP = 0.32;
 const ZONE_PRESENCE_LABEL_OPACITY = 0.9;
@@ -122,26 +123,22 @@ export function createZoneRenderer() {
 
   function update(events) {
     for (const event of events) {
-      const address = event.getEmitterZoneAddress();
-      const presence = event.getPresence();
+      const state = readZoneEventState(event);
+      const { address, presence } = state;
+
+      // Cache the complete event before touching the view. Setup/control
+      // messages can race live data, so a zone created on the next setup
+      // render must still recover its latest presence/slider/XY state.
       presenceByAddress.set(address, presence);
+      if (state.slider !== undefined) sliderByAddress.set(address, state.slider);
+      if (state.xyPad) xyPadByAddress.set(address, state.xyPad);
 
       const view = views.get(address);
       if (!view) continue;
 
       setPresence(view, presence);
-
-      for (const property of event.getProperties()) {
-        if (property.isSlider()) {
-          const value = property.getSliderParameters().value;
-          sliderByAddress.set(address, value);
-          updateRoundZoneSlider(view.slider, value);
-        } else if (property.isXYPad()) {
-          const value = property.getXYPadParameters();
-          xyPadByAddress.set(address, value);
-          updateBoxXYPad(view.xyPad, value.x, value.y);
-        }
-      }
+      if (state.slider !== undefined) updateRoundZoneSlider(view.slider, state.slider);
+      if (state.xyPad) updateBoxXYPad(view.xyPad, state.xyPad.x, state.xyPad.y);
     }
   }
 
