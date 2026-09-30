@@ -8,7 +8,7 @@ import { makeDemoFrame, makeDemoSetup } from './demo.js';
 const RECONNECT_DELAY_MS = 1000;
 const DISCONNECT_CLEANUP_DELAY_MS = 500;
 const SIDEBAR_MIN_WIDTH = 320;
-const SIDEBAR_MAX_WIDTH = 720;
+const SIDEBAR_MAX_WIDTH = 450;
 const SIDEBAR_VIEWPORT_MARGIN = 160;
 
 // Three.js is Y-up, right-handed and metre-based. Ask Augmenta/Pleiades to
