@@ -103,7 +103,7 @@ The example requests:
   streamZonePoints: true,
   useCompression: false,
   displayPointIntensity: true,
-  boxRotationMode: RotationMode.Radians,
+  boxRotationMode: RotationMode.Quaternions,
   axisTransform: {
     axis: AxisMode.YUpRightHanded,
     origin: OriginMode.BottomLeft,
@@ -119,7 +119,7 @@ Compression is disabled because the browser example intentionally stays dependen
 
 The JS SDK parses velocity directly from the binary cluster property at the same offset as the C++ and C# SDKs. It does not reconstruct velocity from positions; if Augmenta sends a zero vector, the example intentionally displays that zero vector rather than inventing a replacement.
 
-The example explicitly requests the Three.js convention from Augmenta: **Y up, right handed, bottom-left origin, absolute coordinates, no extra flips**, so one coordinate unit remains one meter. Pleiades applies that transform to live tracking and setup positions before transmission. Scene and box-zone sizes are unsigned magnitudes, so the renderer places their local depth toward **-Z** to preserve the requested right-handed direction. Bounding-box rotation is requested in **radians**, allowing Pleiades to apply the same axis conversion before Three.js consumes it.
+The example explicitly requests the Three.js convention from Augmenta: **Y up, right handed, bottom-left origin, absolute coordinates, no extra flips**, so one coordinate unit remains one meter. Pleiades applies that transform to live tracking and setup positions before transmission. Scene and box-zone sizes are unsigned magnitudes, so the renderer places their local depth toward **-Z** to preserve the requested right-handed direction. Tracked bounding-box rotation is explicitly requested as **quaternions** (also the SDK default) and converted from Augmenta/Pleiades' Y-up left-handed basis to Three.js' Y-up right-handed basis in the viewer. Setup Scene/Zone rotations are currently transported as Euler vectors by the control/setup protocol, so the viewer reconstructs the Pleiades Z-Y-X orientation and applies the same handedness conversion before rendering.
 
 ## SDK / example boundary
 
