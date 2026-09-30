@@ -22,8 +22,9 @@ const ROUND_ZONE_ACTIVE_EDGE_WIDTH = 2.1;
 const ZONE_SILHOUETTE_IDLE_WIDTH = 0.16;
 const ZONE_SILHOUETTE_ACTIVE_WIDTH = 0.23;
 const ZONE_OUTLINE_PULSE_DURATION_MS = 1400;
-const ZONE_XY_PAD_FILL_OPACITY = 0.16;
-const ZONE_XY_PAD_AXIS_OPACITY = 0.72;
+const ZONE_XY_PAD_FILL_OPACITY = 0.18;
+const ZONE_XY_PAD_AXIS_OPACITY = 0.78;
+const ZONE_XY_PAD_AXIS_WIDTH = 1.5;
 const ZONE_SLIDER_FILL_OPACITY = 0.22;
 const ZONE_LABEL_OUTLINE_WIDTH = 4;
 const ROUND_OUTLINE_SEGMENTS = 32;
@@ -31,6 +32,8 @@ const ROUND_OUTLINE_SEGMENTS = 32;
 export function createZoneRenderer() {
   const views = new Map();
   const presenceByAddress = new Map();
+  const xyPadByAddress = new Map();
+  const sliderByAddress = new Map();
 
   function resetViews() {
     views.clear();
@@ -109,6 +112,12 @@ export function createZoneRenderer() {
     };
     views.set(address, view);
     setPresence(view, presenceByAddress.get(address) ?? 0);
+
+    const xyPadValue = xyPadByAddress.get(address);
+    if (xyPadValue) updateBoxXYPad(view.xyPad, xyPadValue.x, xyPadValue.y);
+
+    const sliderValue = sliderByAddress.get(address);
+    if (sliderValue !== undefined) updateRoundZoneSlider(view.slider, sliderValue);
   }
 
   function update(events) {
@@ -124,9 +133,12 @@ export function createZoneRenderer() {
 
       for (const property of event.getProperties()) {
         if (property.isSlider()) {
-          updateRoundZoneSlider(view.slider, property.getSliderParameters().value);
+          const value = property.getSliderParameters().value;
+          sliderByAddress.set(address, value);
+          updateRoundZoneSlider(view.slider, value);
         } else if (property.isXYPad()) {
           const value = property.getXYPadParameters();
+          xyPadByAddress.set(address, value);
           updateBoxXYPad(view.xyPad, value.x, value.y);
         }
       }
@@ -135,6 +147,8 @@ export function createZoneRenderer() {
 
   function clearPresence() {
     presenceByAddress.clear();
+    xyPadByAddress.clear();
+    sliderByAddress.clear();
     for (const view of views.values()) {
       setPresence(view, 0);
       if (view.xyPad) view.xyPad.group.visible = false;
@@ -466,8 +480,8 @@ function createBoxXYPad(params) {
 
   const axes = createWideLineSegments(
     [0, y, 0, 0, y, -depth, 0, y, 0, width, y, 0],
-    ZONE_OUTLINE_COLOR,
-    1.15,
+    ZONE_ACTIVE_OUTLINE_COLOR,
+    ZONE_XY_PAD_AXIS_WIDTH,
     'Zone XY pad axes'
   );
   axes.material.opacity = ZONE_XY_PAD_AXIS_OPACITY;
@@ -483,7 +497,7 @@ function createBoxXYPad(params) {
   const fill = new THREE.Mesh(
     fillGeometry,
     new THREE.MeshBasicMaterial({
-      color: ZONE_VISUAL_COLOR,
+      color: ZONE_ACTIVE_OUTLINE_COLOR,
       transparent: true,
       opacity: ZONE_XY_PAD_FILL_OPACITY,
       side: THREE.DoubleSide,
