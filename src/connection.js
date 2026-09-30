@@ -220,7 +220,12 @@ export function createConnectionController({
       }
 
       retrying = true;
-      publish('retrying', 'Connection failed; retrying automatically…');
+      publish(
+        'retrying',
+        location.protocol === 'https:' && target.url.startsWith('ws://')
+          ? 'Connection failed. This HTTPS page may block an insecure ws:// endpoint; retrying automatically…'
+          : 'Connection failed; retrying automatically…'
+      );
     });
 
     connection.on('controlMessage', (message) => {
@@ -303,9 +308,7 @@ export function buildConnectionTargets(
   }
 
   const hosts = hostCandidates(host);
-  // Browsers treat ws:// from an HTTPS page as mixed content. Never generate
-  // an insecure fallback there; local HTTP pages can still try both schemes.
-  const schemes = pageProtocol === 'https:' ? ['wss'] : ['ws', 'wss'];
+  const schemes = pageProtocol === 'https:' ? ['wss', 'ws'] : ['ws', 'wss'];
 
   return schemes.flatMap((scheme) => hosts.map((candidateHost) => {
     // IPv6 literals need brackets in a WebSocket URL; IPv4/mDNS names do not.
