@@ -146,6 +146,8 @@ This separation keeps the SDK reusable by non-Three.js applications and keeps re
 │   ├── debug.js                        # Live debug inspector
 │   ├── demo.js                         # SDK-based synthetic test stream
 │   └── styles.css                      # Debug UI
+├── tests/
+│   └── setup-store.test.mjs            # Partial setup update regression tests
 ├── vendor/AugmentaClientSDK-JS         # Git submodule
 ├── LICENSE
 ├── THIRD_PARTY_LICENSES
@@ -162,8 +164,9 @@ The workflow:
 
 1. checks out this repository and its submodule;
 2. installs, builds and tests the pinned SDK submodule;
-3. assembles a minimal static `_site` artifact;
-4. deploys that artifact with GitHub Pages.
+3. validates the example and runs setup-update regression tests;
+4. assembles a minimal static `_site` artifact;
+5. deploys that artifact with GitHub Pages.
 
 GitHub Pages must use **Settings → Pages → Source: GitHub Actions**. The workflow assumes Pages is already enabled and only builds and deploys the site.
 

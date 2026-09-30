@@ -40,9 +40,16 @@ jobs:
       - name: Validate example JavaScript
         shell: bash
         run: |
-          for file in src/*.js; do
+          for file in src/*.js tests/*.mjs; do
             node --input-type=module --check < "$file"
           done
+
+      - name: Test setup update merging
+        shell: bash
+        run: |
+          mkdir -p node_modules
+          ln -s ../vendor/AugmentaClientSDK-JS node_modules/augmenta-client-sdk
+          node --test tests/*.test.mjs
 
       - name: Assemble static site
         shell: bash
