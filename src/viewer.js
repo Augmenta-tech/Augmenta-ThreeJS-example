@@ -152,10 +152,14 @@ export function createViewer(host) {
 
       const view = views.get(key) || createObjectView(key, id, sceneAddress);
       views.set(key, view);
-      updateLabel(view, id, uuid);
 
-      if (object.hasCluster()) updateCluster(view, object.getCluster());
-      else hideCluster(view);
+      if (object.hasCluster()) {
+        updateLabel(view, id, uuid);
+        updateCluster(view, object.getCluster());
+      } else {
+        view.label.visible = false;
+        hideCluster(view);
+      }
 
       if (object.hasPointCloud()) updatePoints(view, object.getPointCloud());
       else view.points.visible = false;
