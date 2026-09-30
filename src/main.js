@@ -160,7 +160,18 @@ function sceneSizeForFrame(frame) {
 }
 
 function renderDebug(force = false) {
-  debug.render(lastFrame, lastControl, fps(), sceneSizeForFrame(lastFrame), force);
+  debug.render(
+    lastFrame,
+    lastControl,
+    fps(),
+    sceneSizeForFrame(lastFrame),
+    zoneNameForAddress,
+    force
+  );
+}
+
+function zoneNameForAddress(address) {
+  return setupStore.getByAddress(address)?.getName() || address || '—';
 }
 
 function syncSceneSelector() {

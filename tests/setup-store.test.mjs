@@ -80,3 +80,20 @@ test('New Zone updates attach to the deepest matching parent', () => {
   assert.equal(zones.length, 1);
   assert.equal(zones[0].getAddress(), '/world/scene/new-zone');
 });
+
+
+test('Address index follows merged setup updates', () => {
+  const store = createSetupStore();
+  store.setRoot(world([scene('/world/scene', [10, 3, 8], [
+    zone('/world/scene/a', [1, 0, 1])
+  ])]));
+
+  assert.equal(store.getByAddress('/world/scene/a').getName(), 'Zone');
+
+  store.applyUpdate(zone('/world/scene/a', [7, 0, 8]));
+
+  assert.deepEqual(
+    store.getByAddress('/world/scene/a').getPosition(),
+    [7, 0, 8]
+  );
+});

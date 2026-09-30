@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { ClusterState, ShapeType } from 'augmenta-client-sdk';
+import { speedFromVelocity } from './motion.js';
 
 const FLOOR_Y = 0;
 const VELOCITY_DISPLAY_SCALE = 3;
@@ -49,6 +50,8 @@ export function createViewer(host) {
   const labelGroup = namedGroup(scene, 'Object IDs');
 
   const views = new Map();
+  const zoneViews = new Map();
+  const zonePresence = new Map();
   const unitBox = new THREE.BoxGeometry(1, 1, 1);
   const unitBoxEdges = new THREE.EdgesGeometry(unitBox);
   unitBox.dispose();
@@ -143,6 +146,8 @@ export function createViewer(host) {
         views.delete(key);
       }
     }
+
+    updateZonePresence(frame.getZoneEvents());
   }
 
   function createObjectView(key, id, sceneAddress) {
@@ -281,6 +286,7 @@ export function createViewer(host) {
 
   function renderSetup(root) {
     clearGroup(setupGroup);
+    zoneViews.clear();
     addContainer(root, setupGroup);
     updateHomeFromSetup();
   }
@@ -347,6 +353,7 @@ export function createViewer(host) {
     const geometry = zoneGeometry(params);
     if (!geometry) return;
 
+    const color = containerColor(container, 0xb78cff);
     let mesh;
     if (params.isBox() || params.isCylinder()) {
       const edges = new THREE.EdgesGeometry(geometry);
@@ -354,7 +361,7 @@ export function createViewer(host) {
       mesh = new THREE.LineSegments(
         edges,
         new THREE.LineBasicMaterial({
-          color: containerColor(container, 0xb78cff),
+          color,
           transparent: true,
           opacity: 0.9,
           depthTest: false,
@@ -372,7 +379,7 @@ export function createViewer(host) {
       mesh = new THREE.Mesh(
         geometry,
         new THREE.MeshBasicMaterial({
-          color: containerColor(container, 0xb78cff),
+          color,
           wireframe: true,
           transparent: true,
           opacity: 0.9,
@@ -388,6 +395,59 @@ export function createViewer(host) {
 
     mesh.renderOrder = 6;
     group.add(mesh);
+
+    const address = container.getAddress();
+    if (!address) return;
+
+    const label = createLabelSprite('', color);
+    label.visible = false;
+    positionZoneLabel(label, params);
+    group.add(label);
+
+    const view = { label, labelText: '', color };
+    zoneViews.set(address, view);
+    setZonePresence(view, zonePresence.get(address) ?? 0);
+  }
+
+  function positionZoneLabel(label, params) {
+    let x = 0;
+    let y = -0.18;
+    let z = 0;
+
+    if (params.isBox()) {
+      const size = params.getBoxShapeParameters().size;
+      x = size[0] / 2;
+      z = -size[2] / 2;
+    } else if (params.isSphere()) {
+      y = -Math.abs(params.getSphereShapeParameters().radius) - 0.18;
+    }
+
+    label.position.set(x, y, z);
+  }
+
+  function updateZonePresence(events) {
+    for (const event of events) {
+      const address = event.getEmitterZoneAddress();
+      const presence = event.getPresence();
+      zonePresence.set(address, presence);
+
+      const view = zoneViews.get(address);
+      if (view) setZonePresence(view, presence);
+    }
+  }
+
+  function setZonePresence(view, presence) {
+    if (!(presence > 0)) {
+      view.label.visible = false;
+      return;
+    }
+
+    const text = String(presence);
+    if (view.labelText !== text) {
+      replaceLabelTexture(view.label, text, view.color);
+      view.labelText = text;
+    }
+    view.label.visible = true;
   }
 
   function zoneGeometry(params) {
@@ -452,6 +512,9 @@ export function createViewer(host) {
   function clearTracking() {
     for (const view of views.values()) disposeView(view);
     views.clear();
+
+    zonePresence.clear();
+    for (const view of zoneViews.values()) view.label.visible = false;
   }
 
   function clearSetup() {
@@ -536,7 +599,7 @@ function configureArrow(arrow) {
 
 function updateVelocity(arrow, origin, velocity, color) {
   const vector = new THREE.Vector3().fromArray(velocity);
-  const speed = vector.length();
+  const speed = speedFromVelocity(velocity);
 
   if (!Number.isFinite(speed) || speed < 0.001) {
     arrow.visible = false;

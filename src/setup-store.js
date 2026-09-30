@@ -3,15 +3,17 @@ import { Container } from 'augmenta-client-sdk';
 export function createSetupStore() {
   let root;
   let scenes = [];
+  let byAddress = new Map();
 
-  function refreshScenes() {
+  function refreshIndexes() {
     scenes = [];
-    collectScenes(root, scenes);
+    byAddress = new Map();
+    indexContainers(root, scenes, byAddress);
   }
 
   function setRoot(nextRoot) {
     root = nextRoot;
-    refreshScenes();
+    refreshIndexes();
     return root;
   }
 
@@ -21,13 +23,14 @@ export function createSetupStore() {
 
     const merged = replaceInTree(root, update);
     root = merged.changed ? merged.node : insertAtBestParent(root, update);
-    refreshScenes();
+    refreshIndexes();
     return root;
   }
 
   function clear() {
     root = undefined;
     scenes = [];
+    byAddress = new Map();
   }
 
   return {
@@ -35,14 +38,21 @@ export function createSetupStore() {
     setRoot,
     applyUpdate,
     getRoot: () => root,
-    getScenes: () => scenes
+    getScenes: () => scenes,
+    getByAddress: (address) => byAddress.get(address)
   };
 }
 
-function collectScenes(container, output) {
+function indexContainers(container, scenes, byAddress) {
   if (!container) return;
-  if (container.isScene?.()) output.push(container);
-  for (const child of container.getChildren?.() ?? []) collectScenes(child, output);
+
+  if (container.isScene?.()) scenes.push(container);
+  const address = container.getAddress?.();
+  if (address) byAddress.set(address, container);
+
+  for (const child of container.getChildren?.() ?? []) {
+    indexContainers(child, scenes, byAddress);
+  }
 }
 
 function replaceInTree(current, update) {

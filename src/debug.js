@@ -1,9 +1,10 @@
 import { ClusterState, ShapeType, ZonePropertyType } from 'augmenta-client-sdk';
+import { speedFromVelocity } from './motion.js';
 
 export function createDebugPanel(summary, content) {
   let lastRender = 0;
 
-  function render(frame, control, fps, sceneSize, force = false) {
+  function render(frame, control, fps, sceneSize, zoneNameForAddress, force = false) {
     const now = performance.now();
     if (!force && now - lastRender < 120) return;
     lastRender = now;
@@ -13,7 +14,7 @@ export function createDebugPanel(summary, content) {
       ? `${frame.getObjectCount()} objects · ${frame.getZoneEventCount()} zones · ${fps} fps`
       : 'Waiting for tracking data';
     const blocks = [];
-    if (frame) blocks.push(frameBlock(sceneSize), objectsBlock(frame), zonesBlock(frame));
+    if (frame) blocks.push(frameBlock(sceneSize), objectsBlock(frame), zonesBlock(frame, zoneNameForAddress));
     if (control) blocks.push(controlBlock(control));
     content.innerHTML = blocks.join('');
   }
@@ -40,7 +41,7 @@ function objectsBlock(frame) {
     if (object.hasCluster()) {
       const c = object.getCluster();
       const velocity = c.getVelocity();
-      const speed = Math.hypot(...velocity);
+      const speed = speedFromVelocity(velocity);
       cluster = `state ${esc(ClusterState[c.getState()] ?? c.getState())}<br>centroid ${esc(vec(c.getCentroid()))}<br>velocity ${esc(vec(velocity))}<br>speed ${fmt(speed)} m/s<br>box center ${esc(vec(c.getBoundingBoxCenter()))}<br>box size ${esc(vec(c.getBoundingBoxSize()))}<br>rotation ${esc(vec(c.getBoundingBoxRotationEuler()))}`;
     }
 
@@ -69,7 +70,7 @@ function objectsBlock(frame) {
   return `<details open><summary>Objects (${objects.length})</summary><table class="debug-table objects-table"><colgroup><col class="id-column"><col class="cluster-column"><col class="points-column"></colgroup><thead><tr><th>ID / UUID</th><th>Cluster</th><th>Point cloud</th></tr></thead><tbody>${rows}</tbody></table></details>`;
 }
 
-function zonesBlock(frame) {
+function zonesBlock(frame, zoneNameForAddress) {
   const zones = frame.getZoneEvents();
   if (!zones.length) return '<details><summary>Zones (0)</summary><div class="debug-block muted">No zone data in this frame.</div></details>';
 
@@ -87,10 +88,12 @@ function zonesBlock(frame) {
       }
       return name;
     }).join('<br>') || '—';
-    return `<tr><td>${esc(zone.getEmitterZoneAddress())}</td><td>enter ${zone.getEnters()}<br>leave ${zone.getLeaves()}<br>presence ${zone.getPresence()}<br>density ${fmt(zone.getDensity())}</td><td>${props}</td></tr>`;
+    const address = zone.getEmitterZoneAddress();
+    const name = zoneNameForAddress?.(address) || address || '—';
+    return `<tr><td>${esc(name)}</td><td>enter ${zone.getEnters()}<br>leave ${zone.getLeaves()}<br>presence ${zone.getPresence()}</td><td>${props}</td></tr>`;
   }).join('');
 
-  return `<details open><summary>Zones (${zones.length})</summary><table class="debug-table"><thead><tr><th>Address</th><th>Occupancy</th><th>Properties</th></tr></thead><tbody>${rows}</tbody></table></details>`;
+  return `<details open><summary>Zones (${zones.length})</summary><table class="debug-table"><thead><tr><th>Zone</th><th>Occupancy</th><th>Properties</th></tr></thead><tbody>${rows}</tbody></table></details>`;
 }
 
 function controlBlock(message) {

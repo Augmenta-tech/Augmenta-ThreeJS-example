@@ -19,11 +19,11 @@ The viewer requests the richest practical uncompressed stream from the Augmenta 
 - automatic protocol selection: try V3 first, then reconnect with the server-reported V2/V3 parser when needed;
 - clusters and stable IDs / UUIDs;
 - centroid, velocity, speed, state, bounding-box size and rotation;
-- raw velocity vector plus velocity magnitude in m/s in the debug inspector;
+- velocity is received directly from Augmenta through the SDK; speed is derived client-side as the velocity magnitude, matching the current Unity WebSocket and TouchDesigner C++ client philosophy;
 - bounding-box center, size and rotation;
 - object point clouds and point-intensity data when present;
 - scene dimensions from setup data;
-- zone enter, leave, presence and density values;
+- zone enter, leave and presence values, shown by Zone name rather than protocol address;
 - slider, XY pad and zone point-cloud properties;
 - setup/update hierarchy with scene and zone position, rotation, color and supported shapes.
 
@@ -33,7 +33,7 @@ Three.js renders:
 - velocity vectors with arrow heads, drawn at 3× visual scale for readability while debug values remain unmodified;
 - cluster/point-cloud pairs in distinct colors chosen from a curated palette;
 - point clouds;
-- scene bounds, scene floor and box/cylinder/sphere zones;
+- scene bounds, scene floor and box/cylinder/sphere zones, with live presence labels shown below occupied zones;
 - a Pleiades-style orbit camera, 1 × 1 m floor grid and axes.
 
 Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. A successful connection setup and **Simulate data** both initialize the camera with the exact same centered framing used by **Reset camera**. **Reset camera** or a left-button double-click reframes the displayed setup. The Display panel exposes **All scenes** plus every Scene received in the current World. On desktop, the translucent panel overlays the 3D view: use the edge arrow to hide/show it, or drag its left edge to resize it. The camera projection follows the panel width so the orbit target remains centered in the unobscured part of the view.
@@ -142,6 +142,7 @@ This separation keeps the SDK reusable by non-Three.js applications and keeps re
 │   ├── main.js                         # Application/UI orchestration
 │   ├── connection.js                   # WebSocket/retry/protocol controller
 │   ├── setup-store.js                  # Setup cache + partial update merging
+│   ├── motion.js                       # Consumer-side velocity → speed helper
 │   ├── viewer.js                       # Three.js scene + Augmenta rendering
 │   ├── debug.js                        # Live debug inspector
 │   ├── demo.js                         # SDK-based synthetic test stream
