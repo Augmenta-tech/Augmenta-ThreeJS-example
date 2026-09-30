@@ -285,22 +285,6 @@ export function createViewer(host) {
     updateHomeFromSetup();
   }
 
-  function upsertSetup(container) {
-    const address = container.getAddress();
-    const existing = setupGroup.getObjectByName(`augmenta:${address}`);
-    const parent = existing?.parent || setupParentForAddress(address) || setupGroup;
-
-    if (existing) disposeObject(existing);
-    addContainer(container, parent);
-    updateHomeFromSetup();
-  }
-
-  function setupParentForAddress(address) {
-    const separator = address.lastIndexOf('/');
-    if (separator <= 0) return undefined;
-    return setupGroup.getObjectByName(`augmenta:${address.slice(0, separator)}`);
-  }
-
   function addContainer(container, parent) {
     const group = new THREE.Group();
     group.name = `augmenta:${container.getAddress()}`;
@@ -513,7 +497,6 @@ export function createViewer(host) {
   return {
     renderFrame,
     renderSetup,
-    upsertSetup,
     clearTracking,
     clearSetup,
     resetCamera,

@@ -38,6 +38,8 @@ Three.js renders:
 
 Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. A successful connection setup and **Simulate data** both initialize the camera with the exact same centered framing used by **Reset camera**. **Reset camera** or a left-button double-click reframes the displayed setup. The Display panel exposes **All scenes** plus every Scene received in the current World. On desktop, the translucent panel overlays the 3D view: use the edge arrow to hide/show it, or drag its left edge to resize it. The camera projection follows the panel width so the orbit target remains centered in the unobscured part of the view.
 
+Partial setup updates are merged into the cached hierarchy before rendering, so a Scene update that omits its Zone children does not erase them. Scene selection and scene-size debug information therefore always use the latest merged setup.
+
 The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to commit `ab030fee`, which is also the current SDK `main`, for reproducible builds. The inspector exposes the main fields useful for this example; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
 
 ## Clone and run locally
@@ -122,7 +124,9 @@ The example explicitly requests the Three.js convention from Augmenta: **Y up, r
 The example intentionally keeps protocol responsibilities out of the Three.js layer:
 
 - **SDK:** registration options, WebSocket transport, V2/V3 parsing, typed Augmenta packets, control/setup hierarchy.
-- **Example controller:** reconnect policy, protocol fallback, Scene selection, demo mode and UI state.
+- **Connection controller:** WebSocket lifecycle, retry policy, protocol fallback and Augmenta stream options.
+- **Setup store:** immutable setup cache that merges partial Scene/Zone updates while preserving unchanged children.
+- **Example controller:** UI wiring, Scene selection, demo mode and live/debug presentation state.
 - **Three.js viewer:** rendering, camera behavior, labels/colors and direct presentation of the SDK values already transformed by Pleiades.
 
 This separation keeps the SDK reusable by non-Three.js applications and keeps rendering/UI decisions out of the protocol library.
@@ -135,7 +139,9 @@ This separation keeps the SDK reusable by non-Three.js applications and keeps re
 ├── index.html                          # Static entry point + import map
 ├── augmenta-favicon.png                # White Augmenta symbol used by the page
 ├── src/
-│   ├── main.js                         # Connection / application controller
+│   ├── main.js                         # Application/UI orchestration
+│   ├── connection.js                   # WebSocket/retry/protocol controller
+│   ├── setup-store.js                  # Setup cache + partial update merging
 │   ├── viewer.js                       # Three.js scene + Augmenta rendering
 │   ├── debug.js                        # Live debug inspector
 │   ├── demo.js                         # SDK-based synthetic test stream
