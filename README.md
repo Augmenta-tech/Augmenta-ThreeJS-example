@@ -12,7 +12,7 @@ The page includes a **Simulate data** toggle, so the UI and rendering can be tes
 
 Connection settings, display toggles, the preferred Scene, and sidebar state are stored in browser `localStorage` and restored on refresh. Transient runtime state such as connection status, simulation state, received tracking data, and debug contents is intentionally not persisted.
 
-> GitHub Pages is served over HTTPS while this example intentionally connects with local `ws://`. Browser security rules can therefore block access to a local Augmenta server. Running the same example locally over HTTP is the reference workflow for real local-network streams.
+> GitHub Pages is served over HTTPS. The example tries `wss://` first on HTTPS pages and can fall back to `ws://`, but browsers may still block an insecure local `ws://` connection from an HTTPS page. Running the same example locally over HTTP remains the reference workflow for a plain local Augmenta WebSocket output.
 
 ## What it shows
 
@@ -89,9 +89,9 @@ Do not open `index.html` directly with `file://`; ES modules need to be served o
 ## Connect to Augmenta
 
 1. Enable the Augmenta **WebSocket Output**.
-2. Enter the Augmenta server IP address or hostname and port. An IP address or already-qualified hostname is used as-is; a simple hostname such as `augmenta-server` automatically becomes `augmenta-server.local`. The default port is `6060`. The address field intentionally accepts only a host: enter the port in its separate field and do not add `ws://`.
+2. Enter the Augmenta server IP address or hostname and port. An IP address or already-qualified hostname is used as-is. For a simple hostname such as `augmenta-server`, the example tries the literal name first, then `.local`, `.home`, and the standard `.home.arpa`, stopping at the first successful connection. `localhost` is never suffixed. It also tries the appropriate WebSocket schemes (`ws://` first on HTTP pages, `wss://` first on HTTPS pages). The default port is `6060`. Enter only the host in the address field; the port stays in its separate field.
 3. Keep **Auto** unless you are testing a specific protocol version. Auto starts with V3 and automatically reconnects with the server-reported V2/V3 parser when required.
-4. The viewer starts in **Connecting…** mode automatically and keeps retrying every second until a connection succeeds. While active, the button becomes **Connected**; click it to stop all reconnect attempts.
+4. The viewer starts in **Connecting…** mode automatically, moves through the fallback candidates as they fail, and retries the full set after one second until a connection succeeds. While active, the button becomes **Connected**; click it to stop all reconnect attempts.
 
 
 The example requests:
@@ -197,13 +197,13 @@ Run the example again after each SDK update and verify automatic protocol negoti
 
 ### Reconnection behavior
 
-The connection field accepts an IP address or hostname. A hostname without a suffix automatically gets `.local` appended.
+The connection field accepts an IP address or hostname. Simple hostnames are tried as entered, then with `.local`, `.home`, and `.home.arpa`; `localhost`, IP addresses, and already-qualified names are left unchanged.
 
 The low-level `AugmentaWebSocketClient` transport currently performs one connection attempt per `connect()` call. This example intentionally adds a lightweight 1-second retry loop at the application level, matching the auto-reconnect behavior used by Augmenta client integrations such as the Unity client. Clicking **Connected** / **Connecting…** stops that loop cleanly.
 
 ## Browser / networking notes
 
-- the UI accepts only an IP address/hostname and port; it constructs the local `ws://` URL internally.
+- the UI accepts only an IP address/hostname and port; it constructs WebSocket candidates internally and prefers `wss://` on HTTPS pages, `ws://` on HTTP pages.
 - browser mixed-content and private-network protections can prevent the public HTTPS page from opening a local `ws://` endpoint;
 - CORS does not govern WebSocket framing itself, but the server/browser can still apply Origin, TLS and local-network security rules.
 
