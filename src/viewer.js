@@ -7,8 +7,6 @@ import { ClusterState, ShapeType } from 'augmenta-client-sdk';
 import { speedFromVelocity } from './motion.js';
 
 const FLOOR_Y = 0;
-const VELOCITY_DISPLAY_SCALE = 3;
-const VELOCITY_MIN_DISPLAY_LENGTH = 0.18;
 const ZONE_PRESENCE_LABEL_GAP = 0.32;
 const ZONE_PRESENCE_LABEL_COLOR = new THREE.Color(0xaeb4be);
 const ZONE_PRESENCE_LABEL_OPACITY = 0.78;
@@ -982,10 +980,9 @@ function updateVelocity(arrow, origin, velocity, color) {
   arrow.position.fromArray(origin);
   arrow.setDirection(vector.normalize());
 
-  const displayLength = Math.max(speed * VELOCITY_DISPLAY_SCALE, VELOCITY_MIN_DISPLAY_LENGTH);
-  const headLength = Math.min(Math.max(displayLength * 0.22, 0.09), 0.32);
-  const headWidth = Math.min(Math.max(headLength * 0.55, 0.055), 0.18);
-  arrow.setLength(displayLength, headLength, headWidth);
+  const headLength = Math.min(Math.max(speed * 0.28, 0.08), 0.28);
+  const headWidth = Math.min(Math.max(headLength * 0.55, 0.05), 0.16);
+  arrow.setLength(speed, headLength, headWidth);
   arrow.setColor(color);
 }
 
