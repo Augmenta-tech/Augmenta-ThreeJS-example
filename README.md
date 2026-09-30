@@ -30,7 +30,7 @@ The viewer requests the richest practical uncompressed stream from the Augmenta 
 Three.js renders:
 
 - cluster bounding boxes, centroids and readable IDs;
-- velocity vectors with arrow heads, drawn at 3× visual scale for readability while debug values remain unmodified;
+- velocity vectors with arrow heads at the received velocity magnitude;
 - cluster/point-cloud pairs in distinct colors chosen from a curated palette;
 - point clouds;
 - scene bounds, scene floor and box/cylinder/sphere zones, with live presence labels shown below occupied zones;
