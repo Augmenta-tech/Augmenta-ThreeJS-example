@@ -46,6 +46,53 @@ button, input, select { font: inherit; }
 
 .viewer-overlay h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.02em; }
 .viewer-overlay p { margin: 4px 0 0; color: #aeb6c5; font-size: 12px; }
+
+.connection-qr {
+  position: absolute;
+  z-index: 12;
+  left: 18px;
+  bottom: 18px;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 7px;
+  border: 1px solid rgba(89, 99, 118, .5);
+  border-radius: 8px;
+  color: #9da7b9;
+  background: rgba(17, 20, 26, .78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  text-decoration: none;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.connection-qr:hover {
+  border-color: rgba(141, 184, 255, .72);
+  color: #d9e5f8;
+  background: rgba(23, 27, 35, .92);
+}
+
+.connection-qr-code {
+  display: block;
+  width: 104px;
+  height: 104px;
+  padding: 4px;
+  border-radius: 5px;
+  background: #ffffff;
+}
+
+.connection-qr-code svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.connection-qr-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 1;
+}
+
 #sidebar {
   position: absolute;
   z-index: 15;
@@ -298,5 +345,16 @@ details[open] summary { border-bottom: 1px solid #2b313d; }
   .sidebar-toggle,
   .sidebar-resizer { display: none; }
   .viewer-overlay { padding: 16px; }
+  .connection-qr {
+    left: 12px;
+    bottom: 12px;
+    padding: 5px;
+  }
+  .connection-qr-code {
+    width: 84px;
+    height: 84px;
+    padding: 3px;
+  }
+  .connection-qr-label { font-size: 8.5px; }
   .server-row { grid-template-columns: minmax(0, 1fr) 82px; }
 }
