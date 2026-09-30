@@ -294,11 +294,7 @@ export function createConnectionController({
   return { getState, start, stop, restart };
 }
 
-export function buildConnectionTargets(
-  address,
-  portValue,
-  pageProtocol = globalThis.location?.protocol ?? 'http:'
-) {
+export function buildConnectionTargets(address, portValue) {
   const host = normalizeServerHost(address);
   const port = Number(portValue);
 
