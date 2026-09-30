@@ -12,7 +12,7 @@ The page includes a **Simulate data** toggle, so the UI and rendering can be tes
 
 Connection settings, display toggles, the preferred Scene, and sidebar state are stored in browser `localStorage` and restored on refresh. Transient runtime state such as connection status, simulation state, received tracking data, and debug contents is intentionally not persisted.
 
-> GitHub Pages is served over HTTPS. The example tries `wss://` first on HTTPS pages and can fall back to `ws://` for local Augmenta servers when the browser allows it.
+> GitHub Pages is served over HTTPS. The example still tries `ws://` first, then `wss://`, because local Augmenta outputs commonly expose a plain WebSocket endpoint.
 
 ## What it shows
 
@@ -89,7 +89,7 @@ Do not open `index.html` directly with `file://`; ES modules need to be served o
 ## Connect to Augmenta
 
 1. Enable the Augmenta **WebSocket Output**.
-2. Enter the Augmenta server IP address or hostname and port. An IP address or already-qualified hostname is used as-is. For a simple hostname such as `augmenta-server`, the example tries the literal name first, then `.local`, `.home`, and the standard `.home.arpa`, stopping at the first successful connection. `localhost` prefers `127.0.0.1` and keeps hostname/IPv6 fallbacks. HTTP pages try `ws://` first and then `wss://`; HTTPS pages try `wss://` first and then `ws://`. The default port is `6060`. Enter only the host in the address field; the port stays in its separate field.
+2. Enter the Augmenta server IP address or hostname and port. An IP address or already-qualified hostname is used as-is. For a simple hostname such as `augmenta-server`, the example tries the literal name first, then `.local`, `.home`, and the standard `.home.arpa`, stopping at the first successful connection. `localhost` prefers `127.0.0.1` and keeps hostname/IPv6 fallbacks. Both HTTP and HTTPS pages try `ws://` first and then `wss://`. The default port is `6060`. Enter only the host in the address field; the port stays in its separate field.
 3. Keep **Auto** unless you are testing a specific protocol version. Auto starts with V3 and automatically reconnects with the server-reported V2/V3 parser when required.
 4. The viewer starts in **Connecting…** mode automatically, moves through the fallback candidates as they fail, and retries the full set after one second until a connection succeeds. While active, the button becomes **Connected**; click it to stop all reconnect attempts.
 
@@ -207,7 +207,7 @@ The low-level `AugmentaWebSocketClient` transport currently performs one connect
 
 ## Browser / networking notes
 
-- the UI accepts only an IP address/hostname and port; it constructs WebSocket candidates internally and prefers `wss://` on HTTPS pages, `ws://` on HTTP pages.
+- the UI accepts only an IP address/hostname and port; it constructs WebSocket candidates internally and tries `ws://` before `wss://`.
 - browser mixed-content and private-network protections may block the `ws://` fallback from an HTTPS page depending on browser policy;
 - CORS does not govern WebSocket framing itself, but the server/browser can still apply Origin, TLS and local-network security rules.
 
