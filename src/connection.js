@@ -331,12 +331,12 @@ function hostCandidates(host) {
   }
   if (host.includes('.') || host.includes(':')) return [host];
 
-  // Keep the literal hostname first. .home is common on local routers (and is
-  // the useful suffix on many Windows LANs); then try mDNS and home.arpa.
+  // Keep the literal hostname first, then try mDNS before router-provided
+  // local domains.
   return [
     host,
-    `${host}.home`,
     `${host}.local`,
+    `${host}.home`,
     `${host}.home.arpa`
   ];
 }
