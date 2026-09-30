@@ -18,7 +18,7 @@ The viewer requests the richest practical uncompressed stream from the Augmenta 
 
 - automatic protocol selection: try V3 first, then reconnect with the server-reported V2/V3 parser when needed;
 - clusters and stable IDs / UUIDs;
-- centroid, velocity, state, weight and look-at vector;
+- centroid, velocity, speed, state, bounding-box size and rotation;
 - raw velocity vector plus velocity magnitude in m/s in the debug inspector;
 - bounding-box center, size and rotation;
 - object point clouds and point-intensity data when present;
@@ -36,7 +36,7 @@ Three.js renders:
 - scene bounds, scene floor and box/cylinder/sphere zones;
 - a Pleiades-style orbit camera, 1 × 1 m floor grid and axes.
 
-Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. The camera is not moved when a connection/setup arrives. **Reset camera** or a left-button double-click reframes the displayed setup. The Display panel exposes **All scenes** plus every Scene received in the current World. On desktop, the translucent panel overlays the 3D view: use the edge arrow to hide/show it, or drag its left edge to resize it. The camera projection follows the panel width so the orbit target remains centered in the unobscured part of the view.
+Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. The first received setup is framed once with a centered, slightly elevated front view; later reconnects do not move the user's camera. **Reset camera** or a left-button double-click reframes the displayed setup. The Display panel exposes **All scenes** plus every Scene received in the current World. On desktop, the translucent panel overlays the 3D view: use the edge arrow to hide/show it, or drag its left edge to resize it. The camera projection follows the panel width so the orbit target remains centered in the unobscured part of the view.
 
 The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to commit `ab030fee`, which includes the V1 base, Pleiades hierarchy/update parsing, and explicit World containers, for reproducible builds. The inspector exposes every field currently surfaced by the SDK; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
 
@@ -114,7 +114,7 @@ The example requests:
 
 Compression is disabled because the browser example intentionally stays dependency-free. Applications that need compressed streams can provide the SDK with a Zstd decompressor.
 
-The requested transform matches Three.js directly: **Y up, right handed, absolute coordinates**, so one coordinate unit remains one meter. Pleiades applies that transform to both binary tracking data and setup geometry before transmission. The example consumes Scene/Zone positions and sizes directly from the SDK. Bounding-box rotation is requested in **radians**, allowing Pleiades to apply the same axis conversion before Three.js consumes it.
+The example explicitly requests the Three.js convention from Augmenta: **Y up, right handed, bottom-left origin, absolute coordinates, no extra flips**, so one coordinate unit remains one meter. Pleiades applies that transform to live tracking and setup positions before transmission. Scene and box-zone sizes are unsigned magnitudes, so the renderer places their local depth toward **-Z** to preserve the requested right-handed direction. Bounding-box rotation is requested in **radians**, allowing Pleiades to apply the same axis conversion before Three.js consumes it.
 
 ## SDK / example boundary
 

@@ -1,5 +1,5 @@
 import {
-  AugmentaWebSocketClient, AxisMode, CoordinateSpace, RotationMode
+  AugmentaWebSocketClient, AxisMode, CoordinateSpace, OriginMode, RotationMode
 } from 'augmenta-client-sdk';
 import { createViewer } from './viewer.js';
 import { createDebugPanel } from './debug.js';
@@ -10,6 +10,18 @@ const DISCONNECT_CLEANUP_DELAY_MS = 500;
 const SIDEBAR_MIN_WIDTH = 320;
 const SIDEBAR_MAX_WIDTH = 720;
 const SIDEBAR_VIEWPORT_MARGIN = 160;
+
+// Three.js is Y-up, right-handed and metre-based. Ask Augmenta/Pleiades to
+// deliver tracking and setup data directly in that convention.
+const THREE_JS_AXIS_TRANSFORM = Object.freeze({
+  axis: AxisMode.YUpRightHanded,
+  origin: OriginMode.BottomLeft,
+  flipX: false,
+  flipY: false,
+  flipZ: false,
+  coordinateSpace: CoordinateSpace.Absolute
+});
+
 const $ = (selector) => document.querySelector(selector);
 const ui = {
   app: $('#app'), sidebar: $('#sidebar'), sidebarResizer: $('#sidebar-resizer'), serverAddress: $('#server-address'), port: $('#port'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
@@ -318,13 +330,7 @@ function attemptConnection() {
       version, downSample,
       streamClouds: true, streamClusters: true, streamClusterPoints: true, streamZonePoints: true,
       useCompression: false, displayPointIntensity: true, boxRotationMode: RotationMode.Radians,
-      axisTransform: {
-        axis: AxisMode.YUpRightHanded,
-        flipX: false,
-        flipY: false,
-        flipZ: false,
-        coordinateSpace: CoordinateSpace.Absolute
-      }
+      axisTransform: THREE_JS_AXIS_TRANSFORM
     }
   });
 

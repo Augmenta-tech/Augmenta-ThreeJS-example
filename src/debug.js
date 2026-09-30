@@ -9,7 +9,9 @@ export function createDebugPanel(summary, content) {
     lastRender = now;
     if (!frame && !control) return;
 
-    summary.textContent = frame ? `${fps} fps` : 'Waiting for tracking data';
+    summary.textContent = frame
+      ? `${frame.getObjectCount()} objects · ${frame.getZoneEventCount()} zones · ${fps} fps`
+      : 'Waiting for tracking data';
     const blocks = [];
     if (frame) blocks.push(frameBlock(frame, fps, sceneSize), objectsBlock(frame), zonesBlock(frame));
     if (control) blocks.push(controlBlock(control));
@@ -38,7 +40,7 @@ function objectsBlock(frame) {
       const c = object.getCluster();
       const velocity = c.getVelocity();
       const speed = Math.hypot(...velocity);
-      cluster = `state ${esc(ClusterState[c.getState()] ?? c.getState())}<br>centroid ${esc(vec(c.getCentroid()))}<br>velocity ${esc(vec(velocity))}<br>speed ${fmt(speed)} m/s<br>box center ${esc(vec(c.getBoundingBoxCenter()))}<br>box size ${esc(vec(c.getBoundingBoxSize()))}<br>rotation ${esc(vec(c.getBoundingBoxRotationEuler()))}<br>weight ${fmt(c.getWeight())}<br>lookAt ${esc(vec(c.getLookAt()))}`;
+      cluster = `state ${esc(ClusterState[c.getState()] ?? c.getState())}<br>centroid ${esc(vec(c.getCentroid()))}<br>velocity ${esc(vec(velocity))}<br>speed ${fmt(speed)} m/s<br>box size ${esc(vec(c.getBoundingBoxSize()))}<br>rotation ${esc(vec(c.getBoundingBoxRotationEuler()))}`;
     }
 
     let points = '—';

@@ -53,10 +53,11 @@ export function createViewer(host) {
   unitBox.dispose();
   const centroidGeometry = new THREE.SphereGeometry(0.045, 12, 8);
 
-  const homePosition = new THREE.Vector3(6.5, 5.5, 7.5);
+  const homePosition = new THREE.Vector3(0, 2.5, 7.5);
   const homeTarget = new THREE.Vector3(0, 1.2, 0);
   let rightInset = 0;
   let insetAnimationFrame;
+  let hasAutoFramedSetup = false;
 
   function resetCamera() {
     camera.position.copy(homePosition);
@@ -278,6 +279,13 @@ export function createViewer(host) {
     clearGroup(setupGroup);
     addContainer(root, setupGroup);
     updateHomeFromSetup(false);
+
+    // Frame only the first received setup. Reconnects and Scene changes keep
+    // the user's camera position; double-click / Reset camera remains explicit.
+    if (!hasAutoFramedSetup) {
+      resetCamera();
+      hasAutoFramedSetup = true;
+    }
   }
 
   function upsertSetup(container) {
@@ -331,7 +339,9 @@ export function createViewer(host) {
     geometry.dispose();
 
     edges.name = 'Scene bounds';
-    edges.position.set(size[0] / 2, size[1] / 2, size[2] / 2);
+    // AxisTransform returns size as positive magnitudes. In Y-up/right-handed
+    // space the original +Z extent points toward local -Z.
+    edges.position.set(size[0] / 2, size[1] / 2, -size[2] / 2);
     edges.renderOrder = 1;
     group.add(edges);
 
@@ -347,7 +357,7 @@ export function createViewer(host) {
     );
     floor.name = 'Scene floor';
     floor.rotation.x = -Math.PI / 2;
-    floor.position.set(size[0] / 2, 0.002, size[2] / 2);
+    floor.position.set(size[0] / 2, 0.002, -size[2] / 2);
     group.add(floor);
   }
 
@@ -373,7 +383,9 @@ export function createViewer(host) {
 
       if (params.isBox()) {
         const size = params.getBoxShapeParameters().size;
-        mesh.position.set(size[0] / 2, size[1] / 2, size[2] / 2);
+        // Box size is a magnitude; preserve the requested right-handed -Z
+        // direction for the local [0..size] Augmenta box volume.
+        mesh.position.set(size[0] / 2, size[1] / 2, -size[2] / 2);
       }
     } else {
       mesh = new THREE.Mesh(
@@ -435,8 +447,10 @@ export function createViewer(host) {
     const distance = Math.max(span / (2 * Math.tan(fov / 2)) * 1.35, 2);
 
     homeTarget.copy(center);
+    // A centered, slightly elevated front view similar to Pleiades' default,
+    // rather than an oblique corner view.
     homePosition.copy(center).add(
-      new THREE.Vector3(distance * 0.72, distance * 0.52, distance * 0.92)
+      new THREE.Vector3(0, distance * 0.14, distance * 1.08)
     );
 
     // Keep orbiting around the center of the currently displayed setup without
@@ -462,8 +476,9 @@ export function createViewer(host) {
 
   function clearSetup() {
     clearGroup(setupGroup);
-    homePosition.set(6.5, 5.5, 7.5);
+    homePosition.set(0, 2.5, 7.5);
     homeTarget.set(0, 1.2, 0);
+    hasAutoFramedSetup = false;
   }
 
   function disposeView(view) {
