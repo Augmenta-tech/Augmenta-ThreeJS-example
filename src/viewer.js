@@ -59,8 +59,41 @@ export function createViewer(host) {
   const homeTarget = new THREE.Vector3(0, 1.2, 0);
   let rightInset = 0;
   let insetAnimationFrame;
+  let cameraChangeHandler;
+  let cameraUserControlled = false;
+
+  function getCameraView() {
+    return {
+      position: camera.position.toArray(),
+      target: controls.target.toArray()
+    };
+  }
+
+  function setCameraView(view) {
+    const position = validVector3(view?.position);
+    const target = validVector3(view?.target);
+    if (!position || !target) return false;
+
+    camera.position.fromArray(position);
+    controls.target.fromArray(target);
+    cameraUserControlled = true;
+    controls.update();
+    return true;
+  }
+
+  function setCameraChangeHandler(handler) {
+    cameraChangeHandler = typeof handler === 'function' ? handler : undefined;
+  }
+
+  controls.addEventListener('start', () => {
+    cameraUserControlled = true;
+  });
+  controls.addEventListener('change', () => {
+    cameraChangeHandler?.(getCameraView());
+  });
 
   function resetCamera() {
+    cameraUserControlled = false;
     camera.position.copy(homePosition);
     controls.target.copy(homeTarget);
     controls.update();
@@ -389,11 +422,13 @@ export function createViewer(host) {
       new THREE.Vector3(0, distance * 0.14, distance * 1.08)
     );
 
-    // Keep orbiting around the center of the currently displayed setup without
-    // moving the camera position when setup/connect updates arrive.
-    controls.target.copy(center);
-    controls.update();
-
+    // Before the user has chosen a view, keep orbiting around the setup
+    // center. A restored/panned/orbited camera keeps its own target so setup
+    // refreshes cannot overwrite the persisted view.
+    if (!cameraUserControlled) {
+      controls.target.copy(center);
+      controls.update();
+    }
   }
 
   function setVisibility({ clusters, points, zones, vectors }) {
@@ -457,10 +492,21 @@ export function createViewer(host) {
     renderSetup,
     clearTracking,
     clearSetup,
+    getCameraView,
     resetCamera,
+    setCameraChangeHandler,
+    setCameraView,
     setRightInset,
     setVisibility
   };
+}
+
+function validVector3(value) {
+  return Array.isArray(value)
+    && value.length === 3
+    && value.every((component) => Number.isFinite(component))
+    ? value
+    : undefined;
 }
 
 function setSetupRotation(object, mappedRotationDegrees) {
