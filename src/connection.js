@@ -3,6 +3,7 @@ import {
 } from 'augmenta-client-sdk';
 
 const RECONNECT_DELAY_MS = 1000;
+const CONNECTION_ATTEMPT_TIMEOUT_MS = 2500;
 
 // Three.js is Y-up, right-handed and metre-based. Ask Augmenta/Pleiades to
 // deliver tracking and setup data directly in that convention.
@@ -32,6 +33,10 @@ export function createConnectionController({
   let activeVersion;
   let phase = 'idle';
   let note = '';
+  let targetPlan = [];
+  let targetIndex = 0;
+  let targetKey = '';
+  let attemptTimer;
 
   function getState() {
     return { wantsConnection, socketOpen, retrying, activeVersion, phase, note };
@@ -48,8 +53,24 @@ export function createConnectionController({
     reconnectTimer = undefined;
   }
 
+  function clearAttemptTimer() {
+    if (attemptTimer) window.clearTimeout(attemptTimer);
+    attemptTimer = undefined;
+  }
+
+  function ensureTargetPlan(address, port) {
+    const key = String(address ?? '').trim() + '\n' + String(port ?? '').trim();
+    if (targetPlan.length === 0 || key !== targetKey) {
+      targetPlan = buildConnectionTargets(address, port);
+      targetIndex = 0;
+      targetKey = key;
+    }
+    return targetPlan;
+  }
+
   function stopTransport(reason = 'User disconnect') {
     clearReconnectTimer();
+    clearAttemptTimer();
     socketOpen = false;
     const current = client;
     client = undefined;
@@ -61,16 +82,32 @@ export function createConnectionController({
     return Number(protocol);
   }
 
-  function scheduleReconnect(message = 'Connection closed.') {
+  function scheduleReconnect(message = 'Connection closed.', { nextTarget = false } = {}) {
     if (!wantsConnection) return;
     clearReconnectTimer();
+    clearAttemptTimer();
     retrying = true;
     socketOpen = false;
-    publish('retrying', `${message} Retrying automatically…`);
+
+    let delay = RECONNECT_DELAY_MS;
+    if (nextTarget && targetPlan.length > 0) {
+      targetIndex = (targetIndex + 1) % targetPlan.length;
+      const wrapped = targetIndex === 0;
+      delay = wrapped ? RECONNECT_DELAY_MS : 0;
+      publish(
+        'retrying',
+        wrapped
+          ? `${message} No address/WebSocket variant connected; retrying automatically…`
+          : `${message} Trying ${targetPlan[targetIndex].label}…`
+      );
+    } else {
+      publish('retrying', `${message} Retrying automatically…`);
+    }
+
     reconnectTimer = window.setTimeout(() => {
       reconnectTimer = undefined;
       attemptConnection();
-    }, RECONNECT_DELAY_MS);
+    }, delay);
   }
 
   function restartForProtocol(version) {
@@ -95,7 +132,8 @@ export function createConnectionController({
     let downSample;
     try {
       const settings = getSettings();
-      target = connectionTarget(settings.address, settings.port);
+      const targets = ensureTargetPlan(settings.address, settings.port);
+      target = targets[targetIndex];
       protocol = String(settings.protocol);
       downSample = Math.max(1, Math.floor(Number(settings.downsample) || 1));
     } catch (error) {
@@ -136,9 +174,17 @@ export function createConnectionController({
     });
 
     client = connection;
+    clearAttemptTimer();
+    attemptTimer = window.setTimeout(() => {
+      if (client !== connection || socketOpen) return;
+      client = undefined;
+      connection.disconnect(1000, 'Connection attempt timed out');
+      scheduleReconnect(`Could not connect to ${target.label}.`, { nextTarget: true });
+    }, CONNECTION_ATTEMPT_TIMEOUT_MS);
 
     connection.on('open', () => {
       if (client !== connection || !wantsConnection) return;
+      clearAttemptTimer();
       retrying = false;
       socketOpen = true;
       publish(
@@ -149,9 +195,14 @@ export function createConnectionController({
 
     connection.on('close', () => {
       if (client !== connection) return;
+      clearAttemptTimer();
+      const wasOpen = socketOpen;
       client = undefined;
       socketOpen = false;
-      scheduleReconnect('Connection closed.');
+      scheduleReconnect(
+        wasOpen ? 'Connection closed.' : `Could not connect to ${target.label}.`,
+        { nextTarget: !wasOpen }
+      );
     });
 
     connection.on('error', (error) => {
@@ -207,9 +258,13 @@ export function createConnectionController({
     try {
       connection.connect();
     } catch (error) {
+      clearAttemptTimer();
       if (client === connection) client = undefined;
       console.error('Augmenta connection failed', error);
-      scheduleReconnect(error instanceof Error ? error.message : 'Connection failed.');
+      scheduleReconnect(
+        error instanceof Error ? error.message : `Could not connect to ${target.label}.`,
+        { nextTarget: true }
+      );
     }
   }
 
@@ -239,7 +294,11 @@ export function createConnectionController({
   return { getState, start, stop, restart };
 }
 
-function connectionTarget(address, portValue) {
+export function buildConnectionTargets(
+  address,
+  portValue,
+  pageProtocol = globalThis.location?.protocol ?? 'http:'
+) {
   const host = normalizeServerHost(address);
   const port = Number(portValue);
 
@@ -248,12 +307,33 @@ function connectionTarget(address, portValue) {
     throw new Error('Enter a valid port between 1 and 65535.');
   }
 
-  // IPv6 literals need brackets in a WebSocket URL; IPv4/mDNS names do not.
-  const urlHost = host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
-  return {
-    label: `${host}:${port}`,
-    url: `ws://${urlHost}:${port}`
-  };
+  const hosts = hostCandidates(host);
+  const schemes = pageProtocol === 'https:' ? ['wss', 'ws'] : ['ws', 'wss'];
+
+  return schemes.flatMap((scheme) => hosts.map((candidateHost) => {
+    // IPv6 literals need brackets in a WebSocket URL; IPv4/mDNS names do not.
+    const urlHost = candidateHost.includes(':') && !candidateHost.startsWith('[')
+      ? `[${candidateHost}]`
+      : candidateHost;
+    return {
+      label: `${scheme}://${urlHost}:${port}`,
+      url: `${scheme}://${urlHost}:${port}`
+    };
+  }));
+}
+
+function hostCandidates(host) {
+  if (/^localhost$/i.test(host) || host.includes('.') || host.includes(':')) return [host];
+
+  // Keep the literal hostname first, then try the most useful local-network
+  // suffixes. .local is mDNS; .home is used by some routers; .home.arpa is the
+  // IETF-standard home-network domain.
+  return [
+    host,
+    `${host}.local`,
+    `${host}.home`,
+    `${host}.home.arpa`
+  ];
 }
 
 function normalizeServerHost(value) {
@@ -269,6 +349,5 @@ function normalizeServerHost(value) {
     throw new Error('Enter the port in the Port field.');
   }
 
-  // IPv4/qualified hostnames already contain a dot; IPv6 contains a colon.
-  return !host.includes('.') && !host.includes(':') ? `${host}.local` : host;
+  return host;
 }
