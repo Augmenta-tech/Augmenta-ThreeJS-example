@@ -7,10 +7,10 @@ import {
   buildConnectionShareUrl,
   readConnectionOptionsFromUrl
 } from './share-link.js';
-import { qrcode } from 'https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.mjs';
 
 const DISCONNECT_CLEANUP_DELAY_MS = 500;
 const CAMERA_PREFERENCE_SAVE_DELAY_MS = 250;
+const QR_CODE_MODULE_URL = 'https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.mjs';
 const SIDEBAR_MIN_WIDTH = 320;
 const SIDEBAR_MAX_WIDTH = 450;
 const SIDEBAR_VIEWPORT_MARGIN = 160;
@@ -31,6 +31,7 @@ const debug = createDebugPanel(ui.summary, ui.debug);
 
 let disconnectCleanupTimer;
 let cameraPreferenceSaveTimer;
+let qrCodeFactoryPromise;
 let hasPersistedCameraView = false;
 let demoTimer;
 let lastFrame;
@@ -346,18 +347,33 @@ function getConnectionSettings() {
   };
 }
 
-function refreshConnectionQr() {
-  const shareUrl = buildConnectionShareUrl(window.location.href, getConnectionSettings());
-  const qr = qrcode(0, 'M');
-  qr.addData(shareUrl);
-  qr.make();
+function getQrCodeFactory() {
+  qrCodeFactoryPromise ??= import(QR_CODE_MODULE_URL).then((module) => module.qrcode);
+  return qrCodeFactoryPromise;
+}
 
+async function refreshConnectionQr() {
+  const shareUrl = buildConnectionShareUrl(window.location.href, getConnectionSettings());
   ui.connectionQr.href = shareUrl;
-  ui.connectionQrCode.innerHTML = qr.createSvgTag({
-    cellSize: 4,
-    margin: 8,
-    scalable: true
-  });
+
+  try {
+    const qrcode = await getQrCodeFactory();
+    // Connection fields may have changed while the module was loading.
+    if (ui.connectionQr.href !== shareUrl) return;
+
+    const qr = qrcode(0, 'M');
+    qr.addData(shareUrl);
+    qr.make();
+    ui.connectionQrCode.innerHTML = qr.createSvgTag({
+      cellSize: 4,
+      margin: 8,
+      scalable: true
+    });
+    ui.connectionQr.hidden = false;
+  } catch {
+    // QR sharing is optional; a CDN failure must never block the viewer itself.
+    ui.connectionQr.hidden = true;
+  }
 }
 
 function handleSetup(message) {
