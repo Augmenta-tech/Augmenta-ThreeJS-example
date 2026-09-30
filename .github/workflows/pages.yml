@@ -1,7 +1,8 @@
 name: Deploy GitHub Pages
 
-# Temporarily manual-only. GitHub Pages is deployed from the main branch.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
