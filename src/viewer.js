@@ -6,7 +6,7 @@ import { speedFromVelocity } from './motion.js';
 const FLOOR_Y = 0;
 const VELOCITY_DISPLAY_SCALE = 3;
 const VELOCITY_MIN_DISPLAY_LENGTH = 0.18;
-const ZONE_PRESENCE_LABEL_GAP = 0.28;
+const ZONE_PRESENCE_LABEL_GAP = 0.32;
 const ZONE_PRESENCE_LABEL_COLOR = new THREE.Color(0x9aa1ad);
 const GHOST_COLOR = new THREE.Color(0x8a909b);
 const SESSION_COLOR_OFFSET = Math.floor(Math.random() * 1000);
@@ -301,7 +301,8 @@ export function createViewer(host) {
     // SDK values into Three.js objects; it does not reimplement axis conversion.
     group.position.fromArray(container.getPosition());
     const r = container.getRotation().map(THREE.MathUtils.degToRad);
-    group.rotation.set(r[0], r[1], r[2], 'XYZ');
+    // Match Pleiades exactly: setup rotations are composed Z -> Y -> X.
+    group.rotation.set(r[0], r[1], r[2], 'ZYX');
     parent.add(group);
 
     if (container.isScene()) {
@@ -421,7 +422,7 @@ export function createViewer(host) {
 
     const label = createLabelSprite('', ZONE_PRESENCE_LABEL_COLOR);
     label.scale.multiplyScalar(0.88);
-    label.material.opacity = 0.72;
+    label.material.opacity = 0.62;
     label.visible = false;
     positionZoneLabel(label, params);
     group.add(label);
@@ -469,7 +470,7 @@ export function createViewer(host) {
       return;
     }
 
-    const text = String(presence);
+    const text = `P ${presence}`;
     if (view.labelText !== text) {
       replaceLabelTexture(view.label, text, view.labelColor);
       view.labelText = text;
