@@ -17,8 +17,8 @@ export function makeDemoSetup() {
 export function makeDemoFrame(t) {
   const objects = [0, 1, 2].map((index) => demoObject(index, t));
   const zones = [
-    new ZoneEventPacket('/Demo/Welcome', 0, 0, 1, 0.31, [new ZoneEventProperty(ZonePropertyType.Slider, { value: (Math.sin(t) + 1) / 2 })]),
-    new ZoneEventPacket('/Demo/Interaction', 0, 0, 2, 0.67, [new ZoneEventProperty(ZonePropertyType.XYPad, { x: (Math.sin(t * 0.8) + 1) / 2, y: (Math.cos(t * 0.6) + 1) / 2 })])
+    new ZoneEventPacket('/Demo/Welcome', 0, 0, 1, 0.31, [new ZoneEventProperty(ZonePropertyType.XYPad, { x: (Math.sin(t * 0.8) + 1) / 2, y: (Math.cos(t * 0.6) + 1) / 2 })]),
+    new ZoneEventPacket('/Demo/Interaction', 0, 0, 2, 0.67, [new ZoneEventProperty(ZonePropertyType.Slider, { value: (Math.sin(t) + 1) / 2 })])
   ];
   const timestamp = Math.floor(t * 1000);
   return new DataBlob(new SceneInfoPacket('/Demo', timestamp), objects, zones, timestamp);
