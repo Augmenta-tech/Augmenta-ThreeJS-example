@@ -42,7 +42,7 @@ Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right
 
 Partial setup updates are merged into the cached hierarchy before rendering, so a Scene update that omits its Zone children does not erase them. Scene selection and scene-size debug information therefore always use the latest merged setup.
 
-The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to commit `808e0b2e`, which is also the current SDK `main`, for reproducible builds. The inspector exposes the main fields useful for this example; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
+The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to SDK `1.0.0-beta.1` commit `78e07192` for reproducible builds. The inspector exposes the main fields useful for this example; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
 
 ## Clone and run locally
 
@@ -143,6 +143,7 @@ This separation keeps the SDK reusable by non-Three.js applications and keeps re
 
 ```text
 .
+├── .github/workflows/ci.yml           # Pull-request validation
 ├── .github/workflows/pages.yml        # Build SDK + deploy GitHub Pages
 ├── index.html                          # Static entry point + import map
 ├── augmenta-favicon.png                # White Augmenta symbol used by the page
@@ -178,6 +179,8 @@ The workflow:
 5. deploys that artifact with GitHub Pages.
 
 GitHub Pages must use **Settings → Pages → Source: GitHub Actions**. The workflow assumes Pages is already enabled and only builds and deploys the site.
+
+Pull requests also run `.github/workflows/ci.yml`, which builds/tests the pinned SDK and runs the example regression tests without deploying Pages.
 
 ## Updating the SDK submodule
 
