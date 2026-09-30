@@ -21,7 +21,9 @@ const ZONE_PRESENCE_FADE_DURATION_MS = 180;
 const ZONE_VISUAL_COLOR = new THREE.Color(0x969ba3);
 const ZONE_OUTLINE_COLOR = ZONE_VISUAL_COLOR;
 const ZONE_OUTLINE_WIDTH = 1.7;
-const ROUND_OUTLINE_SEGMENTS = 24;
+const ZONE_XY_PAD_FILL_OPACITY = 0.16;
+const ZONE_XY_PAD_AXIS_OPACITY = 0.72;
+const ROUND_OUTLINE_SEGMENTS = 32;
 const GHOST_COLOR = new THREE.Color(0x8a909b);
 const SESSION_COLOR_OFFSET = Math.floor(Math.random() * 1000);
 const PALETTE = [
@@ -402,6 +404,9 @@ export function createViewer(host) {
     outline.renderOrder = 6;
     group.add(presenceMesh, outline);
 
+    const xyPad = params.isBox() ? createBoxXYPad(params) : undefined;
+    if (xyPad) group.add(xyPad.group);
+
     const address = container.getAddress();
     if (!address) return;
 
@@ -416,6 +421,7 @@ export function createViewer(host) {
       labelBaseScale: label.scale.clone(),
       presence: 0,
       presenceMesh,
+      xyPad,
       fillPulseStartedAt: 0,
       fillFadeStartedAt: 0,
       fillFadeFromOpacity: 0,
@@ -449,7 +455,16 @@ export function createViewer(host) {
       zonePresence.set(address, presence);
 
       const view = zoneViews.get(address);
-      if (view) setZonePresence(view, presence, event.getEnters());
+      if (!view) continue;
+
+      setZonePresence(view, presence, event.getEnters());
+
+      for (const property of event.getProperties()) {
+        if (!property.isXYPad()) continue;
+        const value = property.getXYPadParameters();
+        updateBoxXYPad(view.xyPad, value.x, value.y);
+        break;
+      }
     }
   }
 
@@ -618,7 +633,10 @@ export function createViewer(host) {
     views.clear();
 
     zonePresence.clear();
-    for (const view of zoneViews.values()) setZonePresence(view, 0);
+    for (const view of zoneViews.values()) {
+      setZonePresence(view, 0);
+      if (view.xyPad) view.xyPad.group.visible = false;
+    }
   }
 
   function clearSetup() {
@@ -696,26 +714,87 @@ function setLeftHandedQuaternion(target, [x, y, z, w]) {
 }
 
 function createZoneOutline(params, sourceGeometry, color) {
-  let positions;
-
   if (params.isBox()) {
     const edges = new THREE.EdgesGeometry(sourceGeometry);
-    positions = Array.from(edges.attributes.position.array);
+    const positions = Array.from(edges.attributes.position.array);
     edges.dispose();
-  } else if (params.isCylinder()) {
+    return createWideLineSegments(positions, color, ZONE_OUTLINE_WIDTH, 'Zone outline');
+  }
+
+  const outline = new THREE.Group();
+  outline.name = 'Zone outline';
+
+  const silhouette = new THREE.Mesh(
+    sourceGeometry.clone(),
+    createSilhouetteMaterial(color)
+  );
+  silhouette.name = 'Zone silhouette';
+  silhouette.renderOrder = 6;
+  outline.add(silhouette);
+
+  let guidePositions = [];
+  if (params.isCylinder()) {
     const { radius, height } = params.getCylinderShapeParameters();
-    positions = cylinderOutlinePositions(
+    guidePositions = cylinderRingPositions(
       Math.max(Math.abs(radius), 0.001),
       Math.max(Math.abs(height), 0.001)
     );
   } else if (params.isSphere()) {
-    positions = sphereOutlinePositions(
+    guidePositions = sphereEquatorPositions(
       Math.max(Math.abs(params.getSphereShapeParameters().radius), 0.001)
     );
-  } else {
-    positions = [];
   }
 
+  if (guidePositions.length) {
+    const guides = createWideLineSegments(
+      guidePositions,
+      color,
+      ZONE_OUTLINE_WIDTH,
+      'Zone guide'
+    );
+    guides.renderOrder = 7;
+    outline.add(guides);
+  }
+
+  return outline;
+}
+
+function createSilhouetteMaterial(color) {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      outlineColor: { value: color.clone() }
+    },
+    vertexShader: `
+      varying vec3 vNormal;
+      varying vec3 vViewDirection;
+
+      void main() {
+        vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+        vNormal = normalize(normalMatrix * normal);
+        vViewDirection = normalize(-viewPosition.xyz);
+        gl_Position = projectionMatrix * viewPosition;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 outlineColor;
+      varying vec3 vNormal;
+      varying vec3 vViewDirection;
+
+      void main() {
+        float facing = abs(dot(normalize(vNormal), normalize(vViewDirection)));
+        float alpha = 1.0 - smoothstep(0.0, 0.16, facing);
+        if (alpha < 0.01) discard;
+        gl_FragColor = vec4(outlineColor, alpha * 0.96);
+      }
+    `,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+    side: THREE.DoubleSide
+  });
+}
+
+function createWideLineSegments(positions, color, width, name) {
   const geometry = new LineSegmentsGeometry();
   geometry.setPositions(positions);
   geometry.computeBoundingBox();
@@ -723,7 +802,7 @@ function createZoneOutline(params, sourceGeometry, color) {
 
   const material = new LineMaterial({
     color: color.getHex(),
-    linewidth: ZONE_OUTLINE_WIDTH,
+    linewidth: width,
     transparent: true,
     opacity: 0.99,
     depthTest: false,
@@ -734,61 +813,118 @@ function createZoneOutline(params, sourceGeometry, color) {
     Math.max(window.innerHeight, 1)
   );
 
-  const outline = new LineSegments2(geometry, material);
-  outline.name = 'Zone outline';
-  return outline;
+  const lines = new LineSegments2(geometry, material);
+  lines.name = name;
+  lines.renderOrder = 7;
+  return lines;
 }
 
-function cylinderOutlinePositions(radius, height) {
+function cylinderRingPositions(radius, height) {
   const positions = [];
   const halfHeight = height / 2;
 
   for (const y of [-halfHeight, halfHeight]) {
-    addCircleSegments(positions, radius, ROUND_OUTLINE_SEGMENTS, (angle) => [
+    addCircleSegments(positions, ROUND_OUTLINE_SEGMENTS, (angle) => [
       Math.cos(angle) * radius,
       y,
       Math.sin(angle) * radius
     ]);
   }
 
-  for (let i = 0; i < 4; i++) {
-    const angle = i * Math.PI / 2;
-    const x = Math.cos(angle) * radius;
-    const z = Math.sin(angle) * radius;
-    positions.push(x, -halfHeight, z, x, halfHeight, z);
-  }
-
   return positions;
 }
 
-function sphereOutlinePositions(radius) {
+function sphereEquatorPositions(radius) {
   const positions = [];
-
-  addCircleSegments(positions, radius, ROUND_OUTLINE_SEGMENTS, (angle) => [
+  addCircleSegments(positions, ROUND_OUTLINE_SEGMENTS, (angle) => [
     Math.cos(angle) * radius,
     0,
     Math.sin(angle) * radius
   ]);
-  addCircleSegments(positions, radius, ROUND_OUTLINE_SEGMENTS, (angle) => [
-    Math.cos(angle) * radius,
-    Math.sin(angle) * radius,
-    0
-  ]);
-  addCircleSegments(positions, radius, ROUND_OUTLINE_SEGMENTS, (angle) => [
-    0,
-    Math.sin(angle) * radius,
-    Math.cos(angle) * radius
-  ]);
-
   return positions;
 }
 
-function addCircleSegments(target, _radius, segments, pointAt) {
+function addCircleSegments(target, segments, pointAt) {
   for (let i = 0; i < segments; i++) {
     const a = i / segments * Math.PI * 2;
     const b = (i + 1) / segments * Math.PI * 2;
     target.push(...pointAt(a), ...pointAt(b));
   }
+}
+
+function createBoxXYPad(params) {
+  const size = params.getBoxShapeParameters().size;
+  const width = Math.max(Math.abs(size[0]), 0.001);
+  const depth = Math.max(Math.abs(size[2]), 0.001);
+  const y = 0.008;
+
+  const axes = createWideLineSegments(
+    [0, y, 0, 0, y, -depth, 0, y, 0, width, y, 0],
+    ZONE_OUTLINE_COLOR,
+    1.15,
+    'Zone XY pad axes'
+  );
+  axes.material.opacity = ZONE_XY_PAD_AXIS_OPACITY;
+  axes.renderOrder = 8;
+
+  const fillGeometry = new THREE.BufferGeometry();
+  fillGeometry.setAttribute(
+    'position',
+    new THREE.BufferAttribute(new Float32Array(12), 3)
+  );
+  fillGeometry.setIndex([0, 1, 2, 2, 1, 3]);
+
+  const fill = new THREE.Mesh(
+    fillGeometry,
+    new THREE.MeshBasicMaterial({
+      color: ZONE_VISUAL_COLOR,
+      transparent: true,
+      opacity: ZONE_XY_PAD_FILL_OPACITY,
+      side: THREE.DoubleSide,
+      depthTest: false,
+      depthWrite: false
+    })
+  );
+  fill.name = 'Zone XY pad quadrant';
+  fill.renderOrder = 7;
+
+  const group = new THREE.Group();
+  group.name = 'Zone XY pad';
+  group.visible = false;
+  group.add(fill, axes);
+
+  return { group, axes, fill, width, depth, y };
+}
+
+function updateBoxXYPad(xyPad, rawX, rawY) {
+  if (!xyPad || !Number.isFinite(rawX) || !Number.isFinite(rawY)) return;
+
+  const x = THREE.MathUtils.clamp(rawX, 0, 1);
+  const y = THREE.MathUtils.clamp(rawY, 0, 1);
+  const px = x * xyPad.width;
+  const pz = -y * xyPad.depth;
+  const floorY = xyPad.y;
+
+  xyPad.axes.geometry.setPositions([
+    px, floorY, 0,
+    px, floorY, -xyPad.depth,
+    0, floorY, pz,
+    xyPad.width, floorY, pz
+  ]);
+  xyPad.axes.geometry.computeBoundingBox();
+  xyPad.axes.geometry.computeBoundingSphere();
+
+  const positions = xyPad.fill.geometry.getAttribute('position');
+  positions.array.set([
+    0, floorY, 0,
+    px, floorY, 0,
+    0, floorY, pz,
+    px, floorY, pz
+  ]);
+  positions.needsUpdate = true;
+  xyPad.fill.geometry.computeBoundingBox();
+  xyPad.fill.geometry.computeBoundingSphere();
+  xyPad.group.visible = true;
 }
 
 function configureControls(controls) {
