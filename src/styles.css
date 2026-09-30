@@ -119,6 +119,11 @@ button, input, select { font: inherit; }
   transition: none;
 }
 
+#app.sidebar-no-transition #sidebar,
+#app.sidebar-no-transition .sidebar-toggle {
+  transition: none;
+}
+
 .sidebar-toggle {
   position: absolute;
   z-index: 20;
