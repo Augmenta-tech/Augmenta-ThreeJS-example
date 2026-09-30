@@ -394,11 +394,21 @@ function syncPanelCamera(animate = false) {
 }
 
 function setSidebarHidden(hidden, animate = true) {
+  if (!animate) ui.app.classList.add('sidebar-no-transition');
+
   ui.app.classList.toggle('sidebar-hidden', hidden);
   ui.sidebarToggle.textContent = hidden ? '<' : '>';
   ui.sidebarToggle.title = hidden ? 'Show panel' : 'Hide panel';
   ui.sidebarToggle.setAttribute('aria-expanded', String(!hidden));
   syncPanelCamera(animate);
+
+  if (!animate) {
+    // Commit the restored layout while transitions are disabled. Re-enabling
+    // them afterwards keeps user-triggered open/close animation unchanged,
+    // without replaying it when a persisted hidden panel is loaded.
+    void ui.sidebar.offsetWidth;
+    ui.app.classList.remove('sidebar-no-transition');
+  }
 }
 
 ui.sidebarToggle.addEventListener('click', () => {
