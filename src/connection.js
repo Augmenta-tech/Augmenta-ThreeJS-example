@@ -323,15 +323,20 @@ export function buildConnectionTargets(
 }
 
 function hostCandidates(host) {
-  if (/^localhost$/i.test(host) || host.includes('.') || host.includes(':')) return [host];
+  if (/^localhost$/i.test(host)) {
+    // Pleiades commonly listens on IPv4 while browsers/OSes may resolve
+    // localhost to ::1 first. Prefer the known IPv4 loopback, then keep both
+    // hostname/IPv6 fallbacks.
+    return ['127.0.0.1', 'localhost', '::1'];
+  }
+  if (host.includes('.') || host.includes(':')) return [host];
 
-  // Keep the literal hostname first, then try the most useful local-network
-  // suffixes. .local is mDNS; .home is used by some routers; .home.arpa is the
-  // IETF-standard home-network domain.
+  // Keep the literal hostname first. .home is common on local routers (and is
+  // the useful suffix on many Windows LANs); then try mDNS and home.arpa.
   return [
     host,
-    `${host}.local`,
     `${host}.home`,
+    `${host}.local`,
     `${host}.home.arpa`
   ];
 }
