@@ -279,7 +279,7 @@ function renderSelectedScenes() {
   if (!root) return;
   clearTracking();
   debug.clear();
-  viewer.renderSetup(selectedScene() ?? root);
+  viewer.renderSetup(root, selectedScene()?.getAddress());
 }
 
 function applySetupUpdate(container) {
