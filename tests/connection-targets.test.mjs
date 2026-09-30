@@ -9,16 +9,17 @@ function urls(address, protocol = 'http:') {
 test('simple hostnames try useful local-network suffixes before giving up', () => {
   assert.deepEqual(urls('augmenta-WA12031'), [
     'ws://augmenta-WA12031:6060',
-    'ws://augmenta-WA12031.home:6060',
     'ws://augmenta-WA12031.local:6060',
+    'ws://augmenta-WA12031.home:6060',
     'ws://augmenta-WA12031.home.arpa:6060',
     'wss://augmenta-WA12031:6060',
-    'wss://augmenta-WA12031.home:6060',
     'wss://augmenta-WA12031.local:6060',
+    'wss://augmenta-WA12031.home:6060',
     'wss://augmenta-WA12031.home.arpa:6060'
   ]);
 
-  assert.equal(urls('surface-david-2')[1], 'ws://surface-david-2.home:6060');
+  assert.equal(urls('surface-david-2')[1], 'ws://surface-david-2.local:6060');
+  assert.equal(urls('surface-david-2')[2], 'ws://surface-david-2.home:6060');
 });
 
 test('localhost prefers IPv4 and keeps hostname/IPv6 fallbacks', () => {
