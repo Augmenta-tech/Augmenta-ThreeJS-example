@@ -117,6 +117,8 @@ The example requests:
 
 Compression is disabled because the browser example intentionally stays dependency-free. Applications that need compressed streams can provide the SDK with a Zstd decompressor.
 
+The JS SDK parses velocity directly from the binary cluster property at the same offset as the C++ and C# SDKs. It does not reconstruct velocity from positions; if Augmenta sends a zero vector, the example intentionally displays that zero vector rather than inventing a replacement.
+
 The example explicitly requests the Three.js convention from Augmenta: **Y up, right handed, bottom-left origin, absolute coordinates, no extra flips**, so one coordinate unit remains one meter. Pleiades applies that transform to live tracking and setup positions before transmission. Scene and box-zone sizes are unsigned magnitudes, so the renderer places their local depth toward **-Z** to preserve the requested right-handed direction. Bounding-box rotation is requested in **radians**, allowing Pleiades to apply the same axis conversion before Three.js consumes it.
 
 ## SDK / example boundary
