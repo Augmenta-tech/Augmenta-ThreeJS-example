@@ -342,21 +342,6 @@ export function createViewer(host) {
     edges.position.set(size[0] / 2, size[1] / 2, -size[2] / 2);
     edges.renderOrder = 1;
     group.add(edges);
-
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(Math.abs(size[0]), Math.abs(size[2])),
-      new THREE.MeshBasicMaterial({
-        color: containerColor(container, 0x8ca6c6),
-        transparent: true,
-        opacity: 0.035,
-        side: THREE.DoubleSide,
-        depthWrite: false
-      })
-    );
-    floor.name = 'Scene floor';
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.set(size[0] / 2, 0.002, -size[2] / 2);
-    group.add(floor);
   }
 
   function updateHomeFromSetup() {
