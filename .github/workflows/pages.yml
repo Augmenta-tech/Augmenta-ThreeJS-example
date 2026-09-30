@@ -48,7 +48,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p _site/src _site/vendor/AugmentaClientSDK-JS/dist
-          cp index.html favicon.png augmenta-favicon.png _site/
+          cp index.html augmenta-favicon.png _site/
           cp src/*.js src/styles.css _site/src/
           cp -R vendor/AugmentaClientSDK-JS/dist/esm _site/vendor/AugmentaClientSDK-JS/dist/esm
           touch _site/.nojekyll

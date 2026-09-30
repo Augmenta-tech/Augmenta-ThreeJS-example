@@ -239,14 +239,9 @@ function normalizeServerHost(value) {
   // Accept old-style pasted URLs as a convenience, while keeping the UI host-only.
   host = host.replace(/^(?:wss?|https?):\/\//i, '').split('/')[0];
 
-  // localhost is a real browser loopback hostname, not an Augmenta serial.
-  if (/^localhost$/i.test(host)) return 'localhost';
-
-  // Other single labels are treated as Augmenta serials. An already-prefixed
-  // Augmenta hostname only needs its .local suffix added.
-  if (!host.includes('.') && !host.includes(':')) {
-    return /^augmenta-/i.test(host) ? `${host}.local` : `augmenta-${host}.local`;
-  }
+  // IPv4/qualified hostnames already contain a dot; IPv6 contains a colon.
+  // A simple hostname gets the usual mDNS .local suffix.
+  if (!host.includes('.') && !host.includes(':')) return `${host}.local`;
 
   return host;
 }
@@ -255,7 +250,7 @@ function connectionTarget() {
   const host = normalizeServerHost(ui.serverAddress.value);
   const port = Number(ui.port.value);
 
-  if (!host) throw new Error('Enter an Augmenta server address.');
+  if (!host) throw new Error('Enter an IP address or hostname.');
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error('Enter a valid port between 1 and 65535.');
   }

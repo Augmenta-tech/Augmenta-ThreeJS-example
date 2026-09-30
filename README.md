@@ -85,7 +85,7 @@ Do not open `index.html` directly with `file://`; ES modules need to be served o
 ## Connect to Augmenta
 
 1. Enable the Augmenta **WebSocket Output**.
-2. Enter the Augmenta server address and port. The address can be a serial number such as `12345`, an mDNS hostname such as `augmenta-12345.local`, or an IP address such as `192.168.1.42`. The default port is `6060`. The viewer builds the WebSocket URL internally, so do not add `ws://`.
+2. Enter the Augmenta server IP address or hostname and port. An IP address or already-qualified hostname is used as-is; a simple hostname such as `augmenta-server` automatically becomes `augmenta-server.local`. The default port is `6060`. The viewer builds the WebSocket URL internally, so do not add `ws://`.
 3. Keep **Auto** unless you are testing a specific protocol version. Auto starts with V3 and automatically reconnects with the server-reported V2/V3 parser when required.
 4. The viewer starts in **Connecting…** mode automatically and keeps retrying every second until a connection succeeds. While active, the button becomes **Connected**; click it to stop all reconnect attempts.
 
@@ -178,13 +178,13 @@ Run the example again after each SDK update and verify automatic protocol negoti
 
 ### Reconnection behavior
 
-`localhost` is preserved as the browser loopback hostname; other single-label server values are treated as Augmenta serials and expanded to `augmenta-<serial>.local`.
+The connection field accepts an IP address or hostname. A hostname without a suffix automatically gets `.local` appended.
 
 The low-level `AugmentaWebSocketClient` transport currently performs one connection attempt per `connect()` call. This example intentionally adds a lightweight 1-second retry loop at the application level, matching the auto-reconnect behavior used by Augmenta client integrations such as the Unity client. Clicking **Connected** / **Connecting…** stops that loop cleanly.
 
 ## Browser / networking notes
 
-- the UI accepts only the Augmenta server address and port; it constructs the local `ws://` URL internally.
+- the UI accepts only an IP address/hostname and port; it constructs the local `ws://` URL internally.
 - an HTTPS-hosted page can still be subject to browser mixed-content/private-network restrictions when connecting to a local `ws://` server;
 - browser mixed-content and private-network protections can prevent a public HTTPS page from opening a local `ws://192.168.x.x` endpoint;
 - CORS does not govern WebSocket framing itself, but the server/browser can still apply Origin, TLS and local-network security rules.
