@@ -35,14 +35,14 @@ Three.js renders:
 - velocity vectors with arrow heads at the received velocity magnitude;
 - cluster/point-cloud pairs in distinct colors chosen from a curated palette;
 - point clouds;
-- scene bounds, scene floor and box/cylinder/sphere zones, with live presence labels shown below occupied zones;
+- scene bounds and box/cylinder/sphere zones, with live presence labels shown below occupied zones and slider-volume fill on round zones;
 - a Pleiades-style orbit camera, 1 × 1 m floor grid and axes.
 
 Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. A successful connection setup and **Simulate data** both initialize the camera with the exact same centered framing used by **Reset camera**. **Reset camera** or a left-button double-click reframes the displayed setup. The Display panel exposes **All scenes** plus every Scene received in the current World. On desktop, the translucent panel overlays the 3D view: use the edge arrow to hide/show it, or drag its left edge to resize it. The camera projection follows the panel width so the orbit target remains centered in the unobscured part of the view.
 
 Partial setup updates are merged into the cached hierarchy before rendering, so a Scene update that omits its Zone children does not erase them. Scene selection and scene-size debug information therefore always use the latest merged setup.
 
-The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to SDK `1.0.0-beta.1` commit `b84dfc66` for reproducible builds. The SDK lockfile is committed, so CI and local reproducible builds use `npm ci`. The inspector exposes the main fields useful for this example; raw point arrays are rendered in full in Three.js while the text panel is throttled and point-intensity statistics are bounded to a representative sample to stay responsive with large clouds.
+The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to SDK `1.0.0-beta.1` commit `e8026f13` for reproducible builds. The SDK lockfile is committed, so CI and local reproducible builds use `npm ci`. The inspector exposes the main fields useful for this example; raw point arrays are rendered in full in Three.js while the text panel is throttled and point-intensity statistics are bounded to a representative sample to stay responsive with large clouds.
 
 ## Clone and run locally
 
@@ -89,7 +89,7 @@ Do not open `index.html` directly with `file://`; ES modules need to be served o
 ## Connect to Augmenta
 
 1. Enable the Augmenta **WebSocket Output**.
-2. Enter the Augmenta server IP address or hostname and port. An IP address or already-qualified hostname is used as-is. For a simple hostname such as `augmenta-server`, the example tries the literal name first, then `.home`, `.local`, and the standard `.home.arpa`, stopping at the first successful connection. `localhost` prefers `127.0.0.1` and keeps hostname/IPv6 fallbacks. HTTP pages try `ws://` first and then `wss://`; HTTPS pages try `wss://` first and then `ws://`. The default port is `6060`. Enter only the host in the address field; the port stays in its separate field.
+2. Enter the Augmenta server IP address or hostname and port. An IP address or already-qualified hostname is used as-is. For a simple hostname such as `augmenta-server`, the example tries the literal name first, then `.local`, `.home`, and the standard `.home.arpa`, stopping at the first successful connection. `localhost` prefers `127.0.0.1` and keeps hostname/IPv6 fallbacks. HTTP pages try `ws://` first and then `wss://`; HTTPS pages try `wss://` first and then `ws://`. The default port is `6060`. Enter only the host in the address field; the port stays in its separate field.
 3. Keep **Auto** unless you are testing a specific protocol version. Auto starts with V3 and automatically reconnects with the server-reported V2/V3 parser when required.
 4. The viewer starts in **Connecting…** mode automatically, moves through the fallback candidates as they fail, and retries the full set after one second until a connection succeeds. While active, the button becomes **Connected**; click it to stop all reconnect attempts.
 
@@ -201,7 +201,7 @@ Run the example again after each SDK update and verify automatic protocol negoti
 
 ### Reconnection behavior
 
-The connection field accepts an IP address or hostname. Simple hostnames are tried as entered, then with `.home`, `.local`, and `.home.arpa`; `localhost` prefers IPv4 (`127.0.0.1`) with hostname/IPv6 fallbacks, while IP addresses and already-qualified names are used as-is.
+The connection field accepts an IP address or hostname. Simple hostnames are tried as entered, then with `.local`, `.home`, and `.home.arpa`; `localhost` prefers IPv4 (`127.0.0.1`) with hostname/IPv6 fallbacks, while IP addresses and already-qualified names are used as-is.
 
 The low-level `AugmentaWebSocketClient` transport currently performs one connection attempt per `connect()` call. This example intentionally adds a lightweight 1-second retry loop at the application level, matching the auto-reconnect behavior used by Augmenta client integrations such as the Unity client. Clicking **Connected** / **Connecting…** stops that loop cleanly.
 
