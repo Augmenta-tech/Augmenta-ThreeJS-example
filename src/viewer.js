@@ -9,15 +9,16 @@ import { speedFromVelocity } from './motion.js';
 const FLOOR_Y = 0;
 const ZONE_PRESENCE_LABEL_GAP = 0.32;
 const ZONE_PRESENCE_LABEL_COLOR = new THREE.Color(0xaeb4be);
-const ZONE_PRESENCE_LABEL_OPACITY = 0.78;
+const ZONE_PRESENCE_LABEL_OPACITY = 0.9;
 const ZONE_PRESENCE_LABEL_PULSE_DURATION_MS = 180;
+const ZONE_PRESENCE_LABEL_FLASH_DURATION_MS = 220;
 const ZONE_FILL_OPACITY = 0.025;
 const ZONE_VISUAL_COLOR = new THREE.Color(0x969ba3);
 const ZONE_OUTLINE_COLOR = ZONE_VISUAL_COLOR;
-const ZONE_ACTIVE_OUTLINE_COLOR = new THREE.Color(0xffffff);
+const ZONE_ACTIVE_OUTLINE_COLOR = new THREE.Color(0xe4e7ec);
 const ZONE_IDLE_OUTLINE_OPACITY = 0.14;
-const ZONE_ACTIVE_OUTLINE_OPACITY = 0.72;
-const ZONE_ACTIVE_OUTLINE_PULSE_OPACITY = 0.82;
+const ZONE_ACTIVE_OUTLINE_OPACITY = 0.62;
+const ZONE_ACTIVE_OUTLINE_PULSE_OPACITY = 0.72;
 const ZONE_OUTLINE_WIDTH = 1.7;
 const ZONE_ACTIVE_OUTLINE_WIDTH = 2.6;
 const ROUND_ZONE_EDGE_WIDTH = 1.0;
@@ -433,6 +434,7 @@ export function createViewer(host) {
       xyPad,
       presenceStartedAt: 0,
       labelPulseStartedAt: 0,
+      labelFlashStartedAt: 0,
       labelPulseDirection: 1
     };
     zoneViews.set(address, view);
@@ -492,24 +494,23 @@ export function createViewer(host) {
     if (!active) {
       view.label.visible = false;
       view.labelPulseStartedAt = 0;
+      view.labelFlashStartedAt = 0;
       view.label.scale.copy(view.labelBaseScale);
       view.label.material.opacity = ZONE_PRESENCE_LABEL_OPACITY;
       view.presence = nextPresence;
       return;
     }
 
-    if (
-      nextPresence !== previousPresence
-      && nextPresence > 0
-      && previousPresence > 0
-    ) {
+    const presenceChanged = nextPresence !== previousPresence;
+    if (presenceChanged) {
       view.labelPulseStartedAt = now;
+      view.labelFlashStartedAt = now;
       view.labelPulseDirection = nextPresence > previousPresence ? 1 : -1;
     }
 
     const text = String(nextPresence);
-    if (view.labelText !== text) {
-      replaceZonePresenceLabelTexture(view.label, text);
+    if (view.labelText !== text || presenceChanged) {
+      replaceZonePresenceLabelTexture(view.label, text, presenceChanged);
       view.labelText = text;
     }
     view.label.visible = true;
@@ -541,6 +542,14 @@ export function createViewer(host) {
           view.label.scale.copy(view.labelBaseScale);
           view.label.material.opacity = ZONE_PRESENCE_LABEL_OPACITY;
         }
+      }
+
+      if (
+        view.labelFlashStartedAt > 0
+        && now - view.labelFlashStartedAt >= ZONE_PRESENCE_LABEL_FLASH_DURATION_MS
+      ) {
+        view.labelFlashStartedAt = 0;
+        replaceZonePresenceLabelTexture(view.label, view.labelText, false);
       }
     }
   }
@@ -729,14 +738,17 @@ function createZoneOutline(params, sourceGeometry, color) {
   const outline = new THREE.Group();
   outline.name = 'Zone outline';
 
-  // All zone shapes get the same camera-dependent silhouette.
-  const silhouette = new THREE.Mesh(
-    sourceGeometry.clone(),
-    createSilhouetteMaterial(color)
-  );
-  silhouette.name = 'Zone silhouette';
-  silhouette.renderOrder = 6;
-  outline.add(silhouette);
+  // Round zones keep the camera-dependent silhouette. Boxes use only their
+  // explicit edges so they stay cleaner and less visually heavy.
+  if (!params.isBox()) {
+    const silhouette = new THREE.Mesh(
+      sourceGeometry.clone(),
+      createSilhouetteMaterial(color)
+    );
+    silhouette.name = 'Zone silhouette';
+    silhouette.renderOrder = 6;
+    outline.add(silhouette);
+  }
 
   if (params.isBox()) {
     const edges = new THREE.EdgesGeometry(sourceGeometry);
@@ -1029,13 +1041,13 @@ function createZonePresenceLabel(text) {
   return sprite;
 }
 
-function replaceZonePresenceLabelTexture(sprite, text) {
+function replaceZonePresenceLabelTexture(sprite, text, flash = false) {
   sprite.material.map?.dispose();
-  sprite.material.map = makeZonePresenceLabelTexture(text);
+  sprite.material.map = makeZonePresenceLabelTexture(text, flash);
   sprite.material.needsUpdate = true;
 }
 
-function makeZonePresenceLabelTexture(text) {
+function makeZonePresenceLabelTexture(text, flash = false) {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
   canvas.height = 96;
@@ -1047,14 +1059,16 @@ function makeZonePresenceLabelTexture(text) {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   roundedRect(ctx, 28, 16, 200, 64, 21);
-  ctx.fillStyle = 'rgba(10, 13, 18, 0.88)';
+  ctx.fillStyle = flash
+    ? 'rgba(70, 76, 88, 0.96)'
+    : 'rgba(10, 13, 18, 0.94)';
   ctx.fill();
 
   ctx.strokeStyle = outlineColor;
   ctx.lineWidth = ZONE_OUTLINE_WIDTH;
   ctx.stroke();
 
-  ctx.fillStyle = '#c2c6cc';
+  ctx.fillStyle = '#d7dbe1';
   ctx.font = '700 36px Inter, Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
