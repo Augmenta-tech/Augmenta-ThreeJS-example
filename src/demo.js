@@ -9,7 +9,7 @@ import {
 // the Pleiades wire conventions corrected by viewer.js.
 export function makeDemoSetup() {
   const zoneA = new Container(ContainerType.Zone, 'Welcome zone', '/Demo/Welcome', [2.9, 0.01, -2.8], [0, -12, 0], [0.42, 0.69, 1, 1], new ZoneParameters(ShapeType.Box, { size: [2.8, 0.05, 2.4] }), []);
-  const zoneB = new Container(ContainerType.Zone, 'Interaction zone', '/Demo/Interaction', [6.7, 0, -5.3], [0, 0, 0], [0.75, 0.48, 1, 1], new ZoneParameters(ShapeType.Cylinder, { radius: 1.2, height: 1.6 }), []);
+  const zoneB = new Container(ContainerType.Zone, 'Interaction zone', '/Demo/Interaction', [6.7, 0, -5.3], [0, 0, 0], [0.75, 0.48, 1, 1], new ZoneParameters(ShapeType.Cylinder, { radius: 1.2, height: 1.6 }, 'y'), []);
   const root = new Container(ContainerType.Scene, 'Three.js demo scene', '/Demo', [-5, 0, 4], [0, 0, 0], [0.35, 0.4, 0.5, 1], { size: [10, 4, 8] }, [zoneA, zoneB]);
   return new ControlMessage(ControlMessageType.Setup, root, ControlMessageStatus.Ok, '', 3);
 }
