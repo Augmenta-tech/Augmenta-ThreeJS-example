@@ -9,6 +9,7 @@ const SIDEBAR_MIN_WIDTH = 320;
 const SIDEBAR_MAX_WIDTH = 450;
 const SIDEBAR_VIEWPORT_MARGIN = 160;
 const MOBILE_MEDIA_QUERY = '(max-width: 900px)';
+const SETTINGS_STORAGE_KEY = 'augmenta-threejs-settings:v1';
 
 const $ = (selector) => document.querySelector(selector);
 const ui = {
@@ -28,7 +29,82 @@ let lastFrame;
 let lastControl;
 let frameTimes = [];
 let scenes = [];
+let preferredSceneAddress = 'all';
 const setupStore = createSetupStore();
+
+function isObject(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function loadPreferences() {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY));
+    return isObject(value) ? value : {};
+  } catch {
+    return {};
+  }
+}
+
+const savedPreferences = loadPreferences();
+
+function savePreferences() {
+  const sidebarWidth = Number.parseFloat(
+    getComputedStyle(ui.app).getPropertyValue('--sidebar-width')
+  );
+
+  const value = {
+    connection: {
+      address: ui.serverAddress.value,
+      port: ui.port.value,
+      protocol: ui.protocol.value,
+      downsample: ui.downsample.value
+    },
+    display: {
+      clusters: ui.showClusters.checked,
+      points: ui.showPoints.checked,
+      zones: ui.showZones.checked,
+      vectors: ui.showVectors.checked,
+      scene: preferredSceneAddress
+    },
+    ui: {
+      sidebarHidden: ui.app.classList.contains('sidebar-hidden'),
+      sidebarWidth: Number.isFinite(sidebarWidth) ? sidebarWidth : SIDEBAR_MAX_WIDTH
+    }
+  };
+
+  try {
+    window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(value));
+  } catch {
+    // Storage can be unavailable in private/restricted browser contexts.
+  }
+}
+
+function restorePreferences() {
+  const connection = isObject(savedPreferences.connection) ? savedPreferences.connection : {};
+  const display = isObject(savedPreferences.display) ? savedPreferences.display : {};
+  const uiPreferences = isObject(savedPreferences.ui) ? savedPreferences.ui : {};
+
+  if (typeof connection.address === 'string') ui.serverAddress.value = connection.address;
+
+  const port = Number(connection.port);
+  if (Number.isInteger(port) && port >= 1 && port <= 65535) ui.port.value = String(port);
+
+  const protocol = String(connection.protocol ?? '');
+  if (['auto', '2', '3'].includes(protocol)) ui.protocol.value = protocol;
+
+  const downsample = Number(connection.downsample);
+  if (Number.isInteger(downsample) && downsample >= 1) ui.downsample.value = String(downsample);
+
+  if (typeof display.clusters === 'boolean') ui.showClusters.checked = display.clusters;
+  if (typeof display.points === 'boolean') ui.showPoints.checked = display.points;
+  if (typeof display.zones === 'boolean') ui.showZones.checked = display.zones;
+  if (typeof display.vectors === 'boolean') ui.showVectors.checked = display.vectors;
+  if (typeof display.scene === 'string' && display.scene) preferredSceneAddress = display.scene;
+
+  const sidebarWidth = Number(uiPreferences.sidebarWidth);
+  if (Number.isFinite(sidebarWidth)) setSidebarWidth(sidebarWidth);
+  setSidebarHidden(uiPreferences.sidebarHidden === true, false);
+}
 
 function setStatus(text, kind = 'idle') {
   ui.status.textContent = text;
@@ -186,8 +262,10 @@ function syncSceneSelector() {
     })
   ].join('');
 
-  const stillAvailable = previous === 'all' || scenes.some((scene) => scene.getAddress() === previous);
-  ui.scenes.value = stillAvailable ? previous : 'all';
+  const requested = previous !== 'all' ? previous : preferredSceneAddress;
+  const stillAvailable = requested === 'all'
+    || scenes.some((scene) => scene.getAddress() === requested);
+  ui.scenes.value = stillAvailable ? requested : 'all';
   ui.scenes.disabled = scenes.length === 0;
 }
 
@@ -294,7 +372,11 @@ ui.connect.addEventListener('click', toggleConnection);
 ui.demo.addEventListener('click', toggleSimulation);
 ui.clear.addEventListener('click', clearDebugData);
 ui.resetCamera.addEventListener('click', viewer.resetCamera);
-ui.scenes.addEventListener('change', renderSelectedScenes);
+ui.scenes.addEventListener('change', () => {
+  preferredSceneAddress = ui.scenes.value;
+  savePreferences();
+  renderSelectedScenes();
+});
 
 // The panel overlays the renderer. Shift the camera projection by the visible
 // panel width so the orbit target stays centered in the unobscured viewport.
@@ -305,12 +387,17 @@ function syncPanelCamera(animate = false) {
   viewer.setRightInset(inset, animate);
 }
 
-ui.sidebarToggle.addEventListener('click', () => {
-  const hidden = ui.app.classList.toggle('sidebar-hidden');
+function setSidebarHidden(hidden, animate = true) {
+  ui.app.classList.toggle('sidebar-hidden', hidden);
   ui.sidebarToggle.textContent = hidden ? '<' : '>';
   ui.sidebarToggle.title = hidden ? 'Show panel' : 'Hide panel';
   ui.sidebarToggle.setAttribute('aria-expanded', String(!hidden));
-  syncPanelCamera(true);
+  syncPanelCamera(animate);
+}
+
+ui.sidebarToggle.addEventListener('click', () => {
+  setSidebarHidden(!ui.app.classList.contains('sidebar-hidden'));
+  savePreferences();
 });
 
 function sidebarWidthBounds() {
@@ -351,6 +438,7 @@ ui.sidebarResizer.addEventListener('pointermove', (event) => {
 function stopSidebarResize(event) {
   if (ui.sidebarResizer.hasPointerCapture(event.pointerId)) {
     ui.sidebarResizer.releasePointerCapture(event.pointerId);
+    savePreferences();
   }
   ui.app.classList.remove('sidebar-resizing');
 }
@@ -362,6 +450,7 @@ ui.sidebarResizer.addEventListener('keydown', (event) => {
   const step = event.shiftKey ? 40 : 16;
   const current = ui.sidebar.getBoundingClientRect().width;
   setSidebarWidth(current + (event.key === 'ArrowLeft' ? step : -step));
+  savePreferences();
 });
 
 window.addEventListener('resize', () => {
@@ -389,13 +478,32 @@ function handleServerFieldEnter(event) {
 
 ui.serverAddress.addEventListener('keydown', handleServerFieldEnter);
 ui.port.addEventListener('keydown', handleServerFieldEnter);
-ui.serverAddress.addEventListener('change', () => restartForServerChange('Server address changed'));
-ui.port.addEventListener('change', () => restartForServerChange('Server port changed'));
-ui.protocol.addEventListener('change', () => connection.restart('Protocol changed', { resetProtocol: true }));
-ui.downsample.addEventListener('change', () => connection.restart('Downsample changed'));
+[ui.serverAddress, ui.port, ui.downsample].forEach((input) => {
+  input.addEventListener('input', savePreferences);
+});
+ui.serverAddress.addEventListener('change', () => {
+  savePreferences();
+  restartForServerChange('Server address changed');
+});
+ui.port.addEventListener('change', () => {
+  savePreferences();
+  restartForServerChange('Server port changed');
+});
+ui.protocol.addEventListener('change', () => {
+  savePreferences();
+  connection.restart('Protocol changed', { resetProtocol: true });
+});
+ui.downsample.addEventListener('change', () => {
+  savePreferences();
+  connection.restart('Downsample changed');
+});
 [ui.showClusters, ui.showPoints, ui.showZones, ui.showVectors]
-  .forEach((input) => input.addEventListener('change', applyVisibility));
+  .forEach((input) => input.addEventListener('change', () => {
+    applyVisibility();
+    savePreferences();
+  }));
 
+restorePreferences();
 applyVisibility();
 updateSimulationButton();
 resetSceneSelector();
