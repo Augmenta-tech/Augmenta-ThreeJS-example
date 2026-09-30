@@ -24,6 +24,8 @@ const ZONE_SILHOUETTE_ACTIVE_WIDTH = 0.23;
 const ZONE_OUTLINE_PULSE_DURATION_MS = 1400;
 const ZONE_XY_PAD_FILL_OPACITY = 0.16;
 const ZONE_XY_PAD_AXIS_OPACITY = 0.72;
+const ZONE_SLIDER_FILL_OPACITY = 0.22;
+const ZONE_LABEL_OUTLINE_WIDTH = 4;
 const ROUND_OUTLINE_SEGMENTS = 32;
 
 export function createZoneRenderer() {
@@ -74,6 +76,15 @@ export function createZoneRenderer() {
     const xyPad = params.isBox() ? createBoxXYPad(params) : undefined;
     if (xyPad) group.add(xyPad.group);
 
+    const slider = params.isCylinder() || params.isSphere()
+      ? createRoundZoneSlider(params, presenceGeometry)
+      : undefined;
+    if (slider) {
+      slider.mesh.position.copy(outline.position);
+      slider.mesh.rotation.copy(outline.rotation);
+      group.add(slider.mesh);
+    }
+
     const address = container.getAddress();
     if (!address) return;
 
@@ -90,6 +101,7 @@ export function createZoneRenderer() {
       presenceMesh,
       outline,
       xyPad,
+      slider,
       presenceStartedAt: 0,
       labelPulseStartedAt: 0,
       labelFlashStartedAt: 0,
@@ -111,10 +123,12 @@ export function createZoneRenderer() {
       setPresence(view, presence);
 
       for (const property of event.getProperties()) {
-        if (!property.isXYPad()) continue;
-        const value = property.getXYPadParameters();
-        updateBoxXYPad(view.xyPad, value.x, value.y);
-        break;
+        if (property.isSlider()) {
+          updateRoundZoneSlider(view.slider, property.getSliderParameters().value);
+        } else if (property.isXYPad()) {
+          const value = property.getXYPadParameters();
+          updateBoxXYPad(view.xyPad, value.x, value.y);
+        }
       }
     }
   }
@@ -124,6 +138,7 @@ export function createZoneRenderer() {
     for (const view of views.values()) {
       setPresence(view, 0);
       if (view.xyPad) view.xyPad.group.visible = false;
+      if (view.slider) view.slider.mesh.visible = false;
     }
   }
 
@@ -518,6 +533,85 @@ function updateBoxXYPad(xyPad, rawX, rawY) {
   xyPad.group.visible = true;
 }
 
+function createRoundZoneSlider(params, sourceGeometry) {
+  const axisName = params.getLocalSliderAxis?.() ?? 'x';
+  const axis = axisName === 'y'
+    ? new THREE.Vector3(0, 1, 0)
+    : axisName === 'z'
+      ? new THREE.Vector3(0, 0, 1)
+      : new THREE.Vector3(1, 0, 0);
+
+  let min = -0.5;
+  let max = 0.5;
+  if (params.isCylinder()) {
+    const { radius, height } = params.getCylinderShapeParameters();
+    const r = Math.max(Math.abs(radius), 0.001);
+    const h = Math.max(Math.abs(height), 0.001);
+    min = axisName === 'y' ? -h / 2 : -r;
+    max = axisName === 'y' ? h / 2 : r;
+  } else if (params.isSphere()) {
+    const radius = Math.max(Math.abs(params.getSphereShapeParameters().radius), 0.001);
+    min = -radius;
+    max = radius;
+  }
+
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      fillColor: { value: ZONE_ACTIVE_OUTLINE_COLOR.clone() },
+      fillOpacity: { value: ZONE_SLIDER_FILL_OPACITY },
+      sliderAxis: { value: axis },
+      sliderMin: { value: min },
+      sliderMax: { value: max },
+      sliderValue: { value: 0 }
+    },
+    vertexShader: `
+      varying vec3 vLocalPosition;
+
+      void main() {
+        vLocalPosition = position;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 fillColor;
+      uniform float fillOpacity;
+      uniform vec3 sliderAxis;
+      uniform float sliderMin;
+      uniform float sliderMax;
+      uniform float sliderValue;
+      varying vec3 vLocalPosition;
+
+      void main() {
+        float span = max(sliderMax - sliderMin, 0.0001);
+        float coordinate = dot(vLocalPosition, sliderAxis);
+        float normalizedCoordinate = (coordinate - sliderMin) / span;
+        if (normalizedCoordinate > sliderValue) discard;
+        gl_FragColor = vec4(fillColor, fillOpacity);
+      }
+    `,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+    side: THREE.DoubleSide
+  });
+
+  const mesh = new THREE.Mesh(sourceGeometry.clone(), material);
+  mesh.name = 'Zone slider fill';
+  mesh.visible = false;
+  mesh.renderOrder = 6;
+
+  return { mesh };
+}
+
+function updateRoundZoneSlider(slider, rawValue) {
+  if (!slider || !Number.isFinite(rawValue)) return;
+
+  // The WebSocket slider value is normalized by default in Pleiades. Clamp to
+  // the drawable range so malformed/out-of-range values cannot overfill.
+  slider.mesh.material.uniforms.sliderValue.value = THREE.MathUtils.clamp(rawValue, 0, 1);
+  slider.mesh.visible = true;
+}
+
 function createZonePresenceLabel(text) {
   const material = new THREE.SpriteMaterial({
     map: makeZonePresenceLabelTexture(text),
@@ -546,7 +640,7 @@ function makeZonePresenceLabelTexture(text, flash = false) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return new THREE.CanvasTexture(canvas);
 
-  const outlineColor = `#${ZONE_OUTLINE_COLOR.getHexString()}`;
+  const outlineColor = `#${ZONE_ACTIVE_OUTLINE_COLOR.getHexString()}`;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   roundedRect(ctx, 28, 16, 200, 64, 21);
@@ -556,7 +650,7 @@ function makeZonePresenceLabelTexture(text, flash = false) {
   ctx.fill();
 
   ctx.strokeStyle = outlineColor;
-  ctx.lineWidth = ZONE_OUTLINE_WIDTH;
+  ctx.lineWidth = ZONE_LABEL_OUTLINE_WIDTH;
   ctx.stroke();
 
   ctx.fillStyle = '#d7dbe1';
