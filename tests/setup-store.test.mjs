@@ -5,15 +5,20 @@ import {
 } from 'augmenta-client-sdk';
 import { createSetupStore } from '../src/setup-store.js';
 
-function zone(address, position = [1, 0, 1]) {
+function zone(
+  address,
+  position = [1, 0, 1],
+  size = [2, 1, 2],
+  rotation = [0, 0, 0]
+) {
   return new Container(
     ContainerType.Zone,
     'Zone',
     address,
     position,
-    [0, 0, 0],
+    rotation,
     [1, 1, 1, 1],
-    new ZoneParameters(ShapeType.Box, { size: [2, 1, 2] }),
+    new ZoneParameters(ShapeType.Box, { size }),
     []
   );
 }
@@ -68,6 +73,28 @@ test('Zone updates replace only the matching Zone', () => {
   const zones = store.getScenes()[0].getChildren();
   assert.deepEqual(zones[0].getPosition(), [5, 0, 6]);
   assert.deepEqual(zones[1].getPosition(), [2, 0, 2]);
+});
+
+test('Zone geometry updates propagate without changing siblings', () => {
+  const store = createSetupStore();
+  store.setRoot(world([scene('/world/scene', [10, 3, 8], [
+    zone('/world/scene/a'),
+    zone('/world/scene/b', [2, 0, 2])
+  ])]));
+
+  store.applyUpdate(zone(
+    '/world/scene/a',
+    [4, 0, 5],
+    [4, 2, 3],
+    [0, 35, 0]
+  ));
+
+  const zones = store.getScenes()[0].getChildren();
+  assert.deepEqual(zones[0].getPosition(), [4, 0, 5]);
+  assert.deepEqual(zones[0].getRotation(), [0, 35, 0]);
+  assert.deepEqual(zones[0].getZoneParameters().getBoxShapeParameters().size, [4, 2, 3]);
+  assert.deepEqual(zones[1].getPosition(), [2, 0, 2]);
+  assert.deepEqual(zones[1].getZoneParameters().getBoxShapeParameters().size, [2, 1, 2]);
 });
 
 test('New Zone updates attach to the deepest matching parent', () => {
