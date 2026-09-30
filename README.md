@@ -133,6 +133,10 @@ The example intentionally keeps protocol responsibilities out of the Three.js la
 
 This separation keeps the SDK reusable by non-Three.js applications and keeps rendering/UI decisions out of the protocol library.
 
+## TODO
+
+- **Pleiades simulator velocity:** propagate the simulated motion into `handledCluster->velocity` before WebSocket output; ideally derive it from actual frame displacement / delta time so noise and clamping are reflected. The SDK and Three.js example already consume the field correctly.
+
 ## Project structure
 
 ```text
