@@ -15,10 +15,11 @@ const ZONE_PRESENCE_LABEL_OPACITY = 0.78;
 const ZONE_PRESENCE_LABEL_PULSE_DURATION_MS = 180;
 const ZONE_PRESENCE_IDLE_OPACITY = 0.025;
 const ZONE_PRESENCE_OPACITY = 0.1;
-const ZONE_PRESENCE_PULSE_OPACITY = 0.24;
+const ZONE_PRESENCE_PULSE_OPACITY = 0.16;
 const ZONE_PRESENCE_PULSE_DURATION_MS = 220;
 const ZONE_PRESENCE_FADE_DURATION_MS = 180;
-const ZONE_OUTLINE_COLOR = new THREE.Color(0x8ca6c6);
+const ZONE_VISUAL_COLOR = new THREE.Color(0x969ba3);
+const ZONE_OUTLINE_COLOR = ZONE_VISUAL_COLOR;
 const ZONE_OUTLINE_WIDTH = 1.7;
 const ROUND_OUTLINE_SEGMENTS = 24;
 const GHOST_COLOR = new THREE.Color(0x8a909b);
@@ -369,7 +370,6 @@ export function createViewer(host) {
     if (!geometry) return;
 
     const presenceGeometry = geometry.clone();
-    const color = containerColor(container, 0xb78cff);
     const outline = createZoneOutline(params, geometry, ZONE_OUTLINE_COLOR);
     geometry.dispose();
 
@@ -385,7 +385,7 @@ export function createViewer(host) {
     const presenceMesh = new THREE.Mesh(
       presenceGeometry,
       new THREE.MeshBasicMaterial({
-        color,
+        color: ZONE_VISUAL_COLOR,
         transparent: true,
         opacity: ZONE_PRESENCE_IDLE_OPACITY,
         side: THREE.DoubleSide,
@@ -494,7 +494,7 @@ export function createViewer(host) {
       view.labelPulseDirection = nextPresence > previousPresence ? 1 : -1;
     }
 
-    const text = `x${nextPresence}`;
+    const text = String(nextPresence);
     if (view.labelText !== text) {
       replaceZonePresenceLabelTexture(view.label, text);
       view.labelText = text;
@@ -542,7 +542,7 @@ export function createViewer(host) {
           const phase = elapsed / ZONE_PRESENCE_LABEL_PULSE_DURATION_MS;
           const pulse = Math.sin(Math.PI * phase);
           view.label.scale.copy(view.labelBaseScale).multiplyScalar(
-            1 + view.labelPulseDirection * pulse * 0.06
+            1 + view.labelPulseDirection * pulse * 0.035
           );
           view.label.material.opacity = ZONE_PRESENCE_LABEL_OPACITY;
         } else {
@@ -877,16 +877,16 @@ function makeZonePresenceLabelTexture(text) {
   if (!ctx) return new THREE.CanvasTexture(canvas);
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  roundedRect(ctx, 34, 19, 188, 58, 19);
-  ctx.fillStyle = 'rgba(55, 59, 67, 0.84)';
+  roundedRect(ctx, 28, 16, 200, 64, 21);
+  ctx.fillStyle = 'rgba(55, 59, 67, 0.62)';
   ctx.fill();
 
   ctx.strokeStyle = '#9ba1aa';
   ctx.lineWidth = 3;
   ctx.stroke();
 
-  ctx.fillStyle = '#c9cdd4';
-  ctx.font = '600 36px Inter, Arial, sans-serif';
+  ctx.fillStyle = '#c2c6cc';
+  ctx.font = '700 36px Inter, Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, 128, 49);
@@ -938,7 +938,7 @@ function makeLabelTexture(text, color) {
   ctx.stroke();
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = '600 38px Inter, Arial, sans-serif';
+  ctx.font = '500 38px Inter, Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, 128, 49);
