@@ -105,7 +105,7 @@ function zonesBlock(frame, zoneNameForAddress) {
     }).join('<br>') || '—';
     const address = zone.getEmitterZoneAddress();
     const name = zoneNameForAddress?.(address) || address || '—';
-    return `<tr><td>${esc(name)}</td><td>enter ${zone.getEnters()}<br>leave ${zone.getLeaves()}<br>presence ${zone.getPresence()}</td><td>${props}</td></tr>`;
+    return `<tr><td title="${esc(address)}">${esc(name)}</td><td>enter ${zone.getEnters()}<br>leave ${zone.getLeaves()}<br>presence ${zone.getPresence()}</td><td>${props}</td></tr>`;
   }).join('');
 
   return `<details open><summary>Zones (${zones.length})</summary><table class="debug-table"><thead><tr><th>Zone</th><th>Occupancy</th><th>Properties</th></tr></thead><tbody>${rows}</tbody></table></details>`;
