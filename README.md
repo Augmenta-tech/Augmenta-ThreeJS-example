@@ -89,7 +89,7 @@ Do not open `index.html` directly with `file://`; ES modules need to be served o
 ## Connect to Augmenta
 
 1. Enable the Augmenta **WebSocket Output**.
-2. Enter the Augmenta server IP address or hostname and port. An IP address or already-qualified hostname is used as-is. For a simple hostname such as `augmenta-server`, the example tries the literal name first, then `.local`, `.home`, and the standard `.home.arpa`, stopping at the first successful connection. `localhost` is never suffixed. HTTP pages try `ws://` first and then `wss://`; HTTPS pages try `wss://` first and then `ws://`. The default port is `6060`. Enter only the host in the address field; the port stays in its separate field.
+2. Enter the Augmenta server IP address or hostname and port. An IP address or already-qualified hostname is used as-is. For a simple hostname such as `augmenta-server`, the example tries the literal name first, then `.home`, `.local`, and the standard `.home.arpa`, stopping at the first successful connection. `localhost` prefers `127.0.0.1` and keeps hostname/IPv6 fallbacks. HTTP pages try `ws://` first and then `wss://`; HTTPS pages try `wss://` first and then `ws://`. The default port is `6060`. Enter only the host in the address field; the port stays in its separate field.
 3. Keep **Auto** unless you are testing a specific protocol version. Auto starts with V3 and automatically reconnects with the server-reported V2/V3 parser when required.
 4. The viewer starts in **Connecting…** mode automatically, moves through the fallback candidates as they fail, and retries the full set after one second until a connection succeeds. While active, the button becomes **Connected**; click it to stop all reconnect attempts.
 
@@ -201,7 +201,7 @@ Run the example again after each SDK update and verify automatic protocol negoti
 
 ### Reconnection behavior
 
-The connection field accepts an IP address or hostname. Simple hostnames are tried as entered, then with `.local`, `.home`, and `.home.arpa`; `localhost`, IP addresses, and already-qualified names are left unchanged.
+The connection field accepts an IP address or hostname. Simple hostnames are tried as entered, then with `.home`, `.local`, and `.home.arpa`; `localhost` prefers IPv4 (`127.0.0.1`) with hostname/IPv6 fallbacks, while IP addresses and already-qualified names are used as-is.
 
 The low-level `AugmentaWebSocketClient` transport currently performs one connection attempt per `connect()` call. This example intentionally adds a lightweight 1-second retry loop at the application level, matching the auto-reconnect behavior used by Augmenta client integrations such as the Unity client. Clicking **Connected** / **Connecting…** stops that loop cleanly.
 
