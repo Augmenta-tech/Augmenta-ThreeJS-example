@@ -10,7 +10,7 @@ The example is deliberately both a **reference integration** and a **debug viewe
 
 The page includes a **Simulate data** toggle, so the UI and rendering can be tested without an Augmenta server. While active, the button reads **Simulating** and clicking it again stops the simulation.
 
-Connection settings, display toggles, the preferred Scene, sidebar state, and the current camera position/orbit target are stored in browser `localStorage` and restored on refresh. Transient runtime state such as connection status, simulation state, received tracking data, and debug contents is intentionally not persisted.
+Connection settings, display toggles, the preferred Scene, sidebar state, and the current camera position/orbit target are stored in browser `localStorage` and restored on refresh. The bottom-left QR code opens the same page with the current Augmenta address, port, protocol and downsample embedded in the URL; those shared URL values override the receiving device's local connection preferences for that load. Transient runtime state such as connection status, simulation state, received tracking data, and debug contents is intentionally not persisted.
 
 > GitHub Pages is served over HTTPS. The example still tries `ws://` first, then `wss://`, because local Augmenta outputs commonly expose a plain WebSocket endpoint.
 
@@ -155,12 +155,14 @@ This separation keeps the SDK reusable by non-Three.js applications and keeps re
 │   ├── viewer.js                       # Three.js scene, camera, clusters + points
 │   ├── zones.js                        # Zone geometry, presence + XY pad rendering
 │   ├── zone-state.js                   # Pure zone-event state extraction/cache input
+│   ├── share-link.js                    # Shareable connection URL encode/decode
 │   ├── debug.js                        # Throttled live debug inspector
 │   ├── demo.js                         # SDK-based synthetic test stream
 │   └── styles.css                      # Debug UI
 ├── tests/
 │   ├── connection-targets.test.mjs     # Hostname/IP fallback ordering
 │   ├── setup-store.test.mjs            # Partial setup update regression tests
+│   ├── share-link.test.mjs              # Shared connection URL regression tests
 │   └── zone-state.test.mjs             # Zone event state regression tests
 ├── vendor/AugmentaClientSDK-JS         # Git submodule
 ├── LICENSE
@@ -168,7 +170,7 @@ This separation keeps the SDK reusable by non-Three.js applications and keeps re
 └── README.md
 ```
 
-Three.js is loaded as an ES module from jsDelivr and pinned to `0.186.1`. The Augmenta SDK is built from the submodule and imported directly from its generated ESM output.
+Three.js is loaded as an ES module from jsDelivr and pinned to `0.186.1`. The QR overlay uses the MIT-licensed `qrcode-generator` ES module pinned to `2.0.4`, with QR contents generated entirely in the browser. The Augmenta SDK is built from the submodule and imported directly from its generated ESM output.
 
 ## GitHub Pages deployment
 
