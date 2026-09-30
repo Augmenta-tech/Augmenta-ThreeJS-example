@@ -246,7 +246,14 @@ function renderDebug(force = false) {
 }
 
 function zoneNameForAddress(address) {
-  return setupStore.getByAddress(address)?.getName() || address || '—';
+  const knownName = setupStore.getByAddress(address)?.getName();
+  if (knownName) return knownName;
+
+  // A zone rename changes its control address immediately, while the current
+  // Pleiades WebSocket setup is only refreshed on reconnect. Keep the debug
+  // table readable until then by showing the leaf short name, not the full path.
+  const parts = String(address ?? '').split('/').filter((part) => part && part !== 'children');
+  return parts.at(-1) || address || '—';
 }
 
 function syncSceneSelector() {
