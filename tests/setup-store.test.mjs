@@ -155,3 +155,17 @@ test('Parent subtree updates replace renamed children without duplicates', () =>
   assert.equal(children[0].getAddress(), '/children/scene/children/newZone');
   assert.equal(store.getByAddress('/children/scene/children/oldZone'), undefined);
 });
+
+
+test('Partial Scene updates are ignored until a hierarchy root exists', () => {
+  const store = createSetupStore();
+
+  assert.equal(store.applyUpdate(scene('/world/scene', [12, 4, 9])), undefined);
+  assert.equal(store.getRoot(), undefined);
+  assert.equal(store.getScenes().length, 0);
+
+  store.setRoot(world([scene('/world/scene', [10, 3, 8])]));
+  store.applyUpdate(scene('/world/scene', [12, 4, 9]));
+
+  assert.deepEqual(store.getScenes()[0].getSceneParameters().size, [12, 4, 9]);
+});
