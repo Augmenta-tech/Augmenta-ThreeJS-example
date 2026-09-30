@@ -6,23 +6,29 @@ function urls(address, protocol = 'http:') {
   return buildConnectionTargets(address, 6060, protocol).map((target) => target.url);
 }
 
-test('simple hostnames try local-network suffixes before giving up', () => {
+test('simple hostnames try useful local-network suffixes before giving up', () => {
   assert.deepEqual(urls('augmenta-WA12031'), [
     'ws://augmenta-WA12031:6060',
-    'ws://augmenta-WA12031.local:6060',
     'ws://augmenta-WA12031.home:6060',
+    'ws://augmenta-WA12031.local:6060',
     'ws://augmenta-WA12031.home.arpa:6060',
     'wss://augmenta-WA12031:6060',
-    'wss://augmenta-WA12031.local:6060',
     'wss://augmenta-WA12031.home:6060',
+    'wss://augmenta-WA12031.local:6060',
     'wss://augmenta-WA12031.home.arpa:6060'
   ]);
+
+  assert.equal(urls('surface-david-2')[1], 'ws://surface-david-2.home:6060');
 });
 
-test('localhost is never suffixed', () => {
+test('localhost prefers IPv4 and keeps hostname/IPv6 fallbacks', () => {
   assert.deepEqual(urls('localhost'), [
+    'ws://127.0.0.1:6060',
     'ws://localhost:6060',
-    'wss://localhost:6060'
+    'ws://[::1]:6060',
+    'wss://127.0.0.1:6060',
+    'wss://localhost:6060',
+    'wss://[::1]:6060'
   ]);
 });
 
