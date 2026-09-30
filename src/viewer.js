@@ -216,7 +216,11 @@ export function createViewer(host) {
 
     view.box.visible = true;
     view.box.position.fromArray(center);
-    view.box.scale.set(...size.map((v) => Math.max(Math.abs(v), 0.001)));
+    view.box.scale.set(
+      Math.max(Math.abs(size[0]), 0.001),
+      Math.max(Math.abs(size[1]), 0.001),
+      Math.max(Math.abs(size[2]), 0.001)
+    );
     // RotationMode.Radians lets Pleiades apply the requested axis transform
     // before transmission, matching Three.js' native Euler unit.
     view.box.rotation.set(rotation[0], rotation[1], rotation[2], 'XYZ');
@@ -251,7 +255,7 @@ export function createViewer(host) {
     } else {
       view.points.geometry.setAttribute(
         'position',
-        new THREE.BufferAttribute(new Float32Array(data), 3)
+        new THREE.BufferAttribute(data, 3)
       );
     }
 
