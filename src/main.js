@@ -550,6 +550,8 @@ function restartForServerChange(reason) {
   retrying = false;
   autoNegotiatedVersion = undefined;
   stopTransport(reason);
+  clearTracking();
+  clearDebugData();
   attemptConnection();
 }
 
