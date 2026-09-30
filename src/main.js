@@ -518,5 +518,8 @@ connection.start({ resetProtocol: true });
 // values used by the viewer/connection logic.
 window.addEventListener('pageshow', () => {
   syncPreferencesToUi();
-  resetSceneSelector();
+  // Do not clear setupStore here: on fast local connections the initial
+  // Pleiades setup may already have arrived before pageshow. Clearing it would
+  // orphan subsequent partial updates from their Scene/parent transforms.
+  syncSceneSelector();
 });
