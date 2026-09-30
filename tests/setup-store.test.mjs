@@ -124,3 +124,18 @@ test('Address index follows merged setup updates', () => {
     [7, 0, 8]
   );
 });
+
+test('Partial Zone updates are ignored until a hierarchy root exists', () => {
+  const store = createSetupStore();
+
+  assert.equal(store.applyUpdate(zone('/world/scene/a', [5, 0, 6])), undefined);
+  assert.equal(store.getRoot(), undefined);
+  assert.equal(store.getByAddress('/world/scene/a'), undefined);
+
+  store.setRoot(world([scene('/world/scene', [10, 3, 8], [
+    zone('/world/scene/a', [1, 0, 1])
+  ])]));
+
+  store.applyUpdate(zone('/world/scene/a', [5, 0, 6]));
+  assert.deepEqual(store.getByAddress('/world/scene/a').getPosition(), [5, 0, 6]);
+});
