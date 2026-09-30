@@ -67,15 +67,15 @@ button, input, select { font: inherit; }
 }
 
 .connection-qr:hover {
-  border-color: rgba(141, 184, 255, .72);
-  color: #d9e5f8;
-  background: rgba(23, 27, 35, .92);
+  border-color: rgba(191, 166, 255, .76);
+  color: #eadfff;
+  background: rgba(28, 24, 38, .92);
 }
 
 .connection-qr-code {
   display: block;
-  width: 104px;
-  height: 104px;
+  width: 98px;
+  height: 98px;
   padding: 4px;
   border-radius: 5px;
   background: #ffffff;
@@ -351,8 +351,8 @@ details[open] summary { border-bottom: 1px solid #2b313d; }
     padding: 5px;
   }
   .connection-qr-code {
-    width: 84px;
-    height: 84px;
+    width: 80px;
+    height: 80px;
     padding: 3px;
   }
   .connection-qr-label { font-size: 8.5px; }
