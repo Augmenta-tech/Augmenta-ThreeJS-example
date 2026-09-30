@@ -876,13 +876,15 @@ function makeZonePresenceLabelTexture(text) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return new THREE.CanvasTexture(canvas);
 
+  const outlineColor = `#${ZONE_OUTLINE_COLOR.getHexString()}`;
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   roundedRect(ctx, 28, 16, 200, 64, 21);
-  ctx.fillStyle = 'rgba(55, 59, 67, 0.62)';
+  ctx.fillStyle = 'rgba(10, 13, 18, 0.88)';
   ctx.fill();
 
-  ctx.strokeStyle = '#9ba1aa';
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = outlineColor;
+  ctx.lineWidth = ZONE_OUTLINE_WIDTH;
   ctx.stroke();
 
   ctx.fillStyle = '#c2c6cc';
