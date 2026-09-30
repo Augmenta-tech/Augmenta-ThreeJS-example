@@ -10,6 +10,8 @@ The example is deliberately both a **reference integration** and a **debug viewe
 
 The page includes a **Simulate data** toggle, so the UI and rendering can be tested without an Augmenta server. While active, the button reads **Simulating** and clicking it again stops the simulation.
 
+Connection settings, display toggles, the preferred Scene, and sidebar state are stored in browser `localStorage` and restored on refresh. Transient runtime state such as connection status, simulation state, received tracking data, and debug contents is intentionally not persisted.
+
 > GitHub Pages is served over HTTPS while this example intentionally connects with local `ws://`. Browser security rules can therefore block access to a local Augmenta server. Running the same example locally over HTTP is the reference workflow for real local-network streams.
 
 ## What it shows
