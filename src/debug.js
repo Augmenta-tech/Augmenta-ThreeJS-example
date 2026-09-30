@@ -1,26 +1,42 @@
 import { ClusterState, ShapeType, ZonePropertyType } from 'augmenta-client-sdk';
 import { speedFromVelocity } from './motion.js';
 
+const DEBUG_RENDER_INTERVAL_MS = 250;
+const INTENSITY_SAMPLE_LIMIT = 2048;
+
 export function createDebugPanel(summary, content) {
   let lastRender = 0;
+  let cachedControl;
+  let cachedControlHtml = '';
 
   function render(frame, control, fps, sceneSize, zoneNameForAddress, force = false) {
     const now = performance.now();
-    if (!force && now - lastRender < 120) return;
+    if (!force && now - lastRender < DEBUG_RENDER_INTERVAL_MS) return;
     lastRender = now;
     if (!frame && !control) return;
 
     summary.textContent = frame
       ? `${frame.getObjectCount()} objects · ${frame.getZoneEventCount()} zones · ${fps} fps`
       : 'Waiting for tracking data';
+
     const blocks = [];
-    if (frame) blocks.push(frameBlock(sceneSize), objectsBlock(frame), zonesBlock(frame, zoneNameForAddress));
-    if (control) blocks.push(controlBlock(control));
+    if (frame) {
+      blocks.push(frameBlock(sceneSize), objectsBlock(frame), zonesBlock(frame, zoneNameForAddress));
+    }
+    if (control) {
+      if (control !== cachedControl) {
+        cachedControl = control;
+        cachedControlHtml = controlBlock(control);
+      }
+      blocks.push(cachedControlHtml);
+    }
     content.innerHTML = blocks.join('');
   }
 
   function clear() {
     lastRender = 0;
+    cachedControl = undefined;
+    cachedControlHtml = '';
     summary.textContent = 'No data yet';
     content.innerHTML = '<div class="empty-state">Connect to Augmenta or run the demo to inspect the stream.</div>';
   }
@@ -57,10 +73,9 @@ function objectsBlock(frame) {
 
       points = [`${cloud.getPointCount()} pts`, ...sampleLines].join('<br>');
       const intensity = cloud.getIntensityData();
-      if (intensity?.length) {
-        let min = Infinity, max = -Infinity, sum = 0;
-        for (const v of intensity) { min = Math.min(min, v); max = Math.max(max, v); sum += v; }
-        points += `<br>intensity ${fmt(min)} / ${fmt(sum / intensity.length)} / ${fmt(max)}`;
+      const stats = intensityStats(intensity);
+      if (stats) {
+        points += `<br>${stats.sampled ? 'intensity sample' : 'intensity'} ${fmt(stats.min)} / ${fmt(stats.avg)} / ${fmt(stats.max)}`;
       }
     }
 
@@ -127,12 +142,37 @@ function cloudSummary(cloud) {
   const sample = Array.from(cloud.getPointsData().slice(0, 15));
   let value = `${cloud.getPointCount()} pts; sample ${vec(sample)}`;
   const intensity = cloud.getIntensityData();
-  if (intensity?.length) {
-    let min = Infinity, max = -Infinity, sum = 0;
-    for (const v of intensity) { min = Math.min(min, v); max = Math.max(max, v); sum += v; }
-    value += `; intensity min/avg/max ${fmt(min)} / ${fmt(sum / intensity.length)} / ${fmt(max)}`;
+  const stats = intensityStats(intensity);
+  if (stats) {
+    value += `; ${stats.sampled ? 'intensity sample' : 'intensity'} min/avg/max ${fmt(stats.min)} / ${fmt(stats.avg)} / ${fmt(stats.max)}`;
   }
   return value;
+}
+
+function intensityStats(values) {
+  if (!values?.length) return undefined;
+
+  const sampleCount = Math.min(values.length, INTENSITY_SAMPLE_LIMIT);
+  let min = Infinity;
+  let max = -Infinity;
+  let sum = 0;
+
+  for (let i = 0; i < sampleCount; i++) {
+    const index = sampleCount === values.length
+      ? i
+      : Math.floor(i * values.length / sampleCount);
+    const value = values[index];
+    min = Math.min(min, value);
+    max = Math.max(max, value);
+    sum += value;
+  }
+
+  return {
+    min,
+    max,
+    avg: sum / sampleCount,
+    sampled: sampleCount < values.length
+  };
 }
 
 function sceneSizeText(size) {
