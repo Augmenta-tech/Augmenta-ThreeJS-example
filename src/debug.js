@@ -13,12 +13,13 @@ export function createDebugPanel(summary, content) {
       ? `${frame.getObjectCount()} objects · ${frame.getZoneEventCount()} zones · ${fps} fps`
       : 'Waiting for tracking data';
     const blocks = [];
-    if (frame) blocks.push(frameBlock(frame, fps, sceneSize), objectsBlock(frame), zonesBlock(frame));
+    if (frame) blocks.push(frameBlock(sceneSize), objectsBlock(frame), zonesBlock(frame));
     if (control) blocks.push(controlBlock(control));
     content.innerHTML = blocks.join('');
   }
 
   function clear() {
+    lastRender = 0;
     summary.textContent = 'No data yet';
     content.innerHTML = '<div class="empty-state">Connect to Augmenta or run the demo to inspect the stream.</div>';
   }
@@ -26,7 +27,7 @@ export function createDebugPanel(summary, content) {
   return { render, clear };
 }
 
-function frameBlock(_frame, _fps, sceneSize) {
+function frameBlock(sceneSize) {
   return `<details open><summary>Frame</summary><div class="debug-block">scene size          ${sceneSizeText(sceneSize)}</div></details>`;
 }
 
@@ -96,7 +97,7 @@ function controlBlock(message) {
   const lines = [];
   walk(message.getRootObject(), 0, lines);
   const type = message.isSetup() ? 'setup' : message.isUpdate() ? 'update' : 'unknown';
-  return `<details><summary>Last control message · ${esc(type)}</summary><div class="debug-block">status              ${esc(message.getStatus())}\nserver protocol     ${esc(message.getServerProtocolVersion())}\nerror               ${esc(message.getErrorMessage() || '—')}\n\n${lines.join('\n')}</div></details>`;
+  return `<details><summary>Last control message · ${esc(type)}</summary><div class="debug-block">status              ${esc(message.getStatus())}\nserver protocol     ${esc(message.getServerProtocolVersion())}\nerror               ${esc(message.getErrorMessage() || '—')}\n\n${esc(lines.join('\n'))}</div></details>`;
 }
 
 function walk(container, depth, lines) {

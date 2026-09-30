@@ -10,7 +10,7 @@ The example is deliberately both a **reference integration** and a **debug viewe
 
 The page includes a **Simulate data** toggle, so the UI and rendering can be tested without an Augmenta server. While active, the button reads **Simulating** and clicking it again stops the simulation.
 
-> GitHub Pages is served over HTTPS. Browsers can block a plain `ws://` WebSocket or access from a public HTTPS page to a local-network device. For a real Augmenta stream, use `wss://` when available or run this example locally over HTTP.
+> GitHub Pages is served over HTTPS while this example intentionally connects with local `ws://`. Browser security rules can therefore block access to a local Augmenta server. Running the same example locally over HTTP is the reference workflow for real local-network streams.
 
 ## What it shows
 
@@ -22,7 +22,7 @@ The viewer requests the richest practical uncompressed stream from the Augmenta 
 - raw velocity vector plus velocity magnitude in m/s in the debug inspector;
 - bounding-box center, size and rotation;
 - object point clouds and point-intensity data when present;
-- scene dimensions from setup data and protocol V3 timestamps when useful to the data model;
+- scene dimensions from setup data;
 - zone enter, leave, presence and density values;
 - slider, XY pad and zone point-cloud properties;
 - setup/update hierarchy with scene and zone position, rotation, color and supported shapes.
@@ -38,7 +38,7 @@ Three.js renders:
 
 Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right-drag pans parallel to the floor, middle-drag/wheel zooms, and the orbit is constrained above the floor plane. A successful connection setup and **Simulate data** both initialize the camera with the exact same centered framing used by **Reset camera**. **Reset camera** or a left-button double-click reframes the displayed setup. The Display panel exposes **All scenes** plus every Scene received in the current World. On desktop, the translucent panel overlays the 3D view: use the edge arrow to hide/show it, or drag its left edge to resize it. The camera projection follows the panel width so the orbit target remains centered in the unobscured part of the view.
 
-The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to commit `ab030fee`, which includes the V1 base, Pleiades hierarchy/update parsing, and explicit World containers, for reproducible builds. The inspector exposes every field currently surfaced by the SDK; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
+The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to commit `ab030fee`, which is also the current SDK `main`, for reproducible builds. The inspector exposes the main fields useful for this example; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
 
 ## Clone and run locally
 
@@ -85,7 +85,7 @@ Do not open `index.html` directly with `file://`; ES modules need to be served o
 ## Connect to Augmenta
 
 1. Enable the Augmenta **WebSocket Output**.
-2. Enter the Augmenta server IP address or hostname and port. An IP address or already-qualified hostname is used as-is; a simple hostname such as `augmenta-server` automatically becomes `augmenta-server.local`. The default port is `6060`. The viewer builds the WebSocket URL internally, so do not add `ws://`.
+2. Enter the Augmenta server IP address or hostname and port. An IP address or already-qualified hostname is used as-is; a simple hostname such as `augmenta-server` automatically becomes `augmenta-server.local`. The default port is `6060`. The address field intentionally accepts only a host: enter the port in its separate field and do not add `ws://`.
 3. Keep **Auto** unless you are testing a specific protocol version. Auto starts with V3 and automatically reconnects with the server-reported V2/V3 parser when required.
 4. The viewer starts in **Connecting…** mode automatically and keeps retrying every second until a connection succeeds. While active, the button becomes **Connected**; click it to stop all reconnect attempts.
 
@@ -104,6 +104,7 @@ The example requests:
   boxRotationMode: RotationMode.Radians,
   axisTransform: {
     axis: AxisMode.YUpRightHanded,
+    origin: OriginMode.BottomLeft,
     flipX: false,
     flipY: false,
     flipZ: false,
@@ -154,7 +155,7 @@ Every push to `main` triggers `.github/workflows/pages.yml`.
 The workflow:
 
 1. checks out this repository and its submodule;
-2. installs the SDK development dependency and builds its ESM output;
+2. installs, builds and tests the pinned SDK submodule;
 3. assembles a minimal static `_site` artifact;
 4. deploys that artifact with GitHub Pages.
 
@@ -185,8 +186,7 @@ The low-level `AugmentaWebSocketClient` transport currently performs one connect
 ## Browser / networking notes
 
 - the UI accepts only an IP address/hostname and port; it constructs the local `ws://` URL internally.
-- an HTTPS-hosted page can still be subject to browser mixed-content/private-network restrictions when connecting to a local `ws://` server;
-- browser mixed-content and private-network protections can prevent a public HTTPS page from opening a local `ws://192.168.x.x` endpoint;
+- browser mixed-content and private-network protections can prevent the public HTTPS page from opening a local `ws://` endpoint;
 - CORS does not govern WebSocket framing itself, but the server/browser can still apply Origin, TLS and local-network security rules.
 
 If GitHub Pages cannot reach the Augmenta server, the local HTTP workflow above is the reference way to test the exact same application code.

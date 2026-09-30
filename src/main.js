@@ -10,6 +10,7 @@ const DISCONNECT_CLEANUP_DELAY_MS = 500;
 const SIDEBAR_MIN_WIDTH = 320;
 const SIDEBAR_MAX_WIDTH = 450;
 const SIDEBAR_VIEWPORT_MARGIN = 160;
+const MOBILE_MEDIA_QUERY = '(max-width: 900px)';
 
 // Three.js is Y-up, right-handed and metre-based. Ask Augmenta/Pleiades to
 // deliver tracking and setup data directly in that convention.
@@ -55,8 +56,14 @@ function setStatus(text, kind = 'idle') {
 }
 
 function updateConnectionButton() {
-  ui.connect.textContent = !wantsConnection ? 'Connect' : socketOpen ? 'Connected' : 'Connecting…';
-  ui.connect.classList.toggle('active', wantsConnection);
+  ui.connect.textContent = !wantsConnection
+    ? 'Connect'
+    : socketOpen
+      ? 'Connected'
+      : retrying
+        ? 'Retrying…'
+        : 'Connecting…';
+  ui.connect.classList.toggle('active', socketOpen);
   ui.connect.setAttribute('aria-pressed', String(wantsConnection));
   ui.connect.title = wantsConnection ? 'Click to stop the connection' : 'Connect to Augmenta';
 }
@@ -233,11 +240,18 @@ function selectedVersion() {
 }
 
 function normalizeServerHost(value) {
-  let host = String(value ?? '').trim();
+  const host = String(value ?? '').trim();
   if (!host) return '';
 
-  // Accept old-style pasted URLs as a convenience, while keeping the UI host-only.
-  host = host.replace(/^(?:wss?|https?):\/\//i, '').split('/')[0];
+  // Keep the field contract simple: host only. The port has its own input.
+  if (host.includes('://') || /[/?#]/.test(host)) {
+    throw new Error('Enter an IP address or hostname only.');
+  }
+
+  const colonCount = (host.match(/:/g) || []).length;
+  if (colonCount === 1 && !host.startsWith('[')) {
+    throw new Error('Enter the port in the Port field.');
+  }
 
   // IPv4/qualified hostnames already contain a dot; IPv6 contains a colon.
   // A simple hostname gets the usual mDNS .local suffix.
@@ -274,7 +288,7 @@ function scheduleReconnect(message = 'Connection closed.') {
   socketOpen = false;
   updateConnectionButton();
   setStatus('Retrying', 'connecting');
-  ui.note.textContent = `${message} Retrying in ${RECONNECT_DELAY_MS / 1000} s…`;
+  ui.note.textContent = `${message} Retrying automatically…`;
   reconnectTimer = window.setTimeout(() => {
     reconnectTimer = undefined;
     attemptConnection();
@@ -304,7 +318,7 @@ function attemptConnection() {
   } catch (error) {
     stopConnection({ quiet: true });
     setStatus('Error', 'error');
-    ui.note.textContent = error instanceof Error ? error.message : 'Invalid Augmenta server address.';
+    ui.note.textContent = error instanceof Error ? error.message : 'Invalid server address.';
     return;
   }
 
@@ -459,7 +473,7 @@ ui.scenes.addEventListener('change', renderSelectedScenes);
 // The panel overlays the renderer. Shift the camera projection by the visible
 // panel width so the orbit target stays centered in the unobscured viewport.
 function syncPanelCamera(animate = false) {
-  const isMobile = window.matchMedia('(max-width: 900px)').matches;
+  const isMobile = window.matchMedia(MOBILE_MEDIA_QUERY).matches;
   const hidden = ui.app.classList.contains('sidebar-hidden');
   const inset = isMobile || hidden ? 0 : ui.sidebar.getBoundingClientRect().width;
   viewer.setRightInset(inset, animate);
@@ -492,12 +506,12 @@ function setSidebarWidth(width) {
 }
 
 function resizeSidebar(event) {
-  if (window.matchMedia('(max-width: 900px)').matches) return;
+  if (window.matchMedia(MOBILE_MEDIA_QUERY).matches) return;
   setSidebarWidth(window.innerWidth - event.clientX);
 }
 
 ui.sidebarResizer.addEventListener('pointerdown', (event) => {
-  if (window.matchMedia('(max-width: 900px)').matches || ui.app.classList.contains('sidebar-hidden')) return;
+  if (window.matchMedia(MOBILE_MEDIA_QUERY).matches || ui.app.classList.contains('sidebar-hidden')) return;
   event.preventDefault();
   ui.sidebarResizer.setPointerCapture(event.pointerId);
   ui.app.classList.add('sidebar-resizing');
@@ -525,7 +539,7 @@ ui.sidebarResizer.addEventListener('keydown', (event) => {
 });
 
 window.addEventListener('resize', () => {
-  if (!window.matchMedia('(max-width: 900px)').matches) {
+  if (!window.matchMedia(MOBILE_MEDIA_QUERY).matches) {
     setSidebarWidth(ui.sidebar.getBoundingClientRect().width);
   } else {
     syncPanelCamera(false);

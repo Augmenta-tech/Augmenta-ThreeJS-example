@@ -5,6 +5,7 @@ import { ClusterState, ShapeType } from 'augmenta-client-sdk';
 const FLOOR_Y = 0;
 const VELOCITY_DISPLAY_SCALE = 3;
 const VELOCITY_MIN_DISPLAY_LENGTH = 0.18;
+const GHOST_COLOR = new THREE.Color(0x8a909b);
 const SESSION_COLOR_OFFSET = Math.floor(Math.random() * 1000);
 const PALETTE = [
   0x4cc9f0, // cyan
@@ -226,10 +227,10 @@ export function createViewer(host) {
     updateVelocity(view.velocity, center, velocity, view.color);
 
     const state = cluster.getState();
-    const color = state === ClusterState.Ghost ? new THREE.Color(0x8a909b) : view.color;
+    const color = state === ClusterState.Ghost ? GHOST_COLOR : view.color;
     view.box.material.color.copy(color);
     view.centroid.material.color.copy(color);
-    setArrowColor(view.velocity, color);
+    view.velocity.setColor(color);
     view.points.material.color.copy(color);
 
     view.box.material.opacity = state === ClusterState.WillLeave ? 0.35 : 0.95;
@@ -277,7 +278,7 @@ export function createViewer(host) {
   function renderSetup(root) {
     clearGroup(setupGroup);
     addContainer(root, setupGroup);
-    updateHomeFromSetup(false);
+    updateHomeFromSetup();
   }
 
   function upsertSetup(container) {
@@ -287,7 +288,7 @@ export function createViewer(host) {
 
     if (existing) disposeObject(existing);
     addContainer(container, parent);
-    updateHomeFromSetup(false);
+    updateHomeFromSetup();
   }
 
   function setupParentForAddress(address) {
@@ -424,11 +425,11 @@ export function createViewer(host) {
         );
 
       default:
-        return new THREE.SphereGeometry(0.08, 10, 6);
+        return undefined;
     }
   }
 
-  function updateHomeFromSetup(moveCamera = true) {
+  function updateHomeFromSetup() {
     const bounds = new THREE.Box3().setFromObject(setupGroup);
     if (bounds.isEmpty()) return;
 
@@ -450,7 +451,6 @@ export function createViewer(host) {
     controls.target.copy(center);
     controls.update();
 
-    if (moveCamera) resetCamera();
   }
 
   function setVisibility({ clusters, points, zones, vectors }) {
@@ -489,7 +489,6 @@ export function createViewer(host) {
 
   resetCamera();
   resize();
-  window.addEventListener('resize', resize);
   new ResizeObserver(resize).observe(host);
   renderer.domElement.addEventListener('dblclick', (event) => {
     if (event.button === 0) resetCamera();
@@ -565,10 +564,6 @@ function updateVelocity(arrow, origin, velocity, color) {
   const headLength = Math.min(Math.max(displayLength * 0.22, 0.09), 0.32);
   const headWidth = Math.min(Math.max(headLength * 0.55, 0.055), 0.18);
   arrow.setLength(displayLength, headLength, headWidth);
-  setArrowColor(arrow, color);
-}
-
-function setArrowColor(arrow, color) {
   arrow.setColor(color);
 }
 
@@ -662,9 +657,8 @@ function hashString(value) {
   return hash;
 }
 
-// Pleiades applies axisTransform to streamed binary tracking data, but setup
-// JSON currently remains in its native Y-up/left-handed basis. Keep that
-// protocol-specific adaptation here in the example renderer, not in the SDK.
+// Scene/zone dimensions are magnitudes. Geometry placement above preserves
+// the requested Y-up/right-handed direction while this helper keeps sizes valid.
 function positiveSize(size) {
   return size.map((v) => Math.max(Math.abs(v), 0.001));
 }

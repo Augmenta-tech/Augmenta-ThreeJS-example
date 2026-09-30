@@ -24,9 +24,16 @@ export function makeDemoFrame(t) {
 }
 
 function demoObject(index, t) {
-  const phase = t * (0.45 + index * 0.08) + index * 2.1;
-  const centroid = [Math.cos(phase) * (1.5 + index * 0.45), 0.9, Math.sin(phase) * (1.25 + index * 0.35)];
-  const velocity = [-Math.sin(phase) * 0.75, 0, Math.cos(phase) * 0.65];
+  const angularSpeed = 0.45 + index * 0.08;
+  const radiusX = 1.5 + index * 0.45;
+  const radiusZ = 1.25 + index * 0.35;
+  const phase = t * angularSpeed + index * 2.1;
+  const centroid = [Math.cos(phase) * radiusX, 0.9, Math.sin(phase) * radiusZ];
+  const velocity = [
+    -Math.sin(phase) * radiusX * angularSpeed,
+    0,
+    Math.cos(phase) * radiusZ * angularSpeed
+  ];
   const size = [0.5 + index * 0.05, 1.65 + index * 0.08, 0.48 + index * 0.04];
   const yaw = phase * 0.35;
   const cluster = new ClusterProperty(
