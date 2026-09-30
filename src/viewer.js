@@ -13,10 +13,12 @@ const ZONE_PRESENCE_LABEL_GAP = 0.32;
 const ZONE_PRESENCE_LABEL_COLOR = new THREE.Color(0xaeb4be);
 const ZONE_PRESENCE_LABEL_OPACITY = 0.78;
 const ZONE_PRESENCE_LABEL_PULSE_DURATION_MS = 180;
+const ZONE_PRESENCE_IDLE_OPACITY = 0.025;
 const ZONE_PRESENCE_OPACITY = 0.1;
 const ZONE_PRESENCE_PULSE_OPACITY = 0.24;
 const ZONE_PRESENCE_PULSE_DURATION_MS = 220;
 const ZONE_PRESENCE_FADE_DURATION_MS = 180;
+const ZONE_OUTLINE_COLOR = new THREE.Color(0x8ca6c6);
 const ZONE_OUTLINE_WIDTH = 1.7;
 const ROUND_OUTLINE_SEGMENTS = 24;
 const GHOST_COLOR = new THREE.Color(0x8a909b);
@@ -368,7 +370,7 @@ export function createViewer(host) {
 
     const presenceGeometry = geometry.clone();
     const color = containerColor(container, 0xb78cff);
-    const outline = createZoneOutline(params, geometry, color);
+    const outline = createZoneOutline(params, geometry, ZONE_OUTLINE_COLOR);
     geometry.dispose();
 
     if (params.isBox()) {
@@ -385,7 +387,7 @@ export function createViewer(host) {
       new THREE.MeshBasicMaterial({
         color,
         transparent: true,
-        opacity: 0,
+        opacity: ZONE_PRESENCE_IDLE_OPACITY,
         side: THREE.DoubleSide,
         depthTest: false,
         depthWrite: false
@@ -395,7 +397,7 @@ export function createViewer(host) {
     presenceMesh.position.copy(outline.position);
     presenceMesh.rotation.copy(outline.rotation);
     presenceMesh.renderOrder = 5;
-    presenceMesh.visible = false;
+    presenceMesh.visible = true;
 
     outline.renderOrder = 6;
     group.add(presenceMesh, outline);
@@ -417,7 +419,8 @@ export function createViewer(host) {
       fillPulseStartedAt: 0,
       fillFadeStartedAt: 0,
       fillFadeFromOpacity: 0,
-      labelPulseStartedAt: 0
+      labelPulseStartedAt: 0,
+      labelPulseDirection: 1
     };
     zoneViews.set(address, view);
     setZonePresence(view, zonePresence.get(address) ?? 0);
@@ -468,6 +471,9 @@ export function createViewer(host) {
         view.presenceMesh.material.opacity,
         ZONE_PRESENCE_OPACITY
       );
+    } else {
+      view.presenceMesh.visible = true;
+      view.presenceMesh.material.opacity = ZONE_PRESENCE_IDLE_OPACITY;
     }
 
     if (!active) {
@@ -479,11 +485,16 @@ export function createViewer(host) {
       return;
     }
 
-    if (nextPresence !== previousPresence && nextPresence > 1) {
+    if (
+      nextPresence !== previousPresence
+      && nextPresence > 0
+      && previousPresence > 0
+    ) {
       view.labelPulseStartedAt = now;
+      view.labelPulseDirection = nextPresence > previousPresence ? 1 : -1;
     }
 
-    const text = `${nextPresence}x`;
+    const text = `x${nextPresence}`;
     if (view.labelText !== text) {
       replaceZonePresenceLabelTexture(view.label, text);
       view.labelText = text;
@@ -514,12 +525,14 @@ export function createViewer(host) {
           1
         );
         view.presenceMesh.material.opacity =
-          view.fillFadeFromOpacity * Math.pow(1 - phase, 2);
+          ZONE_PRESENCE_IDLE_OPACITY
+          + (view.fillFadeFromOpacity - ZONE_PRESENCE_IDLE_OPACITY)
+          * Math.pow(1 - phase, 2);
 
         if (phase >= 1) {
           view.fillFadeStartedAt = 0;
-          view.presenceMesh.material.opacity = 0;
-          view.presenceMesh.visible = false;
+          view.presenceMesh.material.opacity = ZONE_PRESENCE_IDLE_OPACITY;
+          view.presenceMesh.visible = true;
         }
       }
 
@@ -528,9 +541,10 @@ export function createViewer(host) {
         if (elapsed < ZONE_PRESENCE_LABEL_PULSE_DURATION_MS) {
           const phase = elapsed / ZONE_PRESENCE_LABEL_PULSE_DURATION_MS;
           const pulse = Math.sin(Math.PI * phase);
-          view.label.scale.copy(view.labelBaseScale).multiplyScalar(1 + pulse * 0.13);
-          view.label.material.opacity =
-            ZONE_PRESENCE_LABEL_OPACITY + pulse * 0.16;
+          view.label.scale.copy(view.labelBaseScale).multiplyScalar(
+            1 + view.labelPulseDirection * pulse * 0.06
+          );
+          view.label.material.opacity = ZONE_PRESENCE_LABEL_OPACITY;
         } else {
           view.labelPulseStartedAt = 0;
           view.label.scale.copy(view.labelBaseScale);
@@ -711,7 +725,7 @@ function createZoneOutline(params, sourceGeometry, color) {
     color: color.getHex(),
     linewidth: ZONE_OUTLINE_WIDTH,
     transparent: true,
-    opacity: 0.96,
+    opacity: 0.99,
     depthTest: false,
     depthWrite: false
   });
@@ -864,14 +878,14 @@ function makeZonePresenceLabelTexture(text) {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   roundedRect(ctx, 34, 19, 188, 58, 19);
-  ctx.fillStyle = 'rgba(45, 49, 57, 0.82)';
+  ctx.fillStyle = 'rgba(55, 59, 67, 0.84)';
   ctx.fill();
 
-  ctx.strokeStyle = '#8d949f';
+  ctx.strokeStyle = '#9ba1aa';
   ctx.lineWidth = 3;
   ctx.stroke();
 
-  ctx.fillStyle = '#eef1f5';
+  ctx.fillStyle = '#c9cdd4';
   ctx.font = '600 36px Inter, Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
