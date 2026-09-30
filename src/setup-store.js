@@ -80,20 +80,16 @@ function replaceInTree(current, update) {
 }
 
 function mergeContainer(previous, update) {
-  let children = [...previous.getChildren()];
+  const updateChildren = update.getChildren();
 
-  for (const updateChild of update.getChildren()) {
-    const index = children.findIndex((child) => sameContainer(child, updateChild));
-    if (index < 0) {
-      children.push(updateChild);
-    } else {
-      children[index] = mergeContainer(children[index], updateChild);
-    }
-  }
-
-  // Pleiades update messages normally describe only the changed container.
-  // Preserve its existing subtree when the update omits children.
-  return cloneContainer(update, children);
+  // Pleiades serializes the complete subtree below an updated container. When
+  // children are present, treat that list as authoritative so renamed children
+  // do not leave stale old-address copies behind. Leaf/partial updates omit
+  // children, in which case the existing subtree is preserved.
+  return cloneContainer(
+    update,
+    updateChildren.length ? updateChildren : [...previous.getChildren()]
+  );
 }
 
 function insertAtBestParent(root, update) {
