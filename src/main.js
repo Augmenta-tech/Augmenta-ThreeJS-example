@@ -3,6 +3,11 @@ import { createSetupStore } from './setup-store.js';
 import { createViewer } from './viewer.js';
 import { createDebugPanel } from './debug.js';
 import { makeDemoFrame, makeDemoSetup } from './demo.js';
+import {
+  buildConnectionShareUrl,
+  readConnectionOptionsFromUrl
+} from './share-link.js';
+import { qrcode } from 'https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.mjs';
 
 const DISCONNECT_CLEANUP_DELAY_MS = 500;
 const CAMERA_PREFERENCE_SAVE_DELAY_MS = 250;
@@ -17,7 +22,7 @@ const ui = {
   app: $('#app'), sidebar: $('#sidebar'), sidebarResizer: $('#sidebar-resizer'), serverAddress: $('#server-address'), port: $('#port'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
   demo: $('#demo'), status: $('#status'), note: $('#connection-note'), summary: $('#summary'),
   debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'), scenes: $('#scenes'),
-  sidebarToggle: $('#sidebar-toggle'),
+  sidebarToggle: $('#sidebar-toggle'), connectionQr: $('#connection-qr'), connectionQrCode: $('#connection-qr-code'),
   showClusters: $('#show-clusters'), showPoints: $('#show-points'), showZones: $('#show-zones'), showVectors: $('#show-vectors')
 };
 
@@ -84,6 +89,7 @@ function savePreferences() {
 function restorePreferences() {
   const savedPreferences = loadPreferences();
   const connection = isObject(savedPreferences.connection) ? savedPreferences.connection : {};
+  const sharedConnection = readConnectionOptionsFromUrl(window.location.href);
   const display = isObject(savedPreferences.display) ? savedPreferences.display : {};
   const uiPreferences = isObject(savedPreferences.ui) ? savedPreferences.ui : {};
 
@@ -97,6 +103,13 @@ function restorePreferences() {
 
   const downsample = Number(connection.downsample);
   if (Number.isInteger(downsample) && downsample >= 1) ui.downsample.value = String(downsample);
+
+  // A QR/shared URL is explicit user intent on this load, so its connection
+  // values take precedence over this device's persisted local preferences.
+  if (typeof sharedConnection.address === 'string') ui.serverAddress.value = sharedConnection.address;
+  if (typeof sharedConnection.port === 'string') ui.port.value = sharedConnection.port;
+  if (typeof sharedConnection.protocol === 'string') ui.protocol.value = sharedConnection.protocol;
+  if (typeof sharedConnection.downsample === 'string') ui.downsample.value = sharedConnection.downsample;
 
   if (typeof display.clusters === 'boolean') ui.showClusters.checked = display.clusters;
   if (typeof display.points === 'boolean') ui.showPoints.checked = display.points;
@@ -333,6 +346,20 @@ function getConnectionSettings() {
   };
 }
 
+function refreshConnectionQr() {
+  const shareUrl = buildConnectionShareUrl(window.location.href, getConnectionSettings());
+  const qr = qrcode(0, 'M');
+  qr.addData(shareUrl);
+  qr.make();
+
+  ui.connectionQr.href = shareUrl;
+  ui.connectionQrCode.innerHTML = qr.createSvgTag({
+    cellSize: 4,
+    margin: 8,
+    scalable: true
+  });
+}
+
 function handleSetup(message) {
   setSetup(message.getRootObject());
   if (!hasPersistedCameraView) viewer.resetCamera();
@@ -517,7 +544,10 @@ function handleServerFieldEnter(event) {
 ui.serverAddress.addEventListener('keydown', handleServerFieldEnter);
 ui.port.addEventListener('keydown', handleServerFieldEnter);
 [ui.serverAddress, ui.port, ui.downsample].forEach((input) => {
-  input.addEventListener('input', savePreferences);
+  input.addEventListener('input', () => {
+    savePreferences();
+    refreshConnectionQr();
+  });
 });
 ui.serverAddress.addEventListener('change', () => {
   savePreferences();
@@ -529,10 +559,12 @@ ui.port.addEventListener('change', () => {
 });
 ui.protocol.addEventListener('change', () => {
   savePreferences();
+  refreshConnectionQr();
   connection.restart('Protocol changed', { resetProtocol: true });
 });
 ui.downsample.addEventListener('change', () => {
   savePreferences();
+  refreshConnectionQr();
   connection.restart('Downsample changed');
 });
 [ui.showClusters, ui.showPoints, ui.showZones, ui.showVectors]
@@ -545,6 +577,7 @@ function syncPreferencesToUi() {
   restorePreferences();
   applyVisibility();
   syncPanelCamera(false);
+  refreshConnectionQr();
 }
 
 syncPreferencesToUi();
