@@ -21,6 +21,8 @@ const ZONE_PRESENCE_FADE_DURATION_MS = 180;
 const ZONE_VISUAL_COLOR = new THREE.Color(0x969ba3);
 const ZONE_OUTLINE_COLOR = ZONE_VISUAL_COLOR;
 const ZONE_OUTLINE_WIDTH = 1.7;
+const ROUND_ZONE_EDGE_WIDTH = 1.0;
+const ROUND_ZONE_EDGE_OPACITY = 0.18;
 const ZONE_XY_PAD_FILL_OPACITY = 0.16;
 const ZONE_XY_PAD_AXIS_OPACITY = 0.72;
 const ROUND_OUTLINE_SEGMENTS = 32;
@@ -714,16 +716,10 @@ function setLeftHandedQuaternion(target, [x, y, z, w]) {
 }
 
 function createZoneOutline(params, sourceGeometry, color) {
-  if (params.isBox()) {
-    const edges = new THREE.EdgesGeometry(sourceGeometry);
-    const positions = Array.from(edges.attributes.position.array);
-    edges.dispose();
-    return createWideLineSegments(positions, color, ZONE_OUTLINE_WIDTH, 'Zone outline');
-  }
-
   const outline = new THREE.Group();
   outline.name = 'Zone outline';
 
+  // All zone shapes get the same camera-dependent silhouette.
   const silhouette = new THREE.Mesh(
     sourceGeometry.clone(),
     createSilhouetteMaterial(color)
@@ -731,6 +727,22 @@ function createZoneOutline(params, sourceGeometry, color) {
   silhouette.name = 'Zone silhouette';
   silhouette.renderOrder = 6;
   outline.add(silhouette);
+
+  if (params.isBox()) {
+    const edges = new THREE.EdgesGeometry(sourceGeometry);
+    const positions = Array.from(edges.attributes.position.array);
+    edges.dispose();
+
+    const boxEdges = createWideLineSegments(
+      positions,
+      color,
+      ZONE_OUTLINE_WIDTH,
+      'Zone edges'
+    );
+    boxEdges.renderOrder = 7;
+    outline.add(boxEdges);
+    return outline;
+  }
 
   let guidePositions = [];
   if (params.isCylinder()) {
@@ -749,8 +761,9 @@ function createZoneOutline(params, sourceGeometry, color) {
     const guides = createWideLineSegments(
       guidePositions,
       color,
-      ZONE_OUTLINE_WIDTH,
-      'Zone guide'
+      ROUND_ZONE_EDGE_WIDTH,
+      'Zone guide',
+      ROUND_ZONE_EDGE_OPACITY
     );
     guides.renderOrder = 7;
     outline.add(guides);
@@ -794,7 +807,7 @@ function createSilhouetteMaterial(color) {
   });
 }
 
-function createWideLineSegments(positions, color, width, name) {
+function createWideLineSegments(positions, color, width, name, opacity = 0.99) {
   const geometry = new LineSegmentsGeometry();
   geometry.setPositions(positions);
   geometry.computeBoundingBox();
@@ -804,7 +817,7 @@ function createWideLineSegments(positions, color, width, name) {
     color: color.getHex(),
     linewidth: width,
     transparent: true,
-    opacity: 0.99,
+    opacity,
     depthTest: false,
     depthWrite: false
   });
