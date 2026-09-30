@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { ClusterState, ShapeType } from 'augmenta-client-sdk';
 import { speedFromVelocity } from './motion.js';
 
@@ -7,10 +10,15 @@ const FLOOR_Y = 0;
 const VELOCITY_DISPLAY_SCALE = 3;
 const VELOCITY_MIN_DISPLAY_LENGTH = 0.18;
 const ZONE_PRESENCE_LABEL_GAP = 0.32;
-const ZONE_PRESENCE_LABEL_COLOR = new THREE.Color(0x9aa1ad);
+const ZONE_PRESENCE_LABEL_COLOR = new THREE.Color(0xaeb4be);
+const ZONE_PRESENCE_LABEL_OPACITY = 0.78;
+const ZONE_PRESENCE_LABEL_PULSE_DURATION_MS = 180;
 const ZONE_PRESENCE_OPACITY = 0.1;
 const ZONE_PRESENCE_PULSE_OPACITY = 0.24;
 const ZONE_PRESENCE_PULSE_DURATION_MS = 220;
+const ZONE_PRESENCE_FADE_DURATION_MS = 180;
+const ZONE_OUTLINE_WIDTH = 1.7;
+const ROUND_OUTLINE_SEGMENTS = 24;
 const GHOST_COLOR = new THREE.Color(0x8a909b);
 const SESSION_COLOR_OFFSET = Math.floor(Math.random() * 1000);
 const PALETTE = [
@@ -92,6 +100,9 @@ export function createViewer(host) {
     const width = Math.max(host.clientWidth, 1);
     const height = Math.max(host.clientHeight, 1);
     renderer.setSize(width, height, false);
+    setupGroup.traverse((object) => {
+      if (object.material?.isLineMaterial) object.material.resolution.set(width, height);
+    });
     updateCameraProjection();
   }
 
@@ -357,43 +368,16 @@ export function createViewer(host) {
 
     const presenceGeometry = geometry.clone();
     const color = containerColor(container, 0xb78cff);
-    let mesh;
-    if (params.isBox() || params.isCylinder()) {
-      const edges = new THREE.EdgesGeometry(geometry);
-      geometry.dispose();
-      mesh = new THREE.LineSegments(
-        edges,
-        new THREE.LineBasicMaterial({
-          color,
-          transparent: true,
-          opacity: 0.9,
-          depthTest: false,
-          depthWrite: false
-        })
-      );
+    const outline = createZoneOutline(params, geometry, color);
+    geometry.dispose();
 
-      if (params.isBox()) {
-        const size = params.getBoxShapeParameters().size;
-        // Box size is a magnitude; preserve the requested right-handed -Z
-        // direction for the local [0..size] Augmenta box volume.
-        mesh.position.set(size[0] / 2, size[1] / 2, -size[2] / 2);
-      }
-    } else {
-      mesh = new THREE.Mesh(
-        geometry,
-        new THREE.MeshBasicMaterial({
-          color,
-          wireframe: true,
-          transparent: true,
-          opacity: 0.9,
-          depthTest: false,
-          depthWrite: false
-        })
-      );
-    }
-
-    if (params.isCylinder()) {
-      mesh.position.y = params.getCylinderShapeParameters().height / 2;
+    if (params.isBox()) {
+      const size = params.getBoxShapeParameters().size;
+      // Box size is a magnitude; preserve the requested right-handed -Z
+      // direction for the local [0..size] Augmenta box volume.
+      outline.position.set(size[0] / 2, size[1] / 2, -size[2] / 2);
+    } else if (params.isCylinder()) {
+      outline.position.y = params.getCylinderShapeParameters().height / 2;
     }
 
     const presenceMesh = new THREE.Mesh(
@@ -408,20 +392,18 @@ export function createViewer(host) {
       })
     );
     presenceMesh.name = 'Zone presence';
-    presenceMesh.position.copy(mesh.position);
-    presenceMesh.rotation.copy(mesh.rotation);
+    presenceMesh.position.copy(outline.position);
+    presenceMesh.rotation.copy(outline.rotation);
     presenceMesh.renderOrder = 5;
     presenceMesh.visible = false;
 
-    mesh.renderOrder = 6;
-    group.add(presenceMesh, mesh);
+    outline.renderOrder = 6;
+    group.add(presenceMesh, outline);
 
     const address = container.getAddress();
     if (!address) return;
 
-    const label = createLabelSprite('', ZONE_PRESENCE_LABEL_COLOR);
-    label.scale.multiplyScalar(0.88);
-    label.material.opacity = 0.62;
+    const label = createZonePresenceLabel('');
     label.visible = false;
     positionZoneLabel(label, params);
     group.add(label);
@@ -429,9 +411,13 @@ export function createViewer(host) {
     const view = {
       label,
       labelText: '',
-      labelColor: ZONE_PRESENCE_LABEL_COLOR,
+      labelBaseScale: label.scale.clone(),
+      presence: 0,
       presenceMesh,
-      pulseStartedAt: 0
+      fillPulseStartedAt: 0,
+      fillFadeStartedAt: 0,
+      fillFadeFromOpacity: 0,
+      labelPulseStartedAt: 0
     };
     zoneViews.set(address, view);
     setZonePresence(view, zonePresence.get(address) ?? 0);
@@ -465,44 +451,92 @@ export function createViewer(host) {
   }
 
   function setZonePresence(view, presence, enters = 0) {
-    const active = Number.isFinite(presence) && presence > 0;
-    view.presenceMesh.visible = active;
-    view.presenceMesh.material.opacity = active ? ZONE_PRESENCE_OPACITY : 0;
+    const nextPresence = Number.isFinite(presence) ? Math.max(0, presence) : 0;
+    const previousPresence = view.presence;
+    const active = nextPresence > 0;
+    const now = performance.now();
+
+    if (active) {
+      view.presenceMesh.visible = true;
+      view.fillFadeStartedAt = 0;
+      view.presenceMesh.material.opacity = ZONE_PRESENCE_OPACITY;
+      if (enters > 0) view.fillPulseStartedAt = now;
+    } else if (previousPresence > 0 && view.presenceMesh.visible) {
+      view.fillPulseStartedAt = 0;
+      view.fillFadeStartedAt = now;
+      view.fillFadeFromOpacity = Math.max(
+        view.presenceMesh.material.opacity,
+        ZONE_PRESENCE_OPACITY
+      );
+    }
 
     if (!active) {
-      view.pulseStartedAt = 0;
       view.label.visible = false;
+      view.labelPulseStartedAt = 0;
+      view.label.scale.copy(view.labelBaseScale);
+      view.label.material.opacity = ZONE_PRESENCE_LABEL_OPACITY;
+      view.presence = nextPresence;
       return;
     }
 
-    if (enters > 0) view.pulseStartedAt = performance.now();
+    if (nextPresence !== previousPresence && nextPresence > 1) {
+      view.labelPulseStartedAt = now;
+    }
 
-    const text = `P ${presence}`;
+    const text = `${nextPresence}x`;
     if (view.labelText !== text) {
-      replaceLabelTexture(view.label, text, view.labelColor);
+      replaceZonePresenceLabelTexture(view.label, text);
       view.labelText = text;
     }
     view.label.visible = true;
+    view.presence = nextPresence;
   }
 
-  function updateZonePresencePulse(now) {
+  function updateZonePresenceAnimation(now) {
     for (const view of zoneViews.values()) {
-      if (!view.presenceMesh.visible) continue;
+      if (view.presence > 0 && view.presenceMesh.visible) {
+        let opacity = ZONE_PRESENCE_OPACITY;
+        if (view.fillPulseStartedAt > 0) {
+          const elapsed = now - view.fillPulseStartedAt;
+          if (elapsed < ZONE_PRESENCE_PULSE_DURATION_MS) {
+            const phase = elapsed / ZONE_PRESENCE_PULSE_DURATION_MS;
+            opacity +=
+              (ZONE_PRESENCE_PULSE_OPACITY - ZONE_PRESENCE_OPACITY)
+              * Math.sin(Math.PI * phase);
+          } else {
+            view.fillPulseStartedAt = 0;
+          }
+        }
+        view.presenceMesh.material.opacity = opacity;
+      } else if (view.fillFadeStartedAt > 0 && view.presenceMesh.visible) {
+        const phase = Math.min(
+          (now - view.fillFadeStartedAt) / ZONE_PRESENCE_FADE_DURATION_MS,
+          1
+        );
+        view.presenceMesh.material.opacity =
+          view.fillFadeFromOpacity * Math.pow(1 - phase, 2);
 
-      let opacity = ZONE_PRESENCE_OPACITY;
-      if (view.pulseStartedAt > 0) {
-        const elapsed = now - view.pulseStartedAt;
-        if (elapsed < ZONE_PRESENCE_PULSE_DURATION_MS) {
-          const phase = elapsed / ZONE_PRESENCE_PULSE_DURATION_MS;
-          opacity +=
-            (ZONE_PRESENCE_PULSE_OPACITY - ZONE_PRESENCE_OPACITY)
-            * Math.sin(Math.PI * phase);
-        } else {
-          view.pulseStartedAt = 0;
+        if (phase >= 1) {
+          view.fillFadeStartedAt = 0;
+          view.presenceMesh.material.opacity = 0;
+          view.presenceMesh.visible = false;
         }
       }
 
-      view.presenceMesh.material.opacity = opacity;
+      if (view.labelPulseStartedAt > 0 && view.label.visible) {
+        const elapsed = now - view.labelPulseStartedAt;
+        if (elapsed < ZONE_PRESENCE_LABEL_PULSE_DURATION_MS) {
+          const phase = elapsed / ZONE_PRESENCE_LABEL_PULSE_DURATION_MS;
+          const pulse = Math.sin(Math.PI * phase);
+          view.label.scale.copy(view.labelBaseScale).multiplyScalar(1 + pulse * 0.13);
+          view.label.material.opacity =
+            ZONE_PRESENCE_LABEL_OPACITY + pulse * 0.16;
+        } else {
+          view.labelPulseStartedAt = 0;
+          view.label.scale.copy(view.labelBaseScale);
+          view.label.material.opacity = ZONE_PRESENCE_LABEL_OPACITY;
+        }
+      }
     }
   }
 
@@ -603,7 +637,7 @@ export function createViewer(host) {
 
   renderer.setAnimationLoop(() => {
     controls.update();
-    updateZonePresencePulse(performance.now());
+    updateZonePresenceAnimation(performance.now());
 
     // Orbiting stays above the world floor. With screenSpacePanning=false,
     // right-drag panning also remains parallel to the floor plane.
@@ -645,6 +679,102 @@ function setSetupRotation(object, mappedRotationDegrees) {
 function setLeftHandedQuaternion(target, [x, y, z, w]) {
   // Reflection M=diag(1,1,-1): R_rh = M * R_lh * M.
   target.set(-x, -y, z, w).normalize();
+}
+
+function createZoneOutline(params, sourceGeometry, color) {
+  let positions;
+
+  if (params.isBox()) {
+    const edges = new THREE.EdgesGeometry(sourceGeometry);
+    positions = Array.from(edges.attributes.position.array);
+    edges.dispose();
+  } else if (params.isCylinder()) {
+    const { radius, height } = params.getCylinderShapeParameters();
+    positions = cylinderOutlinePositions(
+      Math.max(Math.abs(radius), 0.001),
+      Math.max(Math.abs(height), 0.001)
+    );
+  } else if (params.isSphere()) {
+    positions = sphereOutlinePositions(
+      Math.max(Math.abs(params.getSphereShapeParameters().radius), 0.001)
+    );
+  } else {
+    positions = [];
+  }
+
+  const geometry = new LineSegmentsGeometry();
+  geometry.setPositions(positions);
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+
+  const material = new LineMaterial({
+    color: color.getHex(),
+    linewidth: ZONE_OUTLINE_WIDTH,
+    transparent: true,
+    opacity: 0.96,
+    depthTest: false,
+    depthWrite: false
+  });
+  material.resolution.set(
+    Math.max(window.innerWidth, 1),
+    Math.max(window.innerHeight, 1)
+  );
+
+  const outline = new LineSegments2(geometry, material);
+  outline.name = 'Zone outline';
+  return outline;
+}
+
+function cylinderOutlinePositions(radius, height) {
+  const positions = [];
+  const halfHeight = height / 2;
+
+  for (const y of [-halfHeight, halfHeight]) {
+    addCircleSegments(positions, radius, ROUND_OUTLINE_SEGMENTS, (angle) => [
+      Math.cos(angle) * radius,
+      y,
+      Math.sin(angle) * radius
+    ]);
+  }
+
+  for (let i = 0; i < 4; i++) {
+    const angle = i * Math.PI / 2;
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    positions.push(x, -halfHeight, z, x, halfHeight, z);
+  }
+
+  return positions;
+}
+
+function sphereOutlinePositions(radius) {
+  const positions = [];
+
+  addCircleSegments(positions, radius, ROUND_OUTLINE_SEGMENTS, (angle) => [
+    Math.cos(angle) * radius,
+    0,
+    Math.sin(angle) * radius
+  ]);
+  addCircleSegments(positions, radius, ROUND_OUTLINE_SEGMENTS, (angle) => [
+    Math.cos(angle) * radius,
+    Math.sin(angle) * radius,
+    0
+  ]);
+  addCircleSegments(positions, radius, ROUND_OUTLINE_SEGMENTS, (angle) => [
+    0,
+    Math.sin(angle) * radius,
+    Math.cos(angle) * radius
+  ]);
+
+  return positions;
+}
+
+function addCircleSegments(target, _radius, segments, pointAt) {
+  for (let i = 0; i < segments; i++) {
+    const a = i / segments * Math.PI * 2;
+    const b = (i + 1) / segments * Math.PI * 2;
+    target.push(...pointAt(a), ...pointAt(b));
+  }
 }
 
 function configureControls(controls) {
@@ -702,6 +832,57 @@ function disposeArrow(arrow) {
   arrow.cone.geometry.dispose();
   arrow.cone.material.dispose();
   arrow.parent?.remove(arrow);
+}
+
+function createZonePresenceLabel(text) {
+  const material = new THREE.SpriteMaterial({
+    map: makeZonePresenceLabelTexture(text),
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+    opacity: ZONE_PRESENCE_LABEL_OPACITY
+  });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(0.63, 0.24, 1);
+  sprite.renderOrder = 10;
+  return sprite;
+}
+
+function replaceZonePresenceLabelTexture(sprite, text) {
+  sprite.material.map?.dispose();
+  sprite.material.map = makeZonePresenceLabelTexture(text);
+  sprite.material.needsUpdate = true;
+}
+
+function makeZonePresenceLabelTexture(text) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 96;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return new THREE.CanvasTexture(canvas);
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  roundedRect(ctx, 34, 19, 188, 58, 19);
+  ctx.fillStyle = 'rgba(45, 49, 57, 0.82)';
+  ctx.fill();
+
+  ctx.strokeStyle = '#8d949f';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.fillStyle = '#eef1f5';
+  ctx.font = '600 36px Inter, Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 128, 49);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+  return texture;
 }
 
 function createLabelSprite(text, color) {
