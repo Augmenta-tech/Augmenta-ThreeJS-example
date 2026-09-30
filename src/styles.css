@@ -257,7 +257,6 @@ details[open] summary { border-bottom: 1px solid #2b313d; }
 .objects-table .id-column { width: 16%; }
 .objects-table .cluster-column { width: 55%; }
 .objects-table .points-column { width: 29%; }
-.objects-table td:nth-child(2) { white-space: nowrap; }
 .debug-table th, .debug-table td { padding: 6px 8px; border-bottom: 1px solid #262c37; text-align: left; vertical-align: top; }
 .debug-table th { color: #7f8b9f; font-weight: 650; }
 .debug-table td { color: #c4ccd8; font-family: "SFMono-Regular", Consolas, monospace; overflow-wrap: anywhere; }

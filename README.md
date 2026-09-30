@@ -19,7 +19,7 @@ The viewer requests the richest practical uncompressed stream from the Augmenta 
 - automatic protocol selection: try V3 first, then reconnect with the server-reported V2/V3 parser when needed;
 - clusters and stable IDs / UUIDs;
 - centroid, velocity, speed, state, bounding-box size and rotation;
-- velocity is received directly from Augmenta through the SDK; speed is derived client-side as the velocity magnitude, matching the current Unity WebSocket and TouchDesigner C++ client philosophy;
+- velocity is received directly from Augmenta through the SDK; the pinned SDK has explicit non-zero V2/V3 velocity parsing regression tests, while speed is derived client-side as the velocity magnitude;
 - bounding-box center, size and rotation;
 - object point clouds and point-intensity data when present;
 - scene dimensions from setup data;
@@ -40,7 +40,7 @@ Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right
 
 Partial setup updates are merged into the cached hierarchy before rendering, so a Scene update that omits its Zone children does not erase them. Scene selection and scene-size debug information therefore always use the latest merged setup.
 
-The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to commit `ab030fee`, which is also the current SDK `main`, for reproducible builds. The inspector exposes the main fields useful for this example; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
+The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to commit `808e0b2e`, which is also the current SDK `main`, for reproducible builds. The inspector exposes the main fields useful for this example; raw point arrays are rendered in full in Three.js but only sampled in the text panel to keep the DOM responsive.
 
 ## Clone and run locally
 
