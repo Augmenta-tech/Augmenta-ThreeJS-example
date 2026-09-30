@@ -128,7 +128,9 @@ export function createConnectionController({
         streamZonePoints: true,
         useCompression: false,
         displayPointIntensity: true,
-        boxRotationMode: RotationMode.Radians,
+        // Quaternions preserve Pleiades' exact OBB orientation. The viewer
+        // performs the left-handed -> right-handed basis reflection explicitly.
+        boxRotationMode: RotationMode.Quaternions,
         axisTransform: THREE_JS_AXIS_TRANSFORM
       }
     });

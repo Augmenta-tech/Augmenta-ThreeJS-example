@@ -42,7 +42,7 @@ function objectsBlock(frame) {
       const c = object.getCluster();
       const velocity = c.getVelocity();
       const speed = speedFromVelocity(velocity);
-      cluster = `state ${esc(ClusterState[c.getState()] ?? c.getState())}<br>centroid ${esc(vec(c.getCentroid()))}<br>velocity ${esc(vec(velocity))}<br>speed ${fmt(speed)} m/s<br>box center ${esc(vec(c.getBoundingBoxCenter()))}<br>box size ${esc(vec(c.getBoundingBoxSize()))}<br>rotation ${esc(vec(c.getBoundingBoxRotationEuler()))}`;
+      cluster = `state ${esc(ClusterState[c.getState()] ?? c.getState())}<br>centroid ${esc(vec(c.getCentroid()))}<br>velocity ${esc(vec(velocity))}<br>speed ${fmt(speed)} m/s<br>box center ${esc(vec(c.getBoundingBoxCenter()))}<br>box size ${esc(vec(c.getBoundingBoxSize()))}<br>rotation q ${esc(vec(c.getBoundingBoxRotationQuaternions()))}`;
     }
 
     let points = '—';

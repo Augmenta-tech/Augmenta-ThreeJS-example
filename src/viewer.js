@@ -8,6 +8,9 @@ const VELOCITY_DISPLAY_SCALE = 3;
 const VELOCITY_MIN_DISPLAY_LENGTH = 0.18;
 const ZONE_PRESENCE_LABEL_GAP = 0.32;
 const ZONE_PRESENCE_LABEL_COLOR = new THREE.Color(0x9aa1ad);
+const ZONE_PRESENCE_OPACITY = 0.1;
+const ZONE_PRESENCE_PULSE_OPACITY = 0.24;
+const ZONE_PRESENCE_PULSE_DURATION_MS = 220;
 const GHOST_COLOR = new THREE.Color(0x8a909b);
 const SESSION_COLOR_OFFSET = Math.floor(Math.random() * 1000);
 const PALETTE = [
@@ -219,7 +222,7 @@ export function createViewer(host) {
     const size = cluster.getBoundingBoxSize();
     const centroid = cluster.getCentroid();
     const velocity = cluster.getVelocity();
-    const rotation = cluster.getBoundingBoxRotationEuler();
+    const rotation = cluster.getBoundingBoxRotationQuaternions();
 
     view.box.visible = true;
     view.box.position.fromArray(center);
@@ -228,9 +231,9 @@ export function createViewer(host) {
       Math.max(Math.abs(size[1]), 0.001),
       Math.max(Math.abs(size[2]), 0.001)
     );
-    // RotationMode.Radians lets Pleiades apply the requested axis transform
-    // before transmission, matching Three.js' native Euler unit.
-    view.box.rotation.set(rotation[0], rotation[1], rotation[2], 'XYZ');
+    // Pleiades sends its native Y-up/left-handed quaternion. Reflect it across
+    // Z to express the exact same orientation in Three.js' right-handed space.
+    setLeftHandedQuaternion(view.box.quaternion, rotation);
 
     view.centroid.visible = true;
     view.centroid.position.fromArray(centroid);
@@ -297,12 +300,8 @@ export function createViewer(host) {
     const group = new THREE.Group();
     group.name = `augmenta:${container.getAddress()}`;
 
-    // Pleiades applies AxisTransform to setup JSON too. The example only maps
-    // SDK values into Three.js objects; it does not reimplement axis conversion.
     group.position.fromArray(container.getPosition());
-    const r = container.getRotation().map(THREE.MathUtils.degToRad);
-    // Match Pleiades exactly: setup rotations are composed Z -> Y -> X.
-    group.rotation.set(r[0], r[1], r[2], 'ZYX');
+    setSetupRotation(group, container.getRotation());
     parent.add(group);
 
     if (container.isScene()) {
@@ -427,7 +426,13 @@ export function createViewer(host) {
     positionZoneLabel(label, params);
     group.add(label);
 
-    const view = { label, labelText: '', labelColor: ZONE_PRESENCE_LABEL_COLOR, presenceMesh };
+    const view = {
+      label,
+      labelText: '',
+      labelColor: ZONE_PRESENCE_LABEL_COLOR,
+      presenceMesh,
+      pulseStartedAt: 0
+    };
     zoneViews.set(address, view);
     setZonePresence(view, zonePresence.get(address) ?? 0);
   }
@@ -455,20 +460,22 @@ export function createViewer(host) {
       zonePresence.set(address, presence);
 
       const view = zoneViews.get(address);
-      if (view) setZonePresence(view, presence);
+      if (view) setZonePresence(view, presence, event.getEnters());
     }
   }
 
-  function setZonePresence(view, presence) {
+  function setZonePresence(view, presence, enters = 0) {
     const active = Number.isFinite(presence) && presence > 0;
     view.presenceMesh.visible = active;
-    view.presenceMesh.material.opacity =
-      active ? 0.1 + Math.min(Math.sqrt(presence) / 10, 0.5) : 0;
+    view.presenceMesh.material.opacity = active ? ZONE_PRESENCE_OPACITY : 0;
 
     if (!active) {
+      view.pulseStartedAt = 0;
       view.label.visible = false;
       return;
     }
+
+    if (enters > 0) view.pulseStartedAt = performance.now();
 
     const text = `P ${presence}`;
     if (view.labelText !== text) {
@@ -476,6 +483,27 @@ export function createViewer(host) {
       view.labelText = text;
     }
     view.label.visible = true;
+  }
+
+  function updateZonePresencePulse(now) {
+    for (const view of zoneViews.values()) {
+      if (!view.presenceMesh.visible) continue;
+
+      let opacity = ZONE_PRESENCE_OPACITY;
+      if (view.pulseStartedAt > 0) {
+        const elapsed = now - view.pulseStartedAt;
+        if (elapsed < ZONE_PRESENCE_PULSE_DURATION_MS) {
+          const phase = elapsed / ZONE_PRESENCE_PULSE_DURATION_MS;
+          opacity +=
+            (ZONE_PRESENCE_PULSE_OPACITY - ZONE_PRESENCE_OPACITY)
+            * Math.sin(Math.PI * phase);
+        } else {
+          view.pulseStartedAt = 0;
+        }
+      }
+
+      view.presenceMesh.material.opacity = opacity;
+    }
   }
 
   function zoneGeometry(params) {
@@ -575,6 +603,7 @@ export function createViewer(host) {
 
   renderer.setAnimationLoop(() => {
     controls.update();
+    updateZonePresencePulse(performance.now());
 
     // Orbiting stays above the world floor. With screenSpacePanning=false,
     // right-drag panning also remains parallel to the floor plane.
@@ -594,6 +623,28 @@ export function createViewer(host) {
     setRightInset,
     setVisibility
   };
+}
+
+function setSetupRotation(object, mappedRotationDegrees) {
+  const [x, y, mappedZ] = mappedRotationDegrees.map(THREE.MathUtils.degToRad);
+
+  // Setup JSON has already been component-mapped by Pleiades from Y-up/left-
+  // handed to Y-up/right-handed, so its Z Euler component is negated. Recover
+  // the native Pleiades Z->Y->X rotation, then reflect the orientation itself.
+  const leftHanded = new THREE.Quaternion().setFromEuler(
+    new THREE.Euler(x, y, -mappedZ, 'ZYX')
+  );
+  setLeftHandedQuaternion(object.quaternion, [
+    leftHanded.x,
+    leftHanded.y,
+    leftHanded.z,
+    leftHanded.w
+  ]);
+}
+
+function setLeftHandedQuaternion(target, [x, y, z, w]) {
+  // Reflection M=diag(1,1,-1): R_rh = M * R_lh * M.
+  target.set(-x, -y, z, w).normalize();
 }
 
 function configureControls(controls) {
