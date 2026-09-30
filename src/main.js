@@ -45,8 +45,6 @@ function loadPreferences() {
   }
 }
 
-const savedPreferences = loadPreferences();
-
 function savePreferences() {
   const sidebarWidth = Number.parseFloat(
     getComputedStyle(ui.app).getPropertyValue('--sidebar-width')
@@ -80,6 +78,7 @@ function savePreferences() {
 }
 
 function restorePreferences() {
+  const savedPreferences = loadPreferences();
   const connection = isObject(savedPreferences.connection) ? savedPreferences.connection : {};
   const display = isObject(savedPreferences.display) ? savedPreferences.display : {};
   const uiPreferences = isObject(savedPreferences.ui) ? savedPreferences.ui : {};
@@ -503,9 +502,21 @@ ui.downsample.addEventListener('change', () => {
     savePreferences();
   }));
 
-restorePreferences();
-applyVisibility();
+function syncPreferencesToUi() {
+  restorePreferences();
+  applyVisibility();
+  syncPanelCamera(false);
+}
+
+syncPreferencesToUi();
 updateSimulationButton();
 resetSceneSelector();
-syncPanelCamera(false);
 connection.start({ resetProtocol: true });
+
+// Browsers can restore form controls after module initialization. Reapply the
+// persisted settings on pageshow so the visible controls always match the
+// values used by the viewer/connection logic.
+window.addEventListener('pageshow', () => {
+  syncPreferencesToUi();
+  resetSceneSelector();
+});
