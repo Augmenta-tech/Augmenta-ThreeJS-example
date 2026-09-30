@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildConnectionTargets } from '../src/connection.js';
 
-function urls(address, protocol = 'http:') {
-  return buildConnectionTargets(address, 6060, protocol).map((target) => target.url);
+function urls(address) {
+  return buildConnectionTargets(address, 6060).map((target) => target.url);
 }
 
 test('simple hostnames try useful local-network suffixes before giving up', () => {
@@ -44,8 +44,8 @@ test('qualified hostnames and IP addresses are used as-is', () => {
   ]);
 });
 
-test('HTTPS pages still try ws before wss', () => {
-  assert.deepEqual(urls('augmenta-WA12031.local', 'https:'), [
+test('qualified hosts keep ws before wss', () => {
+  assert.deepEqual(urls('augmenta-WA12031.local'), [
     'ws://augmenta-WA12031.local:6060',
     'wss://augmenta-WA12031.local:6060'
   ]);
