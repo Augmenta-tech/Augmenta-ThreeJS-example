@@ -57,7 +57,6 @@ export function createViewer(host) {
   const homeTarget = new THREE.Vector3(0, 1.2, 0);
   let rightInset = 0;
   let insetAnimationFrame;
-  let hasAutoFramedSetup = false;
 
   function resetCamera() {
     camera.position.copy(homePosition);
@@ -279,13 +278,6 @@ export function createViewer(host) {
     clearGroup(setupGroup);
     addContainer(root, setupGroup);
     updateHomeFromSetup(false);
-
-    // Frame only the first received setup. Reconnects and Scene changes keep
-    // the user's camera position; double-click / Reset camera remains explicit.
-    if (!hasAutoFramedSetup) {
-      resetCamera();
-      hasAutoFramedSetup = true;
-    }
   }
 
   function upsertSetup(container) {
@@ -478,7 +470,6 @@ export function createViewer(host) {
     clearGroup(setupGroup);
     homePosition.set(0, 2.5, 7.5);
     homeTarget.set(0, 1.2, 0);
-    hasAutoFramedSetup = false;
   }
 
   function disposeView(view) {

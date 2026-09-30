@@ -239,7 +239,10 @@ function normalizeServerHost(value) {
   // Accept old-style pasted URLs as a convenience, while keeping the UI host-only.
   host = host.replace(/^(?:wss?|https?):\/\//i, '').split('/')[0];
 
-  // A single label is treated as an Augmenta serial number. An already-prefixed
+  // localhost is a real browser loopback hostname, not an Augmenta serial.
+  if (/^localhost$/i.test(host)) return 'localhost';
+
+  // Other single labels are treated as Augmenta serials. An already-prefixed
   // Augmenta hostname only needs its .local suffix added.
   if (!host.includes('.') && !host.includes(':')) {
     return /^augmenta-/i.test(host) ? `${host}.local` : `augmenta-${host}.local`;
@@ -385,6 +388,7 @@ function attemptConnection() {
       return;
     }
     refreshSceneSelector(message.getRootObject());
+    viewer.resetCamera();
   });
 
   connection.on('update', (message) => {
@@ -429,6 +433,7 @@ function startSimulation() {
   ui.note.textContent = 'Local synthetic stream using the Augmenta SDK data model. Click Simulating to stop.';
   lastControl = makeDemoSetup();
   refreshSceneSelector(lastControl.getRootObject());
+  viewer.resetCamera();
   const start = performance.now();
   const tick = () => trackFrame(makeDemoFrame((performance.now() - start) / 1000));
   tick();

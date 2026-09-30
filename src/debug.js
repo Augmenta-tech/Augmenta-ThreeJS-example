@@ -26,8 +26,8 @@ export function createDebugPanel(summary, content) {
   return { render, clear };
 }
 
-function frameBlock(_frame, fps, sceneSize) {
-  return `<details open><summary>Frame</summary><div class="debug-block">fps (received)      ${fps}\nscene size          ${sceneSizeText(sceneSize)}</div></details>`;
+function frameBlock(_frame, _fps, sceneSize) {
+  return `<details open><summary>Frame</summary><div class="debug-block">scene size          ${sceneSizeText(sceneSize)}</div></details>`;
 }
 
 function objectsBlock(frame) {
@@ -40,19 +40,25 @@ function objectsBlock(frame) {
       const c = object.getCluster();
       const velocity = c.getVelocity();
       const speed = Math.hypot(...velocity);
-      cluster = `state ${esc(ClusterState[c.getState()] ?? c.getState())}<br>centroid ${esc(vec(c.getCentroid()))}<br>velocity ${esc(vec(velocity))}<br>speed ${fmt(speed)} m/s<br>box size ${esc(vec(c.getBoundingBoxSize()))}<br>rotation ${esc(vec(c.getBoundingBoxRotationEuler()))}`;
+      cluster = `state ${esc(ClusterState[c.getState()] ?? c.getState())}<br>centroid ${esc(vec(c.getCentroid()))}<br>velocity ${esc(vec(velocity))}<br>speed ${fmt(speed)} m/s<br>box center ${esc(vec(c.getBoundingBoxCenter()))}<br>box size ${esc(vec(c.getBoundingBoxSize()))}<br>rotation ${esc(vec(c.getBoundingBoxRotationEuler()))}`;
     }
 
     let points = '—';
     if (object.hasPointCloud()) {
       const cloud = object.getPointCloud();
-      const sample = Array.from(cloud.getPointsData().slice(0, 15));
-      points = `${cloud.getPointCount()} pts<br>sample ${esc(vec(sample))}`;
+      const data = cloud.getPointsData();
+      const sampleCount = Math.min(5, cloud.getPointCount());
+      const sampleLines = [];
+      for (let i = 0; i < sampleCount; i++) {
+        sampleLines.push(`p${i + 1} ${esc(vec(data.slice(i * 3, i * 3 + 3)))}`);
+      }
+
+      points = [`${cloud.getPointCount()} pts`, ...sampleLines].join('<br>');
       const intensity = cloud.getIntensityData();
       if (intensity?.length) {
         let min = Infinity, max = -Infinity, sum = 0;
         for (const v of intensity) { min = Math.min(min, v); max = Math.max(max, v); sum += v; }
-        points += `<br>intensity min/avg/max ${fmt(min)} / ${fmt(sum / intensity.length)} / ${fmt(max)}`;
+        points += `<br>intensity ${fmt(min)} / ${fmt(sum / intensity.length)} / ${fmt(max)}`;
       }
     }
 

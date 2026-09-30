@@ -254,9 +254,9 @@ details[open] summary { border-bottom: 1px solid #2b313d; }
 .debug-block { padding: 10px 11px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 10px; line-height: 1.55; color: #aeb8c9; white-space: pre-wrap; overflow-wrap: anywhere; }
 .debug-table { width: 100%; border-collapse: collapse; font-size: 10px; }
 .objects-table { table-layout: fixed; }
-.objects-table .id-column { width: 19%; }
+.objects-table .id-column { width: 16%; }
 .objects-table .cluster-column { width: 55%; }
-.objects-table .points-column { width: 26%; }
+.objects-table .points-column { width: 29%; }
 .objects-table td:nth-child(2) { white-space: nowrap; }
 .debug-table th, .debug-table td { padding: 6px 8px; border-bottom: 1px solid #262c37; text-align: left; vertical-align: top; }
 .debug-table th { color: #7f8b9f; font-weight: 650; }
