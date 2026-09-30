@@ -37,8 +37,9 @@ test('qualified hostnames and IP addresses are used as-is', () => {
   ]);
 });
 
-test('HTTPS pages only generate secure WebSocket targets', () => {
+test('HTTPS pages prefer secure WebSockets before the ws fallback', () => {
   assert.deepEqual(urls('augmenta-WA12031.local', 'https:'), [
-    'wss://augmenta-WA12031.local:6060'
+    'wss://augmenta-WA12031.local:6060',
+    'ws://augmenta-WA12031.local:6060'
   ]);
 });
