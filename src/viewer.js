@@ -8,7 +8,6 @@ import { speedFromVelocity } from './motion.js';
 
 const FLOOR_Y = 0;
 const ZONE_PRESENCE_LABEL_GAP = 0.32;
-const ZONE_PRESENCE_LABEL_COLOR = new THREE.Color(0xaeb4be);
 const ZONE_PRESENCE_LABEL_OPACITY = 0.9;
 const ZONE_PRESENCE_LABEL_PULSE_DURATION_MS = 180;
 const ZONE_PRESENCE_LABEL_FLASH_DURATION_MS = 220;
@@ -106,13 +105,20 @@ export function createViewer(host) {
     }
   }
 
+  function updateLineMaterialResolution(
+    width = Math.max(host.clientWidth, 1),
+    height = Math.max(host.clientHeight, 1)
+  ) {
+    setupGroup.traverse((object) => {
+      if (object.material?.isLineMaterial) object.material.resolution.set(width, height);
+    });
+  }
+
   function resize() {
     const width = Math.max(host.clientWidth, 1);
     const height = Math.max(host.clientHeight, 1);
     renderer.setSize(width, height, false);
-    setupGroup.traverse((object) => {
-      if (object.material?.isLineMaterial) object.material.resolution.set(width, height);
-    });
+    updateLineMaterialResolution(width, height);
     updateCameraProjection();
   }
 
@@ -318,6 +324,7 @@ export function createViewer(host) {
     clearGroup(setupGroup);
     zoneViews.clear();
     addContainer(root, setupGroup);
+    updateLineMaterialResolution();
     updateHomeFromSetup();
   }
 
@@ -466,7 +473,7 @@ export function createViewer(host) {
       const view = zoneViews.get(address);
       if (!view) continue;
 
-      setZonePresence(view, presence, event.getEnters());
+      setZonePresence(view, presence);
 
       for (const property of event.getProperties()) {
         if (!property.isXYPad()) continue;
@@ -477,7 +484,7 @@ export function createViewer(host) {
     }
   }
 
-  function setZonePresence(view, presence, enters = 0) {
+  function setZonePresence(view, presence) {
     const nextPresence = Number.isFinite(presence) ? Math.max(0, presence) : 0;
     const previousPresence = view.presence;
     const active = nextPresence > 0;
@@ -524,8 +531,6 @@ export function createViewer(host) {
         const phase = (elapsed % ZONE_OUTLINE_PULSE_DURATION_MS) / ZONE_OUTLINE_PULSE_DURATION_MS;
         const pulse = 0.5 - 0.5 * Math.cos(phase * Math.PI * 2);
         updateZoneOutlineStyle(view, true, pulse);
-      } else {
-        updateZoneOutlineStyle(view, false, 0);
       }
 
       if (view.labelPulseStartedAt > 0 && view.label.visible) {

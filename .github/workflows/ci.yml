@@ -1,0 +1,41 @@
+name: Test
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build and test Augmenta JS SDK
+        shell: bash
+        run: |
+          npm install --prefix vendor/AugmentaClientSDK-JS --no-audit --no-fund
+          npm test --prefix vendor/AugmentaClientSDK-JS
+
+      - name: Validate example JavaScript
+        shell: bash
+        run: |
+          for file in src/*.js tests/*.mjs; do
+            node --input-type=module --check < "$file"
+          done
+
+      - name: Test example
+        shell: bash
+        run: |
+          mkdir -p node_modules
+          ln -s ../vendor/AugmentaClientSDK-JS node_modules/augmenta-client-sdk
+          node --test tests/*.test.mjs
