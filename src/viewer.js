@@ -11,16 +11,20 @@ const ZONE_PRESENCE_LABEL_GAP = 0.32;
 const ZONE_PRESENCE_LABEL_COLOR = new THREE.Color(0xaeb4be);
 const ZONE_PRESENCE_LABEL_OPACITY = 0.78;
 const ZONE_PRESENCE_LABEL_PULSE_DURATION_MS = 180;
-const ZONE_PRESENCE_IDLE_OPACITY = 0.025;
-const ZONE_PRESENCE_OPACITY = 0.1;
-const ZONE_PRESENCE_PULSE_OPACITY = 0.16;
-const ZONE_PRESENCE_PULSE_DURATION_MS = 220;
-const ZONE_PRESENCE_FADE_DURATION_MS = 180;
+const ZONE_FILL_OPACITY = 0.025;
 const ZONE_VISUAL_COLOR = new THREE.Color(0x969ba3);
 const ZONE_OUTLINE_COLOR = ZONE_VISUAL_COLOR;
+const ZONE_ACTIVE_OUTLINE_COLOR = new THREE.Color(0xffffff);
+const ZONE_IDLE_OUTLINE_OPACITY = 0.14;
+const ZONE_ACTIVE_OUTLINE_OPACITY = 0.72;
+const ZONE_ACTIVE_OUTLINE_PULSE_OPACITY = 0.82;
 const ZONE_OUTLINE_WIDTH = 1.7;
+const ZONE_ACTIVE_OUTLINE_WIDTH = 2.6;
 const ROUND_ZONE_EDGE_WIDTH = 1.0;
-const ROUND_ZONE_EDGE_OPACITY = 0.18;
+const ROUND_ZONE_ACTIVE_EDGE_WIDTH = 2.1;
+const ZONE_SILHOUETTE_IDLE_WIDTH = 0.16;
+const ZONE_SILHOUETTE_ACTIVE_WIDTH = 0.23;
+const ZONE_OUTLINE_PULSE_DURATION_MS = 1400;
 const ZONE_XY_PAD_FILL_OPACITY = 0.16;
 const ZONE_XY_PAD_AXIS_OPACITY = 0.72;
 const ROUND_OUTLINE_SEGMENTS = 32;
@@ -393,7 +397,7 @@ export function createViewer(host) {
       new THREE.MeshBasicMaterial({
         color: ZONE_VISUAL_COLOR,
         transparent: true,
-        opacity: ZONE_PRESENCE_IDLE_OPACITY,
+        opacity: ZONE_FILL_OPACITY,
         side: THREE.DoubleSide,
         depthTest: false,
         depthWrite: false
@@ -425,10 +429,9 @@ export function createViewer(host) {
       labelBaseScale: label.scale.clone(),
       presence: 0,
       presenceMesh,
+      outline,
       xyPad,
-      fillPulseStartedAt: 0,
-      fillFadeStartedAt: 0,
-      fillFadeFromOpacity: 0,
+      presenceStartedAt: 0,
       labelPulseStartedAt: 0,
       labelPulseDirection: 1
     };
@@ -478,22 +481,13 @@ export function createViewer(host) {
     const active = nextPresence > 0;
     const now = performance.now();
 
-    if (active) {
-      view.presenceMesh.visible = true;
-      view.fillFadeStartedAt = 0;
-      view.presenceMesh.material.opacity = ZONE_PRESENCE_OPACITY;
-      if (enters > 0) view.fillPulseStartedAt = now;
-    } else if (previousPresence > 0 && view.presenceMesh.visible) {
-      view.fillPulseStartedAt = 0;
-      view.fillFadeStartedAt = now;
-      view.fillFadeFromOpacity = Math.max(
-        view.presenceMesh.material.opacity,
-        ZONE_PRESENCE_OPACITY
-      );
-    } else {
-      view.presenceMesh.visible = true;
-      view.presenceMesh.material.opacity = ZONE_PRESENCE_IDLE_OPACITY;
-    }
+    // Presence changes the outline only. The faint neutral fill is deliberately
+    // constant so occupied zones read as selected rather than filled.
+    view.presenceMesh.visible = true;
+    view.presenceMesh.material.opacity = ZONE_FILL_OPACITY;
+    if (active && previousPresence <= 0) view.presenceStartedAt = now;
+    if (!active) view.presenceStartedAt = 0;
+    updateZoneOutlineStyle(view, active, 0);
 
     if (!active) {
       view.label.visible = false;
@@ -524,35 +518,13 @@ export function createViewer(host) {
 
   function updateZonePresenceAnimation(now) {
     for (const view of zoneViews.values()) {
-      if (view.presence > 0 && view.presenceMesh.visible) {
-        let opacity = ZONE_PRESENCE_OPACITY;
-        if (view.fillPulseStartedAt > 0) {
-          const elapsed = now - view.fillPulseStartedAt;
-          if (elapsed < ZONE_PRESENCE_PULSE_DURATION_MS) {
-            const phase = elapsed / ZONE_PRESENCE_PULSE_DURATION_MS;
-            opacity +=
-              (ZONE_PRESENCE_PULSE_OPACITY - ZONE_PRESENCE_OPACITY)
-              * Math.sin(Math.PI * phase);
-          } else {
-            view.fillPulseStartedAt = 0;
-          }
-        }
-        view.presenceMesh.material.opacity = opacity;
-      } else if (view.fillFadeStartedAt > 0 && view.presenceMesh.visible) {
-        const phase = Math.min(
-          (now - view.fillFadeStartedAt) / ZONE_PRESENCE_FADE_DURATION_MS,
-          1
-        );
-        view.presenceMesh.material.opacity =
-          ZONE_PRESENCE_IDLE_OPACITY
-          + (view.fillFadeFromOpacity - ZONE_PRESENCE_IDLE_OPACITY)
-          * Math.pow(1 - phase, 2);
-
-        if (phase >= 1) {
-          view.fillFadeStartedAt = 0;
-          view.presenceMesh.material.opacity = ZONE_PRESENCE_IDLE_OPACITY;
-          view.presenceMesh.visible = true;
-        }
+      if (view.presence > 0) {
+        const elapsed = Math.max(0, now - view.presenceStartedAt);
+        const phase = (elapsed % ZONE_OUTLINE_PULSE_DURATION_MS) / ZONE_OUTLINE_PULSE_DURATION_MS;
+        const pulse = 0.5 - 0.5 * Math.cos(phase * Math.PI * 2);
+        updateZoneOutlineStyle(view, true, pulse);
+      } else {
+        updateZoneOutlineStyle(view, false, 0);
       }
 
       if (view.labelPulseStartedAt > 0 && view.label.visible) {
@@ -571,6 +543,42 @@ export function createViewer(host) {
         }
       }
     }
+  }
+
+  function updateZoneOutlineStyle(view, active, pulse) {
+    const color = active ? ZONE_ACTIVE_OUTLINE_COLOR : ZONE_OUTLINE_COLOR;
+    const opacity = active
+      ? THREE.MathUtils.lerp(
+          ZONE_ACTIVE_OUTLINE_OPACITY,
+          ZONE_ACTIVE_OUTLINE_PULSE_OPACITY,
+          pulse
+        )
+      : ZONE_IDLE_OUTLINE_OPACITY;
+
+    view.outline.traverse((object) => {
+      const material = object.material;
+      if (!material) return;
+
+      if (material.isShaderMaterial && material.uniforms?.outlineColor) {
+        material.uniforms.outlineColor.value.copy(color);
+        material.uniforms.outlineOpacity.value = opacity;
+        material.uniforms.edgeWidth.value = active
+          ? THREE.MathUtils.lerp(
+              ZONE_SILHOUETTE_ACTIVE_WIDTH,
+              ZONE_SILHOUETTE_ACTIVE_WIDTH * 1.06,
+              pulse
+            )
+          : ZONE_SILHOUETTE_IDLE_WIDTH;
+      } else if (material.isLineMaterial) {
+        material.color.copy(color);
+        material.opacity = opacity;
+        const idleWidth = object.userData.idleWidth ?? material.linewidth;
+        const activeWidth = object.userData.activeWidth ?? idleWidth;
+        material.linewidth = active
+          ? THREE.MathUtils.lerp(activeWidth, activeWidth * 1.05, pulse)
+          : idleWidth;
+      }
+    });
   }
 
   function zoneGeometry(params) {
@@ -739,8 +747,11 @@ function createZoneOutline(params, sourceGeometry, color) {
       positions,
       color,
       ZONE_OUTLINE_WIDTH,
-      'Zone edges'
+      'Zone edges',
+      ZONE_IDLE_OUTLINE_OPACITY
     );
+    boxEdges.userData.idleWidth = ZONE_OUTLINE_WIDTH;
+    boxEdges.userData.activeWidth = ZONE_ACTIVE_OUTLINE_WIDTH;
     boxEdges.renderOrder = 7;
     outline.add(boxEdges);
     return outline;
@@ -765,8 +776,10 @@ function createZoneOutline(params, sourceGeometry, color) {
       color,
       ROUND_ZONE_EDGE_WIDTH,
       'Zone guide',
-      ROUND_ZONE_EDGE_OPACITY
+      ZONE_IDLE_OUTLINE_OPACITY
     );
+    guides.userData.idleWidth = ROUND_ZONE_EDGE_WIDTH;
+    guides.userData.activeWidth = ROUND_ZONE_ACTIVE_EDGE_WIDTH;
     guides.renderOrder = 7;
     outline.add(guides);
   }
@@ -777,7 +790,9 @@ function createZoneOutline(params, sourceGeometry, color) {
 function createSilhouetteMaterial(color) {
   return new THREE.ShaderMaterial({
     uniforms: {
-      outlineColor: { value: color.clone() }
+      outlineColor: { value: color.clone() },
+      outlineOpacity: { value: ZONE_IDLE_OUTLINE_OPACITY },
+      edgeWidth: { value: ZONE_SILHOUETTE_IDLE_WIDTH }
     },
     vertexShader: `
       varying vec3 vNormal;
@@ -792,14 +807,16 @@ function createSilhouetteMaterial(color) {
     `,
     fragmentShader: `
       uniform vec3 outlineColor;
+      uniform float outlineOpacity;
+      uniform float edgeWidth;
       varying vec3 vNormal;
       varying vec3 vViewDirection;
 
       void main() {
         float facing = abs(dot(normalize(vNormal), normalize(vViewDirection)));
-        float alpha = 1.0 - smoothstep(0.0, 0.16, facing);
+        float alpha = 1.0 - smoothstep(0.0, edgeWidth, facing);
         if (alpha < 0.01) discard;
-        gl_FragColor = vec4(outlineColor, alpha * 0.96);
+        gl_FragColor = vec4(outlineColor, alpha * outlineOpacity);
       }
     `,
     transparent: true,
