@@ -11,7 +11,6 @@ import {
 const DISCONNECT_CLEANUP_DELAY_MS = 500;
 const CAMERA_PREFERENCE_SAVE_DELAY_MS = 250;
 const SIDEBAR_HANDLE_IDLE_DELAY_MS = 3000;
-const SIDEBAR_HANDLE_IDLE_MEDIA_QUERY = '(hover: hover) and (pointer: fine)';
 const QR_CODE_MODULE_URL = 'https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.mjs';
 const SIDEBAR_MIN_WIDTH = 320;
 const SIDEBAR_MAX_WIDTH = 450;
@@ -53,22 +52,13 @@ let frameTimes = [];
 let scenes = [];
 let preferredSceneAddress = 'all';
 const setupStore = createSetupStore();
-const sidebarHandleIdleMedia = window.matchMedia(SIDEBAR_HANDLE_IDLE_MEDIA_QUERY);
 
-function clearSidebarHandleIdleTimer() {
+function resetSidebarHandleIdle() {
   if (sidebarHandleIdleTimer) window.clearTimeout(sidebarHandleIdleTimer);
   sidebarHandleIdleTimer = undefined;
-}
+  ui.app.classList.remove('sidebar-handle-idle');
 
-function scheduleSidebarHandleIdleCheck() {
-  clearSidebarHandleIdleTimer();
-
-  if (
-    !sidebarHandleIdleMedia.matches
-    || ui.app.classList.contains('sidebar-hidden')
-  ) {
-    return;
-  }
+  if (ui.app.classList.contains('sidebar-hidden')) return;
 
   sidebarHandleIdleTimer = window.setTimeout(() => {
     sidebarHandleIdleTimer = undefined;
@@ -78,17 +68,8 @@ function scheduleSidebarHandleIdleCheck() {
   }, SIDEBAR_HANDLE_IDLE_DELAY_MS);
 }
 
-function markSidebarHandleActivity() {
-  ui.app.classList.remove('sidebar-handle-idle');
-  scheduleSidebarHandleIdleCheck();
-}
-
-for (const eventName of ['pointermove', 'pointerdown', 'wheel']) {
-  window.addEventListener(eventName, markSidebarHandleActivity, { passive: true });
-}
-window.addEventListener('keydown', markSidebarHandleActivity);
-document.addEventListener('focusin', markSidebarHandleActivity);
-sidebarHandleIdleMedia.addEventListener('change', markSidebarHandleActivity);
+window.addEventListener('mousemove', resetSidebarHandleIdle, { passive: true });
+window.addEventListener('keydown', resetSidebarHandleIdle);
 
 function isObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -514,9 +495,7 @@ function setSidebarHidden(hidden, animate = true) {
   ui.sidebarToggle.setAttribute('aria-expanded', String(!hidden));
   syncPanelCamera(animate);
 
-  // The handle only auto-hides while the panel is open. When folded it stays
-  // visible so there is always an obvious way to bring the panel back.
-  markSidebarHandleActivity();
+  resetSidebarHandleIdle();
 
   if (!animate) {
     // Commit the restored layout while transitions are disabled. Re-enabling
@@ -650,7 +629,6 @@ function syncPreferencesToUi() {
 }
 
 syncPreferencesToUi();
-markSidebarHandleActivity();
 updateSimulationButton();
 resetSceneSelector();
 connection.start({ resetProtocol: true });

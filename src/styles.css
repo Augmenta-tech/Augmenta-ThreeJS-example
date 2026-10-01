@@ -228,15 +228,13 @@ button, input, select { font: inherit; }
   }
 }
 
-@media (hover: hover) and (pointer: fine) {
-  #app.sidebar-handle-idle:not(.sidebar-hidden) {
-    --sidebar-handle-fade-duration: 1200ms;
-  }
+#app.sidebar-handle-idle:not(.sidebar-hidden) {
+  --sidebar-handle-fade-duration: 1200ms;
+}
 
-  #app.sidebar-handle-idle:not(.sidebar-hidden) .sidebar-toggle {
-    opacity: 0;
-    pointer-events: none;
-  }
+#app.sidebar-handle-idle:not(.sidebar-hidden) .sidebar-toggle {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .panel { padding: 18px; border-bottom: 1px solid #252a35; }
