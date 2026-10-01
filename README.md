@@ -31,7 +31,7 @@ The viewer requests the richest practical uncompressed stream from the Augmenta 
 
 Three.js renders:
 
-- cluster bounding boxes, centroids and readable IDs, with the received look-at direction shown as a small chevron near the bottom of the box;
+- cluster bounding boxes, centroids and readable IDs, with the received look-at direction shown as a faint lower-edge chevron when **Velocity vectors** are enabled;
 - velocity vectors with arrow heads at the received velocity magnitude;
 - cluster/point-cloud pairs in distinct colors chosen from a curated palette;
 - point clouds;
