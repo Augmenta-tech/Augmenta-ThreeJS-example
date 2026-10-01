@@ -12,6 +12,7 @@ import {
 
 const DISCONNECT_CLEANUP_DELAY_MS = 500;
 const CAMERA_PREFERENCE_SAVE_DELAY_MS = 250;
+const QR_COPY_FEEDBACK_DELAY_MS = 1400;
 const SIDEBAR_HANDLE_IDLE_DELAY_MS = 3000;
 const QR_CODE_MODULE_URL = 'https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.mjs';
 const SIDEBAR_MIN_WIDTH = 320;
@@ -35,7 +36,7 @@ const ui = {
   app: $('#app'), sidebar: $('#sidebar'), sidebarResizer: $('#sidebar-resizer'), serverAddress: $('#server-address'), port: $('#port'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
   demo: $('#demo'), status: $('#status'), note: $('#connection-note'), summary: $('#summary'),
   debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'), scenes: $('#scenes'),
-  sidebarToggle: $('#sidebar-toggle'), connectionQrVisibility: $('.connection-qr-visibility'), connectionQr: $('#connection-qr'), connectionQrCode: $('#connection-qr-code'),
+  sidebarToggle: $('#sidebar-toggle'), connectionQrVisibility: $('.connection-qr-visibility'), connectionQr: $('#connection-qr'), connectionQrCode: $('#connection-qr-code'), connectionQrLabel: $('#connection-qr-label'),
   showClusters: $('#show-clusters'), showPoints: $('#show-points'), showZones: $('#show-zones'), showVectors: $('#show-vectors')
 };
 
@@ -46,6 +47,7 @@ let disconnectCleanupTimer;
 let cameraPreferenceSaveTimer;
 let sidebarHandleIdleTimer;
 let qrCodeFactoryPromise;
+let qrCopyFeedbackTimer;
 let localConnectionPreferences = {};
 let demoTimer;
 let lastFrame;
@@ -396,6 +398,63 @@ async function refreshConnectionQr() {
   }
 }
 
+function copyTextFallback(text) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.top = '-1000px';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  let copied = false;
+  try {
+    copied = document.execCommand('copy');
+  } catch {
+    copied = false;
+  }
+
+  textarea.remove();
+  return copied;
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fall back for browsers/contexts where Clipboard API permission fails.
+    }
+  }
+
+  return copyTextFallback(text);
+}
+
+function showQrCopyFeedback() {
+  if (qrCopyFeedbackTimer) window.clearTimeout(qrCopyFeedbackTimer);
+
+  ui.connectionQrLabel.textContent = 'Link copied!';
+  ui.connectionQr.classList.remove('copy-confirmed');
+  void ui.connectionQr.offsetWidth;
+  ui.connectionQr.classList.add('copy-confirmed');
+
+  qrCopyFeedbackTimer = window.setTimeout(() => {
+    qrCopyFeedbackTimer = undefined;
+    ui.connectionQrLabel.textContent = 'Launch it';
+    ui.connectionQr.classList.remove('copy-confirmed');
+  }, QR_COPY_FEEDBACK_DELAY_MS);
+}
+
+async function handleConnectionQrClick(event) {
+  event.preventDefault();
+  if (await copyTextToClipboard(ui.connectionQr.href)) {
+    showQrCopyFeedback();
+  }
+}
+
 function handleSetup(message) {
   setSetup(message.getRootObject());
   if (!viewer.isCameraUserControlled()) viewer.resetCamera();
@@ -457,6 +516,7 @@ function applyVisibility() {
 
 viewer.setCameraChangeHandler(scheduleCameraPreferenceSave);
 
+ui.connectionQr.addEventListener('click', handleConnectionQrClick);
 ui.connect.addEventListener('click', toggleConnection);
 ui.demo.addEventListener('click', toggleSimulation);
 ui.clear.addEventListener('click', clearDebugData);
