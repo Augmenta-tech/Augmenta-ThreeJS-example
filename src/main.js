@@ -48,6 +48,7 @@ let cameraPreferenceSaveTimer;
 let sidebarHandleIdleTimer;
 let qrCodeFactoryPromise;
 let qrCopyFeedbackTimer;
+let qrHovering = false;
 let localConnectionPreferences = {};
 let demoTimer;
 let lastFrame;
@@ -426,19 +427,28 @@ async function copyTextToClipboard(text) {
   return copyTextFallback(text);
 }
 
+function updateQrLabel() {
+  ui.connectionQrLabel.textContent = qrCopyFeedbackTimer
+    ? 'Link copied!'
+    : qrHovering
+      ? 'Copy link?'
+      : 'Launch it';
+}
+
 function showQrCopyFeedback() {
   if (qrCopyFeedbackTimer) window.clearTimeout(qrCopyFeedbackTimer);
 
-  ui.connectionQrLabel.textContent = 'Link copied!';
   ui.connectionQr.classList.remove('copy-confirmed');
   void ui.connectionQr.offsetWidth;
   ui.connectionQr.classList.add('copy-confirmed');
 
   qrCopyFeedbackTimer = window.setTimeout(() => {
     qrCopyFeedbackTimer = undefined;
-    ui.connectionQrLabel.textContent = 'Launch it';
     ui.connectionQr.classList.remove('copy-confirmed');
+    updateQrLabel();
   }, QR_COPY_FEEDBACK_DELAY_MS);
+
+  updateQrLabel();
 }
 
 async function handleConnectionQrClick(event) {
@@ -516,6 +526,14 @@ function applyVisibility() {
 viewer.setCameraChangeHandler(scheduleCameraPreferenceSave);
 
 ui.connectionQr.addEventListener('click', handleConnectionQrClick);
+ui.connectionQr.addEventListener('mouseenter', () => {
+  qrHovering = true;
+  updateQrLabel();
+});
+ui.connectionQr.addEventListener('mouseleave', () => {
+  qrHovering = false;
+  updateQrLabel();
+});
 ui.connect.addEventListener('click', toggleConnection);
 ui.demo.addEventListener('click', toggleSimulation);
 ui.clear.addEventListener('click', clearDebugData);
