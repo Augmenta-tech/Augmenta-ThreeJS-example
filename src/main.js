@@ -66,8 +66,6 @@ function resetSidebarHandleIdle() {
   sidebarHandleIdleTimer = undefined;
   ui.app.classList.remove('sidebar-handle-idle');
 
-  if (ui.app.classList.contains('sidebar-hidden')) return;
-
   sidebarHandleIdleTimer = window.setTimeout(() => {
     sidebarHandleIdleTimer = undefined;
     ui.app.classList.add('sidebar-handle-idle');

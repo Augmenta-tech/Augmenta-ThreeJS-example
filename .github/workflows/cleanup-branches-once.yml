@@ -1,0 +1,46 @@
+name: One-time branch cleanup
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Delete merged and obsolete work branches
+        shell: bash
+        run: |
+          for branch in \
+            fix/cold-load-first-refresh \
+            fix/enabled-zone-visibility \
+            fix/sidebar-handle-idle-both-states \
+            fix/viewer-load-background \
+            fix/zone-visual-timing-slider
+          do
+            if git ls-remote --exit-code --heads origin "refs/heads/$branch" >/dev/null 2>&1; then
+              git push origin --delete "$branch"
+            fi
+          done
+
+      - name: Remove this one-time workflow
+        shell: bash
+        run: |
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/cleanup-branches-once.yml
+          git commit -m "Remove one-time branch cleanup workflow"
+          git push origin HEAD:main
