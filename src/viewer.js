@@ -49,6 +49,14 @@ export function createViewer(host) {
   const vectorGroup = namedGroup(scene, 'Velocity vectors');
   const labelGroup = namedGroup(scene, 'Object IDs');
 
+  const visibility = {
+    clusters: true,
+    points: true,
+    scene: true,
+    zones: true,
+    vectors: true
+  };
+
   const views = new Map();
   const zoneRenderer = createZoneRenderer();
   const unitBox = new THREE.BoxGeometry(1, 1, 1);
@@ -340,6 +348,7 @@ export function createViewer(host) {
     zoneRenderer.resetViews();
     addContainer(root, setupGroup, selectedSceneAddress, false);
     zoneRenderer.pruneState(collectZoneAddresses(root));
+    applySetupVisibility();
     updateLineMaterialResolution();
     updateHomeFromSetup();
   }
@@ -361,6 +370,7 @@ export function createViewer(host) {
 
     const group = new THREE.Group();
     group.name = `augmenta:${address}`;
+    if (container.isZone()) group.userData.isZoneContainer = true;
 
     group.position.fromArray(container.getPosition());
     setSetupRotation(group, container.getRotation());
@@ -437,12 +447,25 @@ export function createViewer(host) {
     }
   }
 
-  function setVisibility({ clusters, points, zones, vectors }) {
+  function applySetupVisibility() {
+    setupGroup.traverse((object) => {
+      if (object.name === 'Scene bounds') object.visible = visibility.scene;
+      if (object.userData?.isZoneContainer) object.visible = visibility.zones;
+    });
+  }
+
+  function setVisibility({ clusters, points, scene, zones, vectors }) {
+    visibility.clusters = clusters;
+    visibility.points = points;
+    visibility.scene = scene;
+    visibility.zones = zones;
+    visibility.vectors = vectors;
+
     clusterGroup.visible = clusters;
     pointGroup.visible = points;
-    setupGroup.visible = zones;
     vectorGroup.visible = vectors;
     labelGroup.visible = clusters || points;
+    applySetupVisibility();
   }
 
   function clearTracking() {
