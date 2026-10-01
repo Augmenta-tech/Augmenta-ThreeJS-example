@@ -7,9 +7,8 @@ import { collectZoneAddresses } from './zone-state.js';
 
 const FLOOR_Y = 0;
 const GHOST_COLOR = new THREE.Color(0x8a909b);
-const LOOK_AT_FACE_OPACITY = 0.18;
-const LOOK_AT_FACE_GHOST_OPACITY = 0.09;
-const LOOK_AT_FACE_INSET = 0.94;
+const LOOK_AT_MARKER_OPACITY = 0.9;
+const LOOK_AT_MARKER_GHOST_OPACITY = 0.42;
 const LOCAL_BOX_Z = new THREE.Vector3(0, 0, 1);
 const SESSION_COLOR_OFFSET = Math.floor(Math.random() * 1000);
 const PALETTE = [
@@ -66,7 +65,13 @@ export function createViewer(host) {
   const unitBox = new THREE.BoxGeometry(1, 1, 1);
   const unitBoxEdges = new THREE.EdgesGeometry(unitBox);
   unitBox.dispose();
-  const unitLookAtFace = new THREE.PlaneGeometry(1, 1);
+  // A small chevron sits just above the OBB bottom plane and points toward
+  // the face selected by the streamed look-at direction.
+  const unitLookAtMarker = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(-0.2, -0.48, 0.18),
+    new THREE.Vector3(0, -0.48, 0.44),
+    new THREE.Vector3(0.2, -0.48, 0.18)
+  ]);
   const centroidGeometry = new THREE.SphereGeometry(0.045, 12, 8);
 
   const lookAtDirection = new THREE.Vector3();
@@ -226,21 +231,20 @@ export function createViewer(host) {
       })
     );
 
-    const lookAtFace = new THREE.Mesh(
-      unitLookAtFace,
-      new THREE.MeshBasicMaterial({
+    const lookAtMarker = new THREE.Line(
+      unitLookAtMarker,
+      new THREE.LineBasicMaterial({
         color,
         transparent: true,
-        opacity: LOOK_AT_FACE_OPACITY,
-        side: THREE.DoubleSide,
+        opacity: LOOK_AT_MARKER_OPACITY,
+        depthTest: false,
         depthWrite: false
       })
     );
-    lookAtFace.name = 'Look-at face';
-    lookAtFace.scale.set(LOOK_AT_FACE_INSET, LOOK_AT_FACE_INSET, 1);
-    lookAtFace.visible = false;
-    lookAtFace.renderOrder = 4;
-    box.add(lookAtFace);
+    lookAtMarker.name = 'Look-at marker';
+    lookAtMarker.visible = false;
+    lookAtMarker.renderOrder = 5;
+    box.add(lookAtMarker);
 
     const centroid = new THREE.Mesh(
       centroidGeometry,
@@ -281,7 +285,7 @@ export function createViewer(host) {
 
     return {
       box,
-      lookAtFace,
+      lookAtMarker,
       centroid,
       velocity,
       points,
@@ -323,7 +327,7 @@ export function createViewer(host) {
     // Pleiades sends its native Y-up/left-handed quaternion. Reflect it across
     // Z to express the exact same orientation in Three.js' right-handed space.
     setLeftHandedQuaternion(view.box.quaternion, rotation);
-    updateLookAtFace(view, cluster.getLookAt());
+    updateLookAtMarker(view, cluster.getLookAt());
 
     view.centroid.visible = true;
     view.centroid.position.fromArray(centroid);
@@ -333,17 +337,17 @@ export function createViewer(host) {
     const state = cluster.getState();
     const color = state === ClusterState.Ghost ? GHOST_COLOR : view.color;
     view.box.material.color.copy(color);
-    view.lookAtFace.material.color.copy(color);
+    view.lookAtMarker.material.color.copy(color);
     view.centroid.material.color.copy(color);
     view.velocity.setColor(color);
     view.points.material.color.copy(color);
 
     view.box.material.opacity = state === ClusterState.WillLeave ? 0.35 : 0.95;
-    view.lookAtFace.material.opacity = state === ClusterState.Ghost
-      ? LOOK_AT_FACE_GHOST_OPACITY
+    view.lookAtMarker.material.opacity = state === ClusterState.Ghost
+      ? LOOK_AT_MARKER_GHOST_OPACITY
       : state === ClusterState.WillLeave
-        ? LOOK_AT_FACE_OPACITY * 0.55
-        : LOOK_AT_FACE_OPACITY;
+        ? LOOK_AT_MARKER_OPACITY * 0.55
+        : LOOK_AT_MARKER_OPACITY;
     view.points.material.opacity = state === ClusterState.Ghost ? 0.45 : 0.92;
 
     const pointBounds = view.points.geometry.boundingSphere ?? new THREE.Sphere();
@@ -360,31 +364,29 @@ export function createViewer(host) {
     view.label.material.opacity = state === ClusterState.Ghost ? 0.55 : 1;
   }
 
-  function updateLookAtFace(view, lookAt) {
+  function updateLookAtMarker(view, lookAt) {
     if (!validVector3(lookAt)) {
-      view.lookAtFace.visible = false;
+      view.lookAtMarker.visible = false;
       return;
     }
 
     lookAtDirection.fromArray(lookAt);
     if (lookAtDirection.lengthSq() < 1e-8) {
-      view.lookAtFace.visible = false;
+      view.lookAtMarker.visible = false;
       return;
     }
     lookAtDirection.normalize();
 
     // Pleiades streams look-at separately from the raw OBB quaternion. Compare
-    // both after the viewer's handedness conversion instead of assuming which
-    // local Z face is forward. Reused scratch vectors keep this per-frame path
-    // allocation-free when many clusters are visible.
+    // both after the viewer's handedness conversion, then flip the bottom
+    // chevron so its tip points toward the corresponding local Z face.
     renderedPositiveZ.copy(LOCAL_BOX_Z)
       .applyQuaternion(view.box.quaternion)
       .normalize();
     const side = renderedPositiveZ.dot(lookAtDirection) >= 0 ? 1 : -1;
 
-    view.lookAtFace.position.set(0, 0, side * 0.501);
-    view.lookAtFace.rotation.set(0, side > 0 ? 0 : Math.PI, 0);
-    view.lookAtFace.visible = true;
+    view.lookAtMarker.scale.set(1, 1, side);
+    view.lookAtMarker.visible = true;
   }
 
   function updatePoints(view, cloud) {
@@ -557,7 +559,7 @@ export function createViewer(host) {
     labelGroup.remove(view.label);
 
     view.box.material.dispose();
-    view.lookAtFace.material.dispose();
+    view.lookAtMarker.material.dispose();
     view.centroid.material.dispose();
     view.points.geometry.dispose();
     view.points.material.dispose();
