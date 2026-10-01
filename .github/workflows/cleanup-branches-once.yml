@@ -1,0 +1,39 @@
+name: One-time merged branch cleanup
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Delete merged work branch
+        shell: bash
+        run: |
+          branch="feat/viewer-keyboard-shortcuts"
+          if git ls-remote --exit-code --heads origin "refs/heads/$branch" >/dev/null 2>&1; then
+            git push origin --delete "$branch"
+          fi
+
+      - name: Remove this one-time workflow
+        shell: bash
+        run: |
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/cleanup-branches-once.yml
+          git commit -m "Remove one-time merged branch cleanup"
+          git push origin HEAD:main
