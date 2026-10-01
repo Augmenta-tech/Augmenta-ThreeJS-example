@@ -44,7 +44,6 @@ const debug = createDebugPanel(ui.summary, ui.debug);
 let disconnectCleanupTimer;
 let cameraPreferenceSaveTimer;
 let sidebarHandleIdleTimer;
-let lastSidebarHandleActivityAt = performance.now();
 let qrCodeFactoryPromise;
 let hasPersistedCameraView = false;
 let demoTimer;
@@ -61,35 +60,25 @@ function clearSidebarHandleIdleTimer() {
   sidebarHandleIdleTimer = undefined;
 }
 
-function scheduleSidebarHandleIdleCheck(delay = SIDEBAR_HANDLE_IDLE_DELAY_MS) {
+function scheduleSidebarHandleIdleCheck() {
   clearSidebarHandleIdleTimer();
 
   if (
     !sidebarHandleIdleMedia.matches
     || ui.app.classList.contains('sidebar-hidden')
   ) {
-    ui.app.classList.remove('sidebar-handle-idle');
     return;
   }
 
   sidebarHandleIdleTimer = window.setTimeout(() => {
     sidebarHandleIdleTimer = undefined;
-    const remaining = SIDEBAR_HANDLE_IDLE_DELAY_MS
-      - (performance.now() - lastSidebarHandleActivityAt);
-
-    if (remaining > 0) {
-      scheduleSidebarHandleIdleCheck(remaining);
-      return;
-    }
-
     if (!ui.app.classList.contains('sidebar-hidden')) {
       ui.app.classList.add('sidebar-handle-idle');
     }
-  }, Math.max(0, delay));
+  }, SIDEBAR_HANDLE_IDLE_DELAY_MS);
 }
 
 function markSidebarHandleActivity() {
-  lastSidebarHandleActivityAt = performance.now();
   ui.app.classList.remove('sidebar-handle-idle');
   scheduleSidebarHandleIdleCheck();
 }
