@@ -62,6 +62,8 @@ function resetSidebarHandleIdle() {
   sidebarHandleIdleTimer = undefined;
   ui.app.classList.remove('sidebar-handle-idle');
 
+  if (ui.app.classList.contains('sidebar-hidden')) return;
+
   sidebarHandleIdleTimer = window.setTimeout(() => {
     sidebarHandleIdleTimer = undefined;
     ui.app.classList.add('sidebar-handle-idle');
@@ -119,8 +121,11 @@ function applyConnectionSettings(settings) {
   if (typeof settings.downsample === 'string') ui.downsample.value = settings.downsample;
 }
 
-function rememberLocalConnectionSettings() {
-  localConnectionPreferences = normalizeConnectionOptions(getConnectionSettings());
+function rememberLocalConnectionSetting(key, value) {
+  localConnectionPreferences = normalizeConnectionOptions({
+    ...localConnectionPreferences,
+    [key]: value
+  });
 }
 
 function restorePreferences() {
@@ -244,14 +249,10 @@ function stopConnection() {
   clearDebugData();
 }
 
-function stopSimulation({ quiet = false } = {}) {
+function stopSimulation() {
   if (demoTimer) window.clearInterval(demoTimer);
   demoTimer = undefined;
   updateSimulationButton();
-  if (!quiet && !connection.getState().wantsConnection) {
-    setStatus('Idle');
-    ui.note.textContent = 'Simulation stopped.';
-  }
 }
 
 function clearTracking() {
@@ -265,14 +266,6 @@ function clearDebugData() {
   lastControl = undefined;
   frameTimes = [];
   debug.clear();
-}
-
-function resetSceneSelector() {
-  setupStore.clear();
-  scenes = [];
-  ui.scenes.innerHTML = '<option value="all">All scenes</option>';
-  ui.scenes.value = 'all';
-  ui.scenes.disabled = true;
 }
 
 function selectedScene() {
@@ -317,7 +310,7 @@ function syncSceneSelector() {
   ui.scenes.innerHTML = [
     '<option value="all">All scenes</option>',
     ...scenes.map((scene, index) => {
-      const name = scene.getName?.() || scene.getAddress?.() || `Scene ${index + 1}`;
+      const name = scene.getName() || scene.getAddress() || `Scene ${index + 1}`;
       return `<option value="${escapeOption(scene.getAddress())}">${escapeOption(name)}</option>`;
     })
   ].join('');
@@ -478,10 +471,10 @@ function toggleConnection() {
     return;
   }
 
-  stopSimulation({ quiet: true });
+  stopSimulation();
   clearTracking();
   clearDebugData();
-  connection.start({ resetProtocol: true });
+  connection.start();
 }
 
 function startSimulation() {
@@ -501,8 +494,14 @@ function startSimulation() {
 }
 
 function toggleSimulation() {
-  if (demoTimer) stopSimulation();
-  else startSimulation();
+  if (!demoTimer) {
+    startSimulation();
+    return;
+  }
+
+  stopSimulation();
+  setStatus('Idle');
+  ui.note.textContent = 'Simulation stopped.';
 }
 
 function applyVisibility() {
@@ -641,11 +640,11 @@ window.addEventListener('resize', () => {
     syncPanelCamera(false);
   }
 });
-function restartForServerChange(reason) {
+function restartConnection(reason) {
   if (!connection.getState().wantsConnection) return;
   clearTracking();
   clearDebugData();
-  connection.restart(reason, { resetProtocol: true });
+  connection.restart(reason);
 }
 
 function handleServerFieldEnter(event) {
@@ -654,39 +653,40 @@ function handleServerFieldEnter(event) {
     toggleConnection();
     return;
   }
-  restartForServerChange('Server address changed');
+  restartConnection('Server address changed');
+}
+
+function saveConnectionField(key, value) {
+  rememberLocalConnectionSetting(key, value);
+  savePreferences();
+  refreshConnectionQr();
 }
 
 ui.serverAddress.addEventListener('keydown', handleServerFieldEnter);
 ui.port.addEventListener('keydown', handleServerFieldEnter);
-[ui.serverAddress, ui.port, ui.downsample].forEach((input) => {
-  input.addEventListener('input', () => {
-    rememberLocalConnectionSettings();
-    savePreferences();
-    refreshConnectionQr();
-  });
+
+ui.serverAddress.addEventListener('input', () => {
+  saveConnectionField('address', ui.serverAddress.value);
 });
+ui.port.addEventListener('input', () => {
+  saveConnectionField('port', ui.port.value);
+});
+ui.downsample.addEventListener('input', () => {
+  saveConnectionField('downsample', ui.downsample.value);
+});
+
 ui.serverAddress.addEventListener('change', () => {
-  rememberLocalConnectionSettings();
-  savePreferences();
-  restartForServerChange('Server address changed');
+  restartConnection('Server address changed');
 });
 ui.port.addEventListener('change', () => {
-  rememberLocalConnectionSettings();
-  savePreferences();
-  restartForServerChange('Server port changed');
+  restartConnection('Server port changed');
 });
 ui.protocol.addEventListener('change', () => {
-  rememberLocalConnectionSettings();
-  savePreferences();
-  refreshConnectionQr();
-  connection.restart('Protocol changed', { resetProtocol: true });
+  saveConnectionField('protocol', ui.protocol.value);
+  restartConnection('Protocol changed');
 });
 ui.downsample.addEventListener('change', () => {
-  rememberLocalConnectionSettings();
-  savePreferences();
-  refreshConnectionQr();
-  connection.restart('Downsample changed');
+  restartConnection('Downsample changed');
 });
 [ui.showClusters, ui.showPoints, ui.showZones, ui.showVectors]
   .forEach((input) => input.addEventListener('change', () => {
@@ -703,8 +703,7 @@ function syncPreferencesToUi() {
 
 syncPreferencesToUi();
 updateSimulationButton();
-resetSceneSelector();
-connection.start({ resetProtocol: true });
+connection.start();
 
 // Browsers can restore form controls after module initialization. Reapply the
 // persisted settings on pageshow so the visible controls always match the
