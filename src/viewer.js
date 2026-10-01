@@ -7,8 +7,8 @@ import { collectZoneAddresses } from './zone-state.js';
 
 const FLOOR_Y = 0;
 const GHOST_COLOR = new THREE.Color(0x8a909b);
-const LOOK_AT_MARKER_OPACITY = 0.9;
-const LOOK_AT_MARKER_GHOST_OPACITY = 0.42;
+const LOOK_AT_MARKER_OPACITY = 0.58;
+const LOOK_AT_MARKER_GHOST_OPACITY = 0.24;
 const LOCAL_BOX_Z = new THREE.Vector3(0, 0, 1);
 const SESSION_COLOR_OFFSET = Math.floor(Math.random() * 1000);
 const PALETTE = [
@@ -245,6 +245,7 @@ export function createViewer(host) {
       })
     );
     lookAtMarker.name = 'Look-at marker';
+    lookAtMarker.userData.hasDirection = false;
     lookAtMarker.visible = false;
     lookAtMarker.renderOrder = 5;
     box.add(lookAtMarker);
@@ -369,12 +370,14 @@ export function createViewer(host) {
 
   function updateLookAtMarker(view, lookAt) {
     if (!validVector3(lookAt)) {
+      view.lookAtMarker.userData.hasDirection = false;
       view.lookAtMarker.visible = false;
       return;
     }
 
     lookAtDirection.fromArray(lookAt);
     if (lookAtDirection.lengthSq() < 1e-8) {
+      view.lookAtMarker.userData.hasDirection = false;
       view.lookAtMarker.visible = false;
       return;
     }
@@ -389,7 +392,8 @@ export function createViewer(host) {
     const side = renderedPositiveZ.dot(lookAtDirection) >= 0 ? 1 : -1;
 
     view.lookAtMarker.scale.set(1, 1, side);
-    view.lookAtMarker.visible = true;
+    view.lookAtMarker.userData.hasDirection = true;
+    view.lookAtMarker.visible = visibility.vectors;
   }
 
   function updatePoints(view, cloud) {
@@ -536,6 +540,9 @@ export function createViewer(host) {
     clusterGroup.visible = clusters;
     pointGroup.visible = points;
     vectorGroup.visible = vectors;
+    for (const view of views.values()) {
+      view.lookAtMarker.visible = vectors && view.lookAtMarker.userData.hasDirection;
+    }
     labelGroup.visible = clusters || points;
     applySetupVisibility();
   }
