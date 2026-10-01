@@ -9,6 +9,8 @@
   <link rel="apple-touch-icon" href="./augmenta-favicon.png?v=4">
   <title>Augmenta × Three.js Debug Viewer</title>
   <meta name="description" content="Three.js example and debug viewer for the Augmenta JavaScript SDK.">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.mjs" crossorigin>
   <style>
     html, body, #app, #viewer { background: #0c0f14; }
   </style>
@@ -23,9 +25,9 @@
   }
   </script>
 </head>
-<body>
-  <main id="app">
-    <section id="viewer" aria-label="Augmenta 3D viewer">
+<body style="background:#0c0f14">
+  <main id="app" style="background:#0c0f14">
+    <section id="viewer" aria-label="Augmenta 3D viewer" style="background:#0c0f14">
       <div id="canvas-host"></div>
       <div class="viewer-overlay">
         <div>
