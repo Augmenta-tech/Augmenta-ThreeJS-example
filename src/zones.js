@@ -3,11 +3,12 @@ import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { ShapeType } from 'augmenta-client-sdk';
-import { isZoneStreamFresh, readZoneEventState } from './zone-state.js';
+import { isZoneStreamFresh, readZoneEventState, zonePresencePulseDirection } from './zone-state.js';
 
 const ZONE_PRESENCE_LABEL_GAP = 0.32;
 const ZONE_PRESENCE_LABEL_OPACITY = 0.78;
-const ZONE_PRESENCE_LABEL_PULSE_DURATION_MS = 180;
+const ZONE_PRESENCE_LABEL_PULSE_DURATION_MS = 220;
+const ZONE_PRESENCE_LABEL_PULSE_SCALE = 0.08;
 const ZONE_PRESENCE_LABEL_FLASH_DURATION_MS = 220;
 const ZONE_FILL_OPACITY = 0.025;
 const ZONE_VISUAL_COLOR = new THREE.Color(0x969ba3);
@@ -118,7 +119,8 @@ export function createZoneRenderer() {
       presenceStartedAt: 0,
       labelPulseStartedAt: 0,
       labelFlashStartedAt: 0,
-      labelPulseDirection: 1
+      labelPulseDirection: 1,
+      labelHideAfterPulse: false
     };
     visualGroup.visible = isZoneStreamFresh(lastSeenAt, performance.now());
 
@@ -169,7 +171,7 @@ export function createZoneRenderer() {
     for (const view of views.values()) {
       view.lastSeenAt = undefined;
       view.visualGroup.visible = false;
-      setPresence(view, 0);
+      setPresence(view, 0, false);
       if (view.xyPad) view.xyPad.group.visible = false;
       if (view.slider) view.slider.mesh.visible = false;
     }
@@ -191,10 +193,10 @@ export function createZoneRenderer() {
   function animate(now) {
     for (const view of views.values()) {
       if (!isZoneStreamFresh(view.lastSeenAt, now)) {
-        if (view.visualGroup.visible) {
-          view.visualGroup.visible = false;
-          setPresence(view, 0);
-        }
+        // Hide stale zone visuals without resetting their last live state.
+        // Short packet gaps should not retrigger presence/label transitions
+        // when the stream resumes.
+        if (view.visualGroup.visible) view.visualGroup.visible = false;
         continue;
       }
 
@@ -213,13 +215,17 @@ export function createZoneRenderer() {
           const phase = elapsed / ZONE_PRESENCE_LABEL_PULSE_DURATION_MS;
           const pulse = Math.sin(Math.PI * phase);
           view.label.scale.copy(view.labelBaseScale).multiplyScalar(
-            1 + view.labelPulseDirection * pulse * 0.035
+            1 + view.labelPulseDirection * pulse * ZONE_PRESENCE_LABEL_PULSE_SCALE
           );
           view.label.material.opacity = ZONE_PRESENCE_LABEL_OPACITY;
         } else {
           view.labelPulseStartedAt = 0;
           view.label.scale.copy(view.labelBaseScale);
           view.label.material.opacity = ZONE_PRESENCE_LABEL_OPACITY;
+          if (view.labelHideAfterPulse) {
+            view.label.visible = false;
+            view.labelHideAfterPulse = false;
+          }
         }
       }
 
@@ -236,11 +242,15 @@ export function createZoneRenderer() {
   return { addZone, update, clearPresence, pruneState, resetViews, animate };
 }
 
-function setPresence(view, presence) {
+function setPresence(view, presence, animateChange = true) {
   const nextPresence = Number.isFinite(presence) ? Math.max(0, presence) : 0;
   const previousPresence = view.presence;
   const active = nextPresence > 0;
   const now = performance.now();
+  const pulseDirection = animateChange
+    ? zonePresencePulseDirection(previousPresence, nextPresence)
+    : 0;
+  const presenceChanged = pulseDirection !== 0;
 
   // Presence changes the outline only. The faint neutral fill stays constant.
   view.presenceMesh.material.opacity = ZONE_FILL_OPACITY;
@@ -248,22 +258,37 @@ function setPresence(view, presence) {
   if (!active) view.presenceStartedAt = 0;
   updateOutlineStyle(view, active, 0);
 
+  if (presenceChanged) {
+    view.labelPulseStartedAt = now;
+    view.labelPulseDirection = pulseDirection;
+  }
+
   if (!active) {
+    view.labelFlashStartedAt = 0;
+    view.presence = nextPresence;
+
+    // Keep the zero label alive for the short downward pop, then hide it.
+    // Disconnect/reset paths pass animateChange=false and hide immediately.
+    if (presenceChanged && previousPresence > 0) {
+      const text = String(nextPresence);
+      replaceZonePresenceLabelTexture(view.label, text, false);
+      view.labelBaseScale.copy(view.label.scale);
+      view.labelText = text;
+      view.label.visible = true;
+      view.labelHideAfterPulse = true;
+      return;
+    }
+
     view.label.visible = false;
     view.labelPulseStartedAt = 0;
-    view.labelFlashStartedAt = 0;
+    view.labelHideAfterPulse = false;
     view.label.scale.copy(view.labelBaseScale);
     view.label.material.opacity = ZONE_PRESENCE_LABEL_OPACITY;
-    view.presence = nextPresence;
     return;
   }
 
-  const presenceChanged = nextPresence !== previousPresence;
-  if (presenceChanged) {
-    view.labelPulseStartedAt = now;
-    view.labelFlashStartedAt = now;
-    view.labelPulseDirection = nextPresence > previousPresence ? 1 : -1;
-  }
+  view.labelHideAfterPulse = false;
+  if (presenceChanged) view.labelFlashStartedAt = now;
 
   const text = String(nextPresence);
   if (view.labelText !== text || presenceChanged) {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { collectZoneAddresses, isZoneStreamFresh, readZoneEventState, ZONE_STREAM_STALE_MS } from '../src/zone-state.js';
+import { collectZoneAddresses, isZoneStreamFresh, readZoneEventState, zonePresencePulseDirection, ZONE_STREAM_STALE_MS } from '../src/zone-state.js';
 
 function slider(value) {
   return {
@@ -71,8 +71,8 @@ test('zone address collection follows the full setup hierarchy', () => {
 });
 
 
-test('zone stream stale grace period stays at 50 ms', () => {
-  assert.equal(ZONE_STREAM_STALE_MS, 50);
+test('zone stream stale grace period stays at 250 ms', () => {
+  assert.equal(ZONE_STREAM_STALE_MS, 250);
 });
 
 test('zone stream stays visible only within the stale grace period', () => {
@@ -88,4 +88,13 @@ test('zone stream stays visible only within the stale grace period', () => {
     false
   );
   assert.equal(isZoneStreamFresh(undefined, lastSeenAt), false);
+});
+
+
+test('presence pop direction follows increases and decreases including zero', () => {
+  assert.equal(zonePresencePulseDirection(0, 1), 1);
+  assert.equal(zonePresencePulseDirection(1, 2), 1);
+  assert.equal(zonePresencePulseDirection(2, 1), -1);
+  assert.equal(zonePresencePulseDirection(1, 0), -1);
+  assert.equal(zonePresencePulseDirection(2, 2), 0);
 });
