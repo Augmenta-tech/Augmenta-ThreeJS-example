@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { ClusterState } from 'augmenta-client-sdk';
 import { speedFromVelocity } from './motion.js';
 import { createZoneRenderer } from './zones.js';
+import { collectZoneAddresses } from './zone-state.js';
 
 const FLOOR_Y = 0;
 const GHOST_COLOR = new THREE.Color(0x8a909b);
@@ -681,18 +682,6 @@ function hashString(value) {
 // Y-up/right-handed direction while this helper keeps geometry sizes valid.
 function positiveSize(size) {
   return size.map((v) => Math.max(Math.abs(v), 0.001));
-}
-
-function collectZoneAddresses(container, result = new Set()) {
-  if (!container) return result;
-  if (container.isZone?.()) {
-    const address = container.getAddress?.();
-    if (address) result.add(address);
-  }
-  for (const child of container.getChildren?.() ?? []) {
-    collectZoneAddresses(child, result);
-  }
-  return result;
 }
 
 function clearGroup(group) {
