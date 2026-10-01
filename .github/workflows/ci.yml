@@ -28,10 +28,15 @@ jobs:
           npm ci --prefix vendor/AugmentaClientSDK-JS --no-audit --no-fund
           npm test --prefix vendor/AugmentaClientSDK-JS
 
+      - name: Install Pages runtime dependencies
+        shell: bash
+        run: |
+          npm install --prefix .pages-runtime --no-save --no-package-lock --ignore-scripts three@0.186.1
+
       - name: Validate example JavaScript
         shell: bash
         run: |
-          for file in src/*.js tests/*.mjs; do
+          for file in src/*.js tests/*.mjs scripts/*.mjs; do
             node --input-type=module --check < "$file"
           done
 
@@ -41,3 +46,7 @@ jobs:
           mkdir -p node_modules
           ln -s ../vendor/AugmentaClientSDK-JS node_modules/augmenta-client-sdk
           node --test tests/*.test.mjs
+
+      - name: Assemble Pages artifact
+        shell: bash
+        run: node scripts/assemble-site.mjs

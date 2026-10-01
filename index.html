@@ -1,9 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" style="background:#0c0f14;color-scheme:dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0c0f14">
+  <meta name="color-scheme" content="dark">
   <link rel="icon" type="image/png" href="./augmenta-favicon.png?v=4">
   <link rel="shortcut icon" type="image/png" href="./augmenta-favicon.png?v=4">
   <link rel="apple-touch-icon" href="./augmenta-favicon.png?v=4">
@@ -23,6 +24,7 @@
     }
   }
   </script>
+  <link rel="modulepreload" href="./src/qr.js">
 </head>
 <body style="background:#0c0f14">
   <main id="app" style="background:#0c0f14">
@@ -155,6 +157,7 @@
     </aside>
   </main>
 
+  <script type="module" src="./src/qr.js"></script>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

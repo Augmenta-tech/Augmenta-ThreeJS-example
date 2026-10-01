@@ -757,7 +757,7 @@ function makeZonePresenceLabelTexture(text, flash = false, active = true) {
 
   const font = '700 36px Inter, Arial, sans-serif';
   const height = 72;
-  const horizontalPadding = 24;
+  const horizontalPadding = 28;
   ctx.font = font;
 
   const measuredWidth = Math.ceil(ctx.measureText(text || '0').width);

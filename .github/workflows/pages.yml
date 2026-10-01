@@ -39,10 +39,15 @@ jobs:
           npm ci --prefix vendor/AugmentaClientSDK-JS --no-audit --no-fund
           npm test --prefix vendor/AugmentaClientSDK-JS
 
+      - name: Install Pages runtime dependencies
+        shell: bash
+        run: |
+          npm install --prefix .pages-runtime --no-save --no-package-lock --ignore-scripts three@0.186.1
+
       - name: Validate example JavaScript
         shell: bash
         run: |
-          for file in src/*.js tests/*.mjs; do
+          for file in src/*.js tests/*.mjs scripts/*.mjs; do
             node --input-type=module --check < "$file"
           done
 
@@ -55,40 +60,7 @@ jobs:
 
       - name: Assemble static site
         shell: bash
-        run: |
-          mkdir -p _site/src _site/vendor/AugmentaClientSDK-JS/dist _site/vendor/qrcode-generator
-          cp index.html augmenta-favicon.png _site/
-          cp src/*.js src/styles.css _site/src/
-          cp -R vendor/AugmentaClientSDK-JS/dist/esm _site/vendor/AugmentaClientSDK-JS/dist/esm
-          cp vendor/qrcode-generator/qrcode.js _site/vendor/qrcode-generator/qrcode.js
-
-          # GitHub Pages/browser caches can briefly mix files from adjacent
-          # deployments. Stamp the local entry assets and module imports with
-          # this deployment revision so a cold refresh cannot reuse stale CSS
-          # or JavaScript from a previous version.
-          export REV="${GITHUB_SHA::12}"
-          node --input-type=module <<'NODE'
-          import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
-
-          const rev = process.env.REV;
-          const indexPath = '_site/index.html';
-          let html = readFileSync(indexPath, 'utf8');
-          html = html
-            .replace('./src/styles.css', `./src/styles.css?v=${rev}`)
-            .replace('./src/main.js', `./src/main.js?v=${rev}`);
-          writeFileSync(indexPath, html);
-
-          for (const name of readdirSync('_site/src').filter((name) => name.endsWith('.js'))) {
-            const path = `_site/src/${name}`;
-            const source = readFileSync(path, 'utf8').replace(
-              /(from\s+['"])(\.\.?(?:\/[^'"]+)+\.js)(['"])/g,
-              `$1$2?v=${rev}$3`
-            );
-            writeFileSync(path, source);
-          }
-          NODE
-
-          touch _site/.nojekyll
+        run: node scripts/assemble-site.mjs
 
       - name: Configure Pages
         uses: actions/configure-pages@v6
