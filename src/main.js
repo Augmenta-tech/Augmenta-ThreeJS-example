@@ -18,6 +18,16 @@ const MOBILE_MEDIA_QUERY = '(max-width: 900px)';
 const SETTINGS_STORAGE_KEY = 'augmenta-threejs-settings:v1';
 
 const $ = (selector) => document.querySelector(selector);
+
+function refreshFavicon() {
+  const faviconUrl = new URL('./augmenta-favicon.png?v=4', document.baseURI).href;
+  document.querySelectorAll('link[rel~="icon"]').forEach((link) => {
+    if (link.href !== faviconUrl) link.href = faviconUrl;
+  });
+}
+
+refreshFavicon();
+
 const ui = {
   app: $('#app'), sidebar: $('#sidebar'), sidebarResizer: $('#sidebar-resizer'), serverAddress: $('#server-address'), port: $('#port'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
   demo: $('#demo'), status: $('#status'), note: $('#connection-note'), summary: $('#summary'),
@@ -605,6 +615,7 @@ connection.start({ resetProtocol: true });
 // persisted settings on pageshow so the visible controls always match the
 // values used by the viewer/connection logic.
 window.addEventListener('pageshow', () => {
+  refreshFavicon();
   syncPreferencesToUi();
   // Do not clear setupStore here: on fast local connections the initial
   // Pleiades setup may already have arrived before pageshow. Clearing it would
