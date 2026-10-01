@@ -85,6 +85,10 @@ export function createViewer(host) {
     cameraChangeHandler = typeof handler === 'function' ? handler : undefined;
   }
 
+  function isCameraUserControlled() {
+    return cameraUserControlled;
+  }
+
   controls.addEventListener('start', () => {
     cameraUserControlled = true;
   });
@@ -334,6 +338,7 @@ export function createViewer(host) {
     clearGroup(setupGroup);
     zoneRenderer.resetViews();
     addContainer(root, setupGroup, selectedSceneAddress, false);
+    zoneRenderer.pruneState(collectZoneAddresses(root));
     updateLineMaterialResolution();
     updateHomeFromSetup();
   }
@@ -448,6 +453,8 @@ export function createViewer(host) {
 
   function clearSetup() {
     clearGroup(setupGroup);
+    zoneRenderer.clearPresence();
+    zoneRenderer.resetViews();
     homePosition.set(0, 2.5, 7.5);
     homeTarget.set(0, 1.2, 0);
   }
@@ -493,6 +500,7 @@ export function createViewer(host) {
     clearTracking,
     clearSetup,
     getCameraView,
+    isCameraUserControlled,
     resetCamera,
     setCameraChangeHandler,
     setCameraView,
@@ -675,10 +683,16 @@ function positiveSize(size) {
   return size.map((v) => Math.max(Math.abs(v), 0.001));
 }
 
-function containerColor(container, fallback) {
-  const [r, g, b] = container.getColor();
-  if (r === 0 && g === 0 && b === 0) return fallback;
-  return new THREE.Color().setRGB(r, g, b);
+function collectZoneAddresses(container, result = new Set()) {
+  if (!container) return result;
+  if (container.isZone?.()) {
+    const address = container.getAddress?.();
+    if (address) result.add(address);
+  }
+  for (const child of container.getChildren?.() ?? []) {
+    collectZoneAddresses(child, result);
+  }
+  return result;
 }
 
 function clearGroup(group) {
