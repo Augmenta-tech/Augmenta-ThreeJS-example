@@ -69,6 +69,8 @@ export function createViewer(host) {
   const unitLookAtFace = new THREE.PlaneGeometry(1, 1);
   const centroidGeometry = new THREE.SphereGeometry(0.045, 12, 8);
 
+  const lookAtDirection = new THREE.Vector3();
+  const renderedPositiveZ = new THREE.Vector3();
   const homePosition = new THREE.Vector3(0, 2.5, 7.5);
   const homeTarget = new THREE.Vector3(0, 1.2, 0);
   let rightInset = 0;
@@ -230,7 +232,7 @@ export function createViewer(host) {
         color,
         transparent: true,
         opacity: LOOK_AT_FACE_OPACITY,
-        side: THREE.FrontSide,
+        side: THREE.DoubleSide,
         depthWrite: false
       })
     );
@@ -364,22 +366,21 @@ export function createViewer(host) {
       return;
     }
 
-    const direction = new THREE.Vector3().fromArray(lookAt);
-    if (direction.lengthSq() < 1e-8) {
+    lookAtDirection.fromArray(lookAt);
+    if (lookAtDirection.lengthSq() < 1e-8) {
       view.lookAtFace.visible = false;
       return;
     }
+    lookAtDirection.normalize();
 
-    direction.normalize();
-
-    // The streamed look-at vector is already mapped to Three.js' requested
-    // Y-up/right-handed coordinates. Compare it with the rendered box's local
-    // +Z normal and choose whichever Z face actually points in that direction.
-    // With the current LH -> RH quaternion reflection this is normally -Z.
-    const positiveZWorld = LOCAL_BOX_Z.clone()
+    // Pleiades streams look-at separately from the raw OBB quaternion. Compare
+    // both after the viewer's handedness conversion instead of assuming which
+    // local Z face is forward. Reused scratch vectors keep this per-frame path
+    // allocation-free when many clusters are visible.
+    renderedPositiveZ.copy(LOCAL_BOX_Z)
       .applyQuaternion(view.box.quaternion)
       .normalize();
-    const side = positiveZWorld.dot(direction) >= 0 ? 1 : -1;
+    const side = renderedPositiveZ.dot(lookAtDirection) >= 0 ? 1 : -1;
 
     view.lookAtFace.position.set(0, 0, side * 0.501);
     view.lookAtFace.rotation.set(0, side > 0 ? 0 : Math.PI, 0);
