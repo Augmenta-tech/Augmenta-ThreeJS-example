@@ -101,7 +101,7 @@ export function createZoneRenderer() {
     const address = container.getAddress();
     if (!address) return;
 
-    const label = createZonePresenceLabel('');
+    const label = createZonePresenceLabel('', zoneLabelOutlineWidths(params));
     label.visible = false;
     positionZoneLabel(label, params);
     visualGroup.add(label);
@@ -721,8 +721,14 @@ function updateRoundZoneSlider(slider, rawValue) {
   slider.mesh.visible = true;
 }
 
-function createZonePresenceLabel(text) {
-  const texture = makeZonePresenceLabelTexture(text, false, false);
+function zoneLabelOutlineWidths(params) {
+  return params.isBox()
+    ? { idle: ZONE_OUTLINE_WIDTH, active: ZONE_ACTIVE_OUTLINE_WIDTH }
+    : { idle: ROUND_ZONE_EDGE_WIDTH, active: ROUND_ZONE_ACTIVE_EDGE_WIDTH };
+}
+
+function createZonePresenceLabel(text, outlineWidths) {
+  const texture = makeZonePresenceLabelTexture(text, false, false, outlineWidths);
   const material = new THREE.SpriteMaterial({
     map: texture,
     transparent: true,
@@ -731,6 +737,7 @@ function createZonePresenceLabel(text) {
     opacity: ZONE_PRESENCE_LABEL_OPACITY
   });
   const sprite = new THREE.Sprite(material);
+  sprite.userData.outlineWidths = outlineWidths;
   setZonePresenceLabelScale(sprite, texture);
   sprite.renderOrder = 10;
   return sprite;
@@ -738,7 +745,12 @@ function createZonePresenceLabel(text) {
 
 function replaceZonePresenceLabelTexture(sprite, text, flash = false, active = true) {
   sprite.material.map?.dispose();
-  const texture = makeZonePresenceLabelTexture(text, flash, active);
+  const texture = makeZonePresenceLabelTexture(
+    text,
+    flash,
+    active,
+    sprite.userData.outlineWidths
+  );
   sprite.material.map = texture;
   setZonePresenceLabelScale(sprite, texture);
   sprite.material.needsUpdate = true;
@@ -750,7 +762,12 @@ function setZonePresenceLabelScale(sprite, texture) {
   sprite.scale.set(width, height, 1);
 }
 
-function makeZonePresenceLabelTexture(text, flash = false, active = true) {
+function makeZonePresenceLabelTexture(
+  text,
+  flash = false,
+  active = true,
+  outlineWidths = { idle: ZONE_OUTLINE_WIDTH, active: ZONE_ACTIVE_OUTLINE_WIDTH }
+) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) return new THREE.CanvasTexture(canvas);
@@ -770,7 +787,7 @@ function makeZonePresenceLabelTexture(text, flash = false, active = true) {
   ctx.font = font;
   ctx.clearRect(0, 0, width, height);
 
-  const outlineWidth = active ? ZONE_ACTIVE_OUTLINE_WIDTH : ZONE_OUTLINE_WIDTH;
+  const outlineWidth = active ? outlineWidths.active : outlineWidths.idle;
   const borderInset = outlineWidth / 2;
   roundedRect(
     ctx,
