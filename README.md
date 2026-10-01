@@ -31,7 +31,7 @@ The viewer requests the richest practical uncompressed stream from the Augmenta 
 
 Three.js renders:
 
-- cluster bounding boxes, centroids and readable IDs, with the received look-at direction shown as a subtle highlighted forward face;
+- cluster bounding boxes, centroids and readable IDs, with the received look-at direction shown as a small chevron near the bottom of the box;
 - velocity vectors with arrow heads at the received velocity magnitude;
 - cluster/point-cloud pairs in distinct colors chosen from a curated palette;
 - point clouds;
@@ -42,7 +42,7 @@ Mouse navigation follows the Pleiades viewer philosophy: left-drag orbits, right
 
 Partial setup updates are merged into the cached hierarchy before rendering, so a Scene update that omits its Zone children does not erase them. Updates that race ahead of the initial full setup are ignored rather than promoted to an incomplete root. When a specific Scene is selected, live setup updates still render from the World root so ancestor transforms remain intact. Zone-event caches are pruned against the latest setup hierarchy so renamed/removed addresses do not accumulate stale visual state. Scene selection and scene-size debug information therefore always use the latest valid merged setup.
 
-The live debug inspector is throttled and preserves the user's open/closed section state across refreshes. Cluster debug values include the received OBB quaternion and `lookAt` vector so the rendered forward face can be checked against the wire data. Using **Clear** preserves the inspector layout and sidebar scroll position while the live stream repopulates, so clearing data does not jump the panel. The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to SDK `1.0.0-beta.1` commit `115b77c1` for reproducible builds. The SDK lockfile is committed, so CI and local reproducible builds use `npm ci`. The pinned SDK includes bulk point-cloud parsing, packet-boundary validation, protocol V2/V3 guards and stale-WebSocket-event protection. The inspector exposes the main fields useful for this example; raw point arrays are rendered in full in Three.js while the text panel is throttled and point-intensity statistics are bounded to a representative sample to stay responsive with large clouds.
+The live debug inspector is throttled and preserves the user's open/closed section state across refreshes. Cluster debug values include the received OBB quaternion and `lookAt` vector so the rendered direction marker can be checked against the wire data. Using **Clear** preserves the inspector layout and sidebar scroll position while the live stream repopulates, so clearing data does not jump the panel. The JavaScript SDK is included as a **Git submodule** in `vendor/AugmentaClientSDK-JS` and pinned to SDK `1.0.0-beta.1` commit `115b77c1` for reproducible builds. The SDK lockfile is committed, so CI and local reproducible builds use `npm ci`. The pinned SDK includes bulk point-cloud parsing, packet-boundary validation, protocol V2/V3 guards and stale-WebSocket-event protection. The inspector exposes the main fields useful for this example; raw point arrays are rendered in full in Three.js while the text panel is throttled and point-intensity statistics are bounded to a representative sample to stay responsive with large clouds.
 
 ## Clone and run locally
 
