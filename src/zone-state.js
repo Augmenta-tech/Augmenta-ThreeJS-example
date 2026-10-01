@@ -35,10 +35,16 @@ export function collectZoneAddresses(container, result = new Set()) {
 }
 
 
-export const ZONE_STREAM_STALE_MS = 50;
+export const ZONE_STREAM_STALE_MS = 250;
 
 export function isZoneStreamFresh(lastSeenAt, now, staleMs = ZONE_STREAM_STALE_MS) {
   return Number.isFinite(lastSeenAt)
     && Number.isFinite(now)
     && now - lastSeenAt <= staleMs;
+}
+
+export function zonePresencePulseDirection(previousPresence, nextPresence) {
+  if (!Number.isFinite(previousPresence) || !Number.isFinite(nextPresence)) return 0;
+  if (nextPresence === previousPresence) return 0;
+  return nextPresence > previousPresence ? 1 : -1;
 }
