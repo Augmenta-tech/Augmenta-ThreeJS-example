@@ -153,6 +153,14 @@ export function createZoneRenderer() {
     }
   }
 
+  function pruneState(validAddresses) {
+    for (const cache of [presenceByAddress, xyPadByAddress, sliderByAddress]) {
+      for (const address of cache.keys()) {
+        if (!validAddresses.has(address)) cache.delete(address);
+      }
+    }
+  }
+
   function animate(now) {
     for (const view of views.values()) {
       if (view.presence > 0) {
@@ -188,7 +196,7 @@ export function createZoneRenderer() {
     }
   }
 
-  return { addZone, update, clearPresence, resetViews, animate };
+  return { addZone, update, clearPresence, pruneState, resetViews, animate };
 }
 
 function setPresence(view, presence) {

@@ -5,7 +5,9 @@ import { createDebugPanel } from './debug.js';
 import { makeDemoFrame, makeDemoSetup } from './demo.js';
 import {
   buildConnectionShareUrl,
-  readConnectionOptionsFromUrl
+  normalizeConnectionOptions,
+  readConnectionOptionsFromUrl,
+  resolveConnectionOptions
 } from './share-link.js';
 
 const DISCONNECT_CLEANUP_DELAY_MS = 500;
@@ -33,7 +35,7 @@ const ui = {
   app: $('#app'), sidebar: $('#sidebar'), sidebarResizer: $('#sidebar-resizer'), serverAddress: $('#server-address'), port: $('#port'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
   demo: $('#demo'), status: $('#status'), note: $('#connection-note'), summary: $('#summary'),
   debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'), scenes: $('#scenes'),
-  sidebarToggle: $('#sidebar-toggle'), connectionQr: $('#connection-qr'), connectionQrCode: $('#connection-qr-code'),
+  sidebarToggle: $('#sidebar-toggle'), connectionQrVisibility: $('.connection-qr-visibility'), connectionQr: $('#connection-qr'), connectionQrCode: $('#connection-qr-code'),
   showClusters: $('#show-clusters'), showPoints: $('#show-points'), showZones: $('#show-zones'), showVectors: $('#show-vectors')
 };
 
@@ -44,7 +46,7 @@ let disconnectCleanupTimer;
 let cameraPreferenceSaveTimer;
 let sidebarHandleIdleTimer;
 let qrCodeFactoryPromise;
-let hasPersistedCameraView = false;
+let localConnectionPreferences = {};
 let demoTimer;
 let lastFrame;
 let lastControl;
@@ -86,12 +88,7 @@ function savePreferences() {
   );
 
   const value = {
-    connection: {
-      address: ui.serverAddress.value,
-      port: ui.port.value,
-      protocol: ui.protocol.value,
-      downsample: ui.downsample.value
-    },
+    connection: localConnectionPreferences,
     display: {
       clusters: ui.showClusters.checked,
       points: ui.showPoints.checked,
@@ -113,6 +110,17 @@ function savePreferences() {
   }
 }
 
+function applyConnectionSettings(settings) {
+  if (typeof settings.address === 'string') ui.serverAddress.value = settings.address;
+  if (typeof settings.port === 'string') ui.port.value = settings.port;
+  if (typeof settings.protocol === 'string') ui.protocol.value = settings.protocol;
+  if (typeof settings.downsample === 'string') ui.downsample.value = settings.downsample;
+}
+
+function rememberLocalConnectionSettings() {
+  localConnectionPreferences = normalizeConnectionOptions(getConnectionSettings());
+}
+
 function restorePreferences() {
   const savedPreferences = loadPreferences();
   const connection = isObject(savedPreferences.connection) ? savedPreferences.connection : {};
@@ -120,23 +128,12 @@ function restorePreferences() {
   const display = isObject(savedPreferences.display) ? savedPreferences.display : {};
   const uiPreferences = isObject(savedPreferences.ui) ? savedPreferences.ui : {};
 
-  if (typeof connection.address === 'string') ui.serverAddress.value = connection.address;
-
-  const port = Number(connection.port);
-  if (Number.isInteger(port) && port >= 1 && port <= 65535) ui.port.value = String(port);
-
-  const protocol = String(connection.protocol ?? '');
-  if (['auto', '2', '3'].includes(protocol)) ui.protocol.value = protocol;
-
-  const downsample = Number(connection.downsample);
-  if (Number.isInteger(downsample) && downsample >= 1) ui.downsample.value = String(downsample);
-
-  // A QR/shared URL is explicit user intent on this load, so its connection
-  // values take precedence over this device's persisted local preferences.
-  if (typeof sharedConnection.address === 'string') ui.serverAddress.value = sharedConnection.address;
-  if (typeof sharedConnection.port === 'string') ui.port.value = sharedConnection.port;
-  if (typeof sharedConnection.protocol === 'string') ui.protocol.value = sharedConnection.protocol;
-  if (typeof sharedConnection.downsample === 'string') ui.downsample.value = sharedConnection.downsample;
+  applyConnectionSettings(normalizeConnectionOptions(connection));
+  // Persist only this browser's own connection defaults. Shared/QR values are
+  // a tab-local override and must not leak back into localStorage just because
+  // camera/sidebar state is saved.
+  localConnectionPreferences = normalizeConnectionOptions(getConnectionSettings());
+  applyConnectionSettings(resolveConnectionOptions(localConnectionPreferences, sharedConnection));
 
   if (typeof display.clusters === 'boolean') ui.showClusters.checked = display.clusters;
   if (typeof display.points === 'boolean') ui.showPoints.checked = display.points;
@@ -147,10 +144,7 @@ function restorePreferences() {
   const sidebarWidth = Number(uiPreferences.sidebarWidth);
   if (Number.isFinite(sidebarWidth)) setSidebarWidth(sidebarWidth);
   setSidebarHidden(uiPreferences.sidebarHidden === true, false);
-
-  if (viewer.setCameraView(uiPreferences.cameraView)) {
-    hasPersistedCameraView = true;
-  }
+  viewer.setCameraView(uiPreferences.cameraView);
 }
 
 function scheduleCameraPreferenceSave() {
@@ -352,7 +346,7 @@ function applySetupUpdate(container) {
   if (!root) return;
 
   syncSceneSelector();
-  viewer.renderSetup(selectedScene() ?? root);
+  viewer.renderSetup(root, selectedScene()?.getAddress());
   renderDebug(true);
 }
 
@@ -404,7 +398,7 @@ async function refreshConnectionQr() {
 
 function handleSetup(message) {
   setSetup(message.getRootObject());
-  if (!hasPersistedCameraView) viewer.resetCamera();
+  if (!viewer.isCameraUserControlled()) viewer.resetCamera();
 }
 
 const connection = createConnectionController({
@@ -482,6 +476,22 @@ function syncPanelCamera(animate = false) {
   viewer.setRightInset(inset, animate);
 }
 
+function syncSidebarAccessibility() {
+  const foldedOnDesktop = ui.app.classList.contains('sidebar-hidden')
+    && !window.matchMedia(MOBILE_MEDIA_QUERY).matches;
+
+  ui.sidebar.inert = foldedOnDesktop;
+  ui.connectionQrVisibility.inert = foldedOnDesktop;
+
+  if (foldedOnDesktop) {
+    ui.sidebar.setAttribute('aria-hidden', 'true');
+    ui.connectionQrVisibility.setAttribute('aria-hidden', 'true');
+  } else {
+    ui.sidebar.removeAttribute('aria-hidden');
+    ui.connectionQrVisibility.removeAttribute('aria-hidden');
+  }
+}
+
 function setSidebarHidden(hidden, animate = true) {
   if (!animate) ui.app.classList.add('sidebar-no-transition');
 
@@ -489,6 +499,7 @@ function setSidebarHidden(hidden, animate = true) {
   ui.sidebarToggle.textContent = hidden ? '<' : '>';
   ui.sidebarToggle.title = hidden ? 'Show panel' : 'Hide panel';
   ui.sidebarToggle.setAttribute('aria-expanded', String(!hidden));
+  syncSidebarAccessibility();
   syncPanelCamera(animate);
 
   resetSidebarHandleIdle();
@@ -563,6 +574,7 @@ ui.sidebarResizer.addEventListener('keydown', (event) => {
 window.addEventListener('pagehide', savePreferences);
 
 window.addEventListener('resize', () => {
+  syncSidebarAccessibility();
   if (!window.matchMedia(MOBILE_MEDIA_QUERY).matches) {
     setSidebarWidth(ui.sidebar.getBoundingClientRect().width);
   } else {
@@ -589,24 +601,29 @@ ui.serverAddress.addEventListener('keydown', handleServerFieldEnter);
 ui.port.addEventListener('keydown', handleServerFieldEnter);
 [ui.serverAddress, ui.port, ui.downsample].forEach((input) => {
   input.addEventListener('input', () => {
+    rememberLocalConnectionSettings();
     savePreferences();
     refreshConnectionQr();
   });
 });
 ui.serverAddress.addEventListener('change', () => {
+  rememberLocalConnectionSettings();
   savePreferences();
   restartForServerChange('Server address changed');
 });
 ui.port.addEventListener('change', () => {
+  rememberLocalConnectionSettings();
   savePreferences();
   restartForServerChange('Server port changed');
 });
 ui.protocol.addEventListener('change', () => {
+  rememberLocalConnectionSettings();
   savePreferences();
   refreshConnectionQr();
   connection.restart('Protocol changed', { resetProtocol: true });
 });
 ui.downsample.addEventListener('change', () => {
+  rememberLocalConnectionSettings();
   savePreferences();
   refreshConnectionQr();
   connection.restart('Downsample changed');

@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { ClusterState } from 'augmenta-client-sdk';
 import { speedFromVelocity } from './motion.js';
 import { createZoneRenderer } from './zones.js';
+import { collectZoneAddresses } from './zone-state.js';
 
 const FLOOR_Y = 0;
 const GHOST_COLOR = new THREE.Color(0x8a909b);
@@ -83,6 +84,10 @@ export function createViewer(host) {
 
   function setCameraChangeHandler(handler) {
     cameraChangeHandler = typeof handler === 'function' ? handler : undefined;
+  }
+
+  function isCameraUserControlled() {
+    return cameraUserControlled;
   }
 
   controls.addEventListener('start', () => {
@@ -334,6 +339,7 @@ export function createViewer(host) {
     clearGroup(setupGroup);
     zoneRenderer.resetViews();
     addContainer(root, setupGroup, selectedSceneAddress, false);
+    zoneRenderer.pruneState(collectZoneAddresses(root));
     updateLineMaterialResolution();
     updateHomeFromSetup();
   }
@@ -448,6 +454,8 @@ export function createViewer(host) {
 
   function clearSetup() {
     clearGroup(setupGroup);
+    zoneRenderer.clearPresence();
+    zoneRenderer.resetViews();
     homePosition.set(0, 2.5, 7.5);
     homeTarget.set(0, 1.2, 0);
   }
@@ -493,6 +501,7 @@ export function createViewer(host) {
     clearTracking,
     clearSetup,
     getCameraView,
+    isCameraUserControlled,
     resetCamera,
     setCameraChangeHandler,
     setCameraView,
@@ -673,12 +682,6 @@ function hashString(value) {
 // Y-up/right-handed direction while this helper keeps geometry sizes valid.
 function positiveSize(size) {
   return size.map((v) => Math.max(Math.abs(v), 0.001));
-}
-
-function containerColor(container, fallback) {
-  const [r, g, b] = container.getColor();
-  if (r === 0 && g === 0 && b === 0) return fallback;
-  return new THREE.Color().setRGB(r, g, b);
 }
 
 function clearGroup(group) {

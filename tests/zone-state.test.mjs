@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readZoneEventState } from '../src/zone-state.js';
+import { collectZoneAddresses, readZoneEventState } from '../src/zone-state.js';
 
 function slider(value) {
   return {
@@ -42,4 +42,30 @@ test('missing optional zone properties stay undefined', () => {
 
   assert.equal(state.slider, undefined);
   assert.equal(state.xyPad, undefined);
+});
+
+
+test('zone address collection follows the full setup hierarchy', () => {
+  const node = (address, zone, children = []) => ({
+    isZone: () => zone,
+    getAddress: () => address,
+    getChildren: () => children
+  });
+
+  const root = node('', false, [
+    node('/scene-a', false, [
+      node('/scene-a/zone-1', true),
+      node('/scene-a/group', false, [
+        node('/scene-a/group/zone-2', true)
+      ])
+    ]),
+    node('/scene-b', false, [
+      node('/scene-b/zone-3', true)
+    ])
+  ]);
+
+  assert.deepEqual(
+    [...collectZoneAddresses(root)].sort(),
+    ['/scene-a/group/zone-2', '/scene-a/zone-1', '/scene-b/zone-3']
+  );
 });

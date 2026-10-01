@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   buildConnectionShareUrl,
-  readConnectionOptionsFromUrl
+  normalizeConnectionOptions,
+  readConnectionOptionsFromUrl,
+  resolveConnectionOptions
 } from '../src/share-link.js';
 
 test('connection share URL preserves the page and embeds current connection options', () => {
@@ -64,4 +66,52 @@ test('regenerating a share URL replaces stale connection query values', () => {
     protocol: 'auto',
     downsample: '1'
   });
+});
+
+
+test('shared connection options override a local view without mutating local preferences', () => {
+  const local = {
+    address: 'augmenta-local.local',
+    port: '6060',
+    protocol: 'auto',
+    downsample: '1'
+  };
+  const shared = {
+    address: '192.168.1.42',
+    protocol: '3'
+  };
+
+  assert.deepEqual(resolveConnectionOptions(local, shared), {
+    address: '192.168.1.42',
+    port: '6060',
+    protocol: '3',
+    downsample: '1'
+  });
+  assert.deepEqual(local, {
+    address: 'augmenta-local.local',
+    port: '6060',
+    protocol: 'auto',
+    downsample: '1'
+  });
+});
+
+test('connection option normalization keeps only valid local values', () => {
+  assert.deepEqual(normalizeConnectionOptions({
+    address: '  augmenta-server  ',
+    port: 6060,
+    protocol: '2',
+    downsample: 4
+  }), {
+    address: 'augmenta-server',
+    port: '6060',
+    protocol: '2',
+    downsample: '4'
+  });
+
+  assert.deepEqual(normalizeConnectionOptions({
+    address: '   ',
+    port: 0,
+    protocol: '7',
+    downsample: -1
+  }), {});
 });
