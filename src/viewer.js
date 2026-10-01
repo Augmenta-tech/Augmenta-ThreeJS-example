@@ -79,6 +79,7 @@ export function createViewer(host) {
 
   const lookAtDirection = new THREE.Vector3();
   const renderedPositiveZ = new THREE.Vector3();
+  const velocityDirection = new THREE.Vector3();
   const homePosition = new THREE.Vector3(0, 2.5, 7.5);
   const homeTarget = new THREE.Vector3(0, 1.2, 0);
   let rightInset = 0;
@@ -336,7 +337,7 @@ export function createViewer(host) {
     view.centroid.visible = true;
     view.centroid.position.fromArray(centroid);
 
-    updateVelocity(view.velocity, center, velocity, view.color);
+    updateVelocity(view.velocity, center, velocity, view.color, velocityDirection);
 
     const state = cluster.getState();
     const color = state === ClusterState.Ghost ? GHOST_COLOR : view.color;
@@ -672,8 +673,7 @@ function configureArrow(arrow) {
   arrow.cone.renderOrder = 8;
 }
 
-function updateVelocity(arrow, origin, velocity, color) {
-  const vector = new THREE.Vector3().fromArray(velocity);
+function updateVelocity(arrow, origin, velocity, color, direction) {
   const speed = speedFromVelocity(velocity);
 
   if (!Number.isFinite(speed) || speed < 0.001) {
@@ -681,9 +681,10 @@ function updateVelocity(arrow, origin, velocity, color) {
     return;
   }
 
+  direction.fromArray(velocity).normalize();
   arrow.visible = true;
   arrow.position.fromArray(origin);
-  arrow.setDirection(vector.normalize());
+  arrow.setDirection(direction);
 
   const headLength = Math.min(Math.max(speed * 0.28, 0.08), 0.28);
   const headWidth = Math.min(Math.max(headLength * 0.55, 0.05), 0.16);
