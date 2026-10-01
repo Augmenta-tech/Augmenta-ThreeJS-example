@@ -553,7 +553,7 @@ function updateBoxXYPad(xyPad, rawX, rawY) {
 }
 
 function createRoundZoneSlider(params, sourceGeometry) {
-  const axisName = params.getLocalSliderAxis?.() ?? 'x';
+  const axisName = params.getLocalSliderAxis();
   const axis = axisName === 'y'
     ? new THREE.Vector3(0, 1, 0)
     : axisName === 'z'

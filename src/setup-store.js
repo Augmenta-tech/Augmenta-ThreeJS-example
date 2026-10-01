@@ -51,11 +51,11 @@ export function createSetupStore() {
 function indexContainers(container, scenes, byAddress) {
   if (!container) return;
 
-  if (container.isScene?.()) scenes.push(container);
-  const address = container.getAddress?.();
+  if (container.isScene()) scenes.push(container);
+  const address = container.getAddress();
   if (address) byAddress.set(address, container);
 
-  for (const child of container.getChildren?.() ?? []) {
+  for (const child of container.getChildren()) {
     indexContainers(child, scenes, byAddress);
   }
 }
@@ -102,7 +102,7 @@ function insertAtBestParent(root, update) {
 
   // A new top-level Scene can legitimately arrive below a World whose own
   // address is omitted from setup JSON.
-  if (root.isWorld?.() && update.isScene?.()) {
+  if (root.isWorld() && update.isScene()) {
     return cloneContainer(root, [...root.getChildren(), update]);
   }
 
@@ -155,7 +155,7 @@ function sameContainer(a, b) {
   const aAddress = a.getAddress();
   const bAddress = b.getAddress();
   if (aAddress || bAddress) return Boolean(aAddress && bAddress && aAddress === bAddress);
-  return Boolean(a.isWorld?.() && b.isWorld?.());
+  return Boolean(a.isWorld() && b.isWorld());
 }
 
 function cloneContainer(source, children) {
