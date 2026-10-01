@@ -65,12 +65,15 @@ export function createViewer(host) {
   const unitBox = new THREE.BoxGeometry(1, 1, 1);
   const unitBoxEdges = new THREE.EdgesGeometry(unitBox);
   unitBox.dispose();
-  // A small chevron sits just above the OBB bottom plane and points toward
-  // the face selected by the streamed look-at direction.
+  // Integrate the look-at cue into the lower forward edge: a straight edge
+  // with a centered outward triangle (___/\\___). The apex is intentionally
+  // fairly sharp so direction remains obvious without adding a second arrow.
   const unitLookAtMarker = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(-0.2, -0.48, 0.18),
-    new THREE.Vector3(0, -0.48, 0.44),
-    new THREE.Vector3(0.2, -0.48, 0.18)
+    new THREE.Vector3(-0.5, -0.495, 0.502),
+    new THREE.Vector3(-0.12, -0.495, 0.502),
+    new THREE.Vector3(0, -0.495, 0.70),
+    new THREE.Vector3(0.12, -0.495, 0.502),
+    new THREE.Vector3(0.5, -0.495, 0.502)
   ]);
   const centroidGeometry = new THREE.SphereGeometry(0.045, 12, 8);
 
