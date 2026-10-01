@@ -30,7 +30,18 @@ export function createDebugPanel(summary, content) {
       }
       blocks.push(cachedControlHtml);
     }
+
+    const openSections = new Map(
+      [...content.querySelectorAll('details[data-debug-section]')]
+        .map((details) => [details.dataset.debugSection, details.open])
+    );
+
     content.innerHTML = blocks.join('');
+
+    for (const details of content.querySelectorAll('details[data-debug-section]')) {
+      const previous = openSections.get(details.dataset.debugSection);
+      if (previous !== undefined) details.open = previous;
+    }
   }
 
   function clear() {
@@ -45,12 +56,12 @@ export function createDebugPanel(summary, content) {
 }
 
 function frameBlock(sceneSize) {
-  return `<details open><summary>Frame</summary><div class="debug-block">scene size          ${sceneSizeText(sceneSize)}</div></details>`;
+  return `<details data-debug-section="frame" open><summary>Frame</summary><div class="debug-block">scene size          ${sceneSizeText(sceneSize)}</div></details>`;
 }
 
 function objectsBlock(frame) {
   const objects = frame.getObjects();
-  if (!objects.length) return '<details><summary>Objects (0)</summary><div class="debug-block muted">No tracked objects in this frame.</div></details>';
+  if (!objects.length) return '<details data-debug-section="objects"><summary>Objects (0)</summary><div class="debug-block muted">No tracked objects in this frame.</div></details>';
 
   const rows = objects.map((object) => {
     let cluster = '<span class="muted">No cluster property</span>';
@@ -82,12 +93,12 @@ function objectsBlock(frame) {
     return `<tr><td>${esc(object.getID() ?? '—')}<br><span class="muted">${esc(object.getUUID() ?? '—')}</span></td><td>${cluster}</td><td>${points}</td></tr>`;
   }).join('');
 
-  return `<details open><summary>Objects (${objects.length})</summary><table class="debug-table objects-table"><colgroup><col class="id-column"><col class="cluster-column"><col class="points-column"></colgroup><thead><tr><th>ID / UUID</th><th>Cluster</th><th>Point cloud</th></tr></thead><tbody>${rows}</tbody></table></details>`;
+  return `<details data-debug-section="objects" open><summary>Objects (${objects.length})</summary><table class="debug-table objects-table"><colgroup><col class="id-column"><col class="cluster-column"><col class="points-column"></colgroup><thead><tr><th>ID / UUID</th><th>Cluster</th><th>Point cloud</th></tr></thead><tbody>${rows}</tbody></table></details>`;
 }
 
 function zonesBlock(frame, zoneNameForAddress) {
   const zones = frame.getZoneEvents();
-  if (!zones.length) return '<details><summary>Zones (0)</summary><div class="debug-block muted">No zone data in this frame.</div></details>';
+  if (!zones.length) return '<details data-debug-section="zones"><summary>Zones (0)</summary><div class="debug-block muted">No zone data in this frame.</div></details>';
 
   const rows = zones.map((zone) => {
     const props = zone.getProperties().map((p) => {
@@ -108,14 +119,14 @@ function zonesBlock(frame, zoneNameForAddress) {
     return `<tr><td title="${esc(address)}">${esc(name)}</td><td>enter ${zone.getEnters()}<br>leave ${zone.getLeaves()}<br>presence ${zone.getPresence()}</td><td>${props}</td></tr>`;
   }).join('');
 
-  return `<details open><summary>Zones (${zones.length})</summary><table class="debug-table"><thead><tr><th>Zone</th><th>Occupancy</th><th>Properties</th></tr></thead><tbody>${rows}</tbody></table></details>`;
+  return `<details data-debug-section="zones" open><summary>Zones (${zones.length})</summary><table class="debug-table"><thead><tr><th>Zone</th><th>Occupancy</th><th>Properties</th></tr></thead><tbody>${rows}</tbody></table></details>`;
 }
 
 function controlBlock(message) {
   const lines = [];
   walk(message.getRootObject(), 0, lines);
   const type = message.isSetup() ? 'setup' : message.isUpdate() ? 'update' : 'unknown';
-  return `<details><summary>Last control message · ${esc(type)}</summary><div class="debug-block">status              ${esc(message.getStatus())}\nserver protocol     ${esc(message.getServerProtocolVersion())}\nerror               ${esc(message.getErrorMessage() || '—')}\n\n${esc(lines.join('\n'))}</div></details>`;
+  return `<details data-debug-section="control"><summary>Last control message · ${esc(type)}</summary><div class="debug-block">status              ${esc(message.getStatus())}\nserver protocol     ${esc(message.getServerProtocolVersion())}\nerror               ${esc(message.getErrorMessage() || '—')}\n\n${esc(lines.join('\n'))}</div></details>`;
 }
 
 function walk(container, depth, lines) {
