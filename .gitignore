@@ -6,6 +6,7 @@ Thumbs.db
 
 # Generated output
 _site/
+.pages-runtime/
 node_modules/
 
 # Local logs
