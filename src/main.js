@@ -58,13 +58,9 @@ function resetSidebarHandleIdle() {
   sidebarHandleIdleTimer = undefined;
   ui.app.classList.remove('sidebar-handle-idle');
 
-  if (!ui.app.classList.contains('sidebar-hidden')) return;
-
   sidebarHandleIdleTimer = window.setTimeout(() => {
     sidebarHandleIdleTimer = undefined;
-    if (ui.app.classList.contains('sidebar-hidden')) {
-      ui.app.classList.add('sidebar-handle-idle');
-    }
+    ui.app.classList.add('sidebar-handle-idle');
   }, SIDEBAR_HANDLE_IDLE_DELAY_MS);
 }
 
