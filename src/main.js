@@ -324,8 +324,15 @@ function renderDebug(force = false) {
     fps(),
     sceneSizeForFrame(lastFrame),
     zoneNameForAddress,
+    zoneShapeForAddress,
     force
   );
+}
+
+function zoneShapeForAddress(address) {
+  const zone = setupStore.getByAddress(address);
+  if (!zone?.isZone?.()) return undefined;
+  return zone.getZoneParameters().getShapeType();
 }
 
 function zoneNameForAddress(address) {
