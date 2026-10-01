@@ -10,8 +10,8 @@ import {
 
 const DISCONNECT_CLEANUP_DELAY_MS = 500;
 const CAMERA_PREFERENCE_SAVE_DELAY_MS = 250;
-const UI_IDLE_DELAY_MS = 5000;
-const UI_IDLE_MEDIA_QUERY = '(hover: hover) and (pointer: fine)';
+const SIDEBAR_HANDLE_IDLE_DELAY_MS = 3000;
+const SIDEBAR_HANDLE_IDLE_MEDIA_QUERY = '(hover: hover) and (pointer: fine)';
 const QR_CODE_MODULE_URL = 'https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.mjs';
 const SIDEBAR_MIN_WIDTH = 320;
 const SIDEBAR_MAX_WIDTH = 450;
@@ -43,8 +43,7 @@ const debug = createDebugPanel(ui.summary, ui.debug);
 
 let disconnectCleanupTimer;
 let cameraPreferenceSaveTimer;
-let uiIdleTimer;
-let lastUiActivityAt = performance.now();
+let sidebarHandleIdleTimer;
 let qrCodeFactoryPromise;
 let hasPersistedCameraView = false;
 let demoTimer;
@@ -54,43 +53,42 @@ let frameTimes = [];
 let scenes = [];
 let preferredSceneAddress = 'all';
 const setupStore = createSetupStore();
-const uiIdleMedia = window.matchMedia(UI_IDLE_MEDIA_QUERY);
+const sidebarHandleIdleMedia = window.matchMedia(SIDEBAR_HANDLE_IDLE_MEDIA_QUERY);
 
-function scheduleUiIdleCheck(delay = UI_IDLE_DELAY_MS) {
-  if (!uiIdleMedia.matches || uiIdleTimer) return;
-
-  uiIdleTimer = window.setTimeout(() => {
-    uiIdleTimer = undefined;
-    const remaining = UI_IDLE_DELAY_MS - (performance.now() - lastUiActivityAt);
-
-    if (remaining > 0) {
-      scheduleUiIdleCheck(remaining);
-      return;
-    }
-
-    ui.app.classList.add('ui-idle');
-  }, Math.max(0, delay));
+function clearSidebarHandleIdleTimer() {
+  if (sidebarHandleIdleTimer) window.clearTimeout(sidebarHandleIdleTimer);
+  sidebarHandleIdleTimer = undefined;
 }
 
-function markUiActivity() {
-  lastUiActivityAt = performance.now();
-  ui.app.classList.remove('ui-idle');
+function scheduleSidebarHandleIdleCheck() {
+  clearSidebarHandleIdleTimer();
 
-  if (!uiIdleMedia.matches) {
-    if (uiIdleTimer) window.clearTimeout(uiIdleTimer);
-    uiIdleTimer = undefined;
+  if (
+    !sidebarHandleIdleMedia.matches
+    || ui.app.classList.contains('sidebar-hidden')
+  ) {
     return;
   }
 
-  scheduleUiIdleCheck();
+  sidebarHandleIdleTimer = window.setTimeout(() => {
+    sidebarHandleIdleTimer = undefined;
+    if (!ui.app.classList.contains('sidebar-hidden')) {
+      ui.app.classList.add('sidebar-handle-idle');
+    }
+  }, SIDEBAR_HANDLE_IDLE_DELAY_MS);
+}
+
+function markSidebarHandleActivity() {
+  ui.app.classList.remove('sidebar-handle-idle');
+  scheduleSidebarHandleIdleCheck();
 }
 
 for (const eventName of ['pointermove', 'pointerdown', 'wheel']) {
-  window.addEventListener(eventName, markUiActivity, { passive: true });
+  window.addEventListener(eventName, markSidebarHandleActivity, { passive: true });
 }
-window.addEventListener('keydown', markUiActivity);
-document.addEventListener('focusin', markUiActivity);
-uiIdleMedia.addEventListener('change', markUiActivity);
+window.addEventListener('keydown', markSidebarHandleActivity);
+document.addEventListener('focusin', markSidebarHandleActivity);
+sidebarHandleIdleMedia.addEventListener('change', markSidebarHandleActivity);
 
 function isObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -516,6 +514,10 @@ function setSidebarHidden(hidden, animate = true) {
   ui.sidebarToggle.setAttribute('aria-expanded', String(!hidden));
   syncPanelCamera(animate);
 
+  // The handle only auto-hides while the panel is open. When folded it stays
+  // visible so there is always an obvious way to bring the panel back.
+  markSidebarHandleActivity();
+
   if (!animate) {
     // Commit the restored layout while transitions are disabled. Re-enabling
     // them afterwards keeps user-triggered open/close animation unchanged,
@@ -648,7 +650,7 @@ function syncPreferencesToUi() {
 }
 
 syncPreferencesToUi();
-markUiActivity();
+markSidebarHandleActivity();
 updateSimulationButton();
 resetSceneSelector();
 connection.start({ resetProtocol: true });

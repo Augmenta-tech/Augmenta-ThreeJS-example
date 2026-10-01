@@ -21,7 +21,7 @@ button, input, select { font: inherit; }
 #app {
   --sidebar-width: 430px;
   --sidebar-transition-duration: 220ms;
-  --ui-fade-duration: 120ms;
+  --sidebar-handle-fade-duration: 120ms;
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -80,8 +80,7 @@ button, input, select { font: inherit; }
   transition:
     border-color 120ms ease,
     background 120ms ease,
-    color 120ms ease,
-    opacity var(--ui-fade-duration) ease-out;
+    color 120ms ease;
 }
 
 .connection-qr:hover {
@@ -126,8 +125,8 @@ button, input, select { font: inherit; }
   -webkit-backdrop-filter: blur(12px);
   scrollbar-color: #414858 transparent;
   transform: translateX(0);
-  transition: transform var(--sidebar-transition-duration) ease, opacity var(--ui-fade-duration) ease-out;
-  will-change: transform, opacity;
+  transition: transform var(--sidebar-transition-duration) ease;
+  will-change: transform;
 }
 
 #app.sidebar-hidden #sidebar {
@@ -146,7 +145,6 @@ button, input, select { font: inherit; }
   cursor: col-resize;
   touch-action: none;
   outline: none;
-  transition: opacity var(--ui-fade-duration) ease-out;
 }
 
 .sidebar-resizer::after {
@@ -211,7 +209,7 @@ button, input, select { font: inherit; }
     right var(--sidebar-transition-duration) ease,
     background 120ms ease,
     color 120ms ease,
-    opacity var(--ui-fade-duration) ease-out;
+    opacity var(--sidebar-handle-fade-duration) ease-out;
 }
 
 .sidebar-toggle:hover {
@@ -231,14 +229,11 @@ button, input, select { font: inherit; }
 }
 
 @media (hover: hover) and (pointer: fine) {
-  #app.ui-idle {
-    --ui-fade-duration: 1200ms;
+  #app.sidebar-handle-idle:not(.sidebar-hidden) {
+    --sidebar-handle-fade-duration: 1200ms;
   }
 
-  #app.ui-idle #sidebar,
-  #app.ui-idle .sidebar-toggle,
-  #app.ui-idle .sidebar-resizer,
-  #app.ui-idle .connection-qr {
+  #app.sidebar-handle-idle:not(.sidebar-hidden) .sidebar-toggle {
     opacity: 0;
     pointer-events: none;
   }
