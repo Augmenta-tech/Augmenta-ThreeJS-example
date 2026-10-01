@@ -17,3 +17,19 @@ export function readZoneEventState(event) {
 
   return state;
 }
+
+
+export function collectZoneAddresses(container, result = new Set()) {
+  if (!container) return result;
+
+  if (container.isZone?.()) {
+    const address = container.getAddress?.();
+    if (address) result.add(address);
+  }
+
+  for (const child of container.getChildren?.() ?? []) {
+    collectZoneAddresses(child, result);
+  }
+
+  return result;
+}
