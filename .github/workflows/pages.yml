@@ -56,10 +56,11 @@ jobs:
       - name: Assemble static site
         shell: bash
         run: |
-          mkdir -p _site/src _site/vendor/AugmentaClientSDK-JS/dist
+          mkdir -p _site/src _site/vendor/AugmentaClientSDK-JS/dist _site/vendor/qrcode-generator
           cp index.html augmenta-favicon.png _site/
           cp src/*.js src/styles.css _site/src/
           cp -R vendor/AugmentaClientSDK-JS/dist/esm _site/vendor/AugmentaClientSDK-JS/dist/esm
+          cp vendor/qrcode-generator/qrcode.js _site/vendor/qrcode-generator/qrcode.js
 
           # GitHub Pages/browser caches can briefly mix files from adjacent
           # deployments. Stamp the local entry assets and module imports with
@@ -80,7 +81,7 @@ jobs:
           for (const name of readdirSync('_site/src').filter((name) => name.endsWith('.js'))) {
             const path = `_site/src/${name}`;
             const source = readFileSync(path, 'utf8').replace(
-              /(from\s+['"])(\.\/[^'"]+\.js)(['"])/g,
+              /(from\s+['"])(\.\.?(?:\/[^'"]+)+\.js)(['"])/g,
               `$1$2?v=${rev}$3`
             );
             writeFileSync(path, source);
