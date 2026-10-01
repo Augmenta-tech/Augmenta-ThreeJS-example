@@ -10,6 +10,8 @@ import {
 
 const DISCONNECT_CLEANUP_DELAY_MS = 500;
 const CAMERA_PREFERENCE_SAVE_DELAY_MS = 250;
+const UI_IDLE_DELAY_MS = 5000;
+const UI_IDLE_MEDIA_QUERY = '(hover: hover) and (pointer: fine)';
 const QR_CODE_MODULE_URL = 'https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.mjs';
 const SIDEBAR_MIN_WIDTH = 320;
 const SIDEBAR_MAX_WIDTH = 450;
@@ -41,6 +43,8 @@ const debug = createDebugPanel(ui.summary, ui.debug);
 
 let disconnectCleanupTimer;
 let cameraPreferenceSaveTimer;
+let uiIdleTimer;
+let lastUiActivityAt = performance.now();
 let qrCodeFactoryPromise;
 let hasPersistedCameraView = false;
 let demoTimer;
@@ -50,6 +54,43 @@ let frameTimes = [];
 let scenes = [];
 let preferredSceneAddress = 'all';
 const setupStore = createSetupStore();
+const uiIdleMedia = window.matchMedia(UI_IDLE_MEDIA_QUERY);
+
+function scheduleUiIdleCheck(delay = UI_IDLE_DELAY_MS) {
+  if (!uiIdleMedia.matches || uiIdleTimer) return;
+
+  uiIdleTimer = window.setTimeout(() => {
+    uiIdleTimer = undefined;
+    const remaining = UI_IDLE_DELAY_MS - (performance.now() - lastUiActivityAt);
+
+    if (remaining > 0) {
+      scheduleUiIdleCheck(remaining);
+      return;
+    }
+
+    ui.app.classList.add('ui-idle');
+  }, Math.max(0, delay));
+}
+
+function markUiActivity() {
+  lastUiActivityAt = performance.now();
+  ui.app.classList.remove('ui-idle');
+
+  if (!uiIdleMedia.matches) {
+    if (uiIdleTimer) window.clearTimeout(uiIdleTimer);
+    uiIdleTimer = undefined;
+    return;
+  }
+
+  scheduleUiIdleCheck();
+}
+
+for (const eventName of ['pointermove', 'pointerdown', 'wheel']) {
+  window.addEventListener(eventName, markUiActivity, { passive: true });
+}
+window.addEventListener('keydown', markUiActivity);
+document.addEventListener('focusin', markUiActivity);
+uiIdleMedia.addEventListener('change', markUiActivity);
 
 function isObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -607,6 +648,7 @@ function syncPreferencesToUi() {
 }
 
 syncPreferencesToUi();
+markUiActivity();
 updateSimulationButton();
 resetSceneSelector();
 connection.start({ resetProtocol: true });
