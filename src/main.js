@@ -37,7 +37,7 @@ const ui = {
   demo: $('#demo'), status: $('#status'), note: $('#connection-note'), summary: $('#summary'),
   debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'), scenes: $('#scenes'),
   sidebarToggle: $('#sidebar-toggle'), connectionQrVisibility: $('.connection-qr-visibility'), connectionQr: $('#connection-qr'), connectionQrCode: $('#connection-qr-code'), connectionQrLabel: $('#connection-qr-label'),
-  showClusters: $('#show-clusters'), showPoints: $('#show-points'), showZones: $('#show-zones'), showVectors: $('#show-vectors')
+  showClusters: $('#show-clusters'), showPoints: $('#show-points'), showScene: $('#show-scene'), showZones: $('#show-zones'), showVectors: $('#show-vectors')
 };
 
 const viewer = createViewer($('#canvas-host'));
@@ -94,6 +94,7 @@ function savePreferences() {
     display: {
       clusters: ui.showClusters.checked,
       points: ui.showPoints.checked,
+      sceneBounds: ui.showScene.checked,
       zones: ui.showZones.checked,
       vectors: ui.showVectors.checked,
       scene: preferredSceneAddress
@@ -142,6 +143,12 @@ function restorePreferences() {
 
   if (typeof display.clusters === 'boolean') ui.showClusters.checked = display.clusters;
   if (typeof display.points === 'boolean') ui.showPoints.checked = display.points;
+  if (typeof display.sceneBounds === 'boolean') {
+    ui.showScene.checked = display.sceneBounds;
+  } else if (typeof display.zones === 'boolean') {
+    // Backward compatibility with the previous combined "Scene & zones" toggle.
+    ui.showScene.checked = display.zones;
+  }
   if (typeof display.zones === 'boolean') ui.showZones.checked = display.zones;
   if (typeof display.vectors === 'boolean') ui.showVectors.checked = display.vectors;
   if (typeof display.scene === 'string' && display.scene) preferredSceneAddress = display.scene;
@@ -506,6 +513,7 @@ function applyVisibility() {
   viewer.setVisibility({
     clusters: ui.showClusters.checked,
     points: ui.showPoints.checked,
+    scene: ui.showScene.checked,
     zones: ui.showZones.checked,
     vectors: ui.showVectors.checked
   });
@@ -694,7 +702,7 @@ ui.protocol.addEventListener('change', () => {
 ui.downsample.addEventListener('change', () => {
   restartConnection('Downsample changed');
 });
-[ui.showClusters, ui.showPoints, ui.showZones, ui.showVectors]
+[ui.showClusters, ui.showPoints, ui.showScene, ui.showZones, ui.showVectors]
   .forEach((input) => input.addEventListener('change', () => {
     applyVisibility();
     savePreferences();
