@@ -135,4 +135,3 @@ function initializeConnectionQr() {
 }
 
 initializeConnectionQr();
-window.addEventListener('pageshow', refreshConnectionQr);
