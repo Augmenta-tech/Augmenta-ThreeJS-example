@@ -33,3 +33,12 @@ export function collectZoneAddresses(container, result = new Set()) {
 
   return result;
 }
+
+
+export const ZONE_STREAM_STALE_MS = 200;
+
+export function isZoneStreamFresh(lastSeenAt, now, staleMs = ZONE_STREAM_STALE_MS) {
+  return Number.isFinite(lastSeenAt)
+    && Number.isFinite(now)
+    && now - lastSeenAt <= staleMs;
+}
