@@ -266,11 +266,11 @@ function clearTracking() {
   frameTimes = [];
 }
 
-function clearDebugData() {
+function clearDebugData(preserveLayout = false) {
   lastFrame = undefined;
   lastControl = undefined;
   frameTimes = [];
-  debug.clear();
+  debug.clear(preserveLayout);
 }
 
 function selectedScene() {
@@ -532,7 +532,7 @@ ui.connectionQr.addEventListener('mouseleave', () => {
 });
 ui.connect.addEventListener('click', toggleConnection);
 ui.demo.addEventListener('click', toggleSimulation);
-ui.clear.addEventListener('click', clearDebugData);
+ui.clear.addEventListener('click', () => clearDebugData(true));
 ui.resetCamera.addEventListener('click', viewer.resetCamera);
 ui.scenes.addEventListener('change', () => {
   preferredSceneAddress = ui.scenes.value;
