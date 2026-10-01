@@ -20,6 +20,7 @@ button, input, select { font: inherit; }
 
 #app {
   --sidebar-width: 430px;
+  --sidebar-transition-duration: 220ms;
   --ui-fade-duration: 120ms;
   position: relative;
   display: grid;
@@ -55,11 +56,16 @@ button, input, select { font: inherit; }
 .viewer-overlay h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.02em; }
 .viewer-overlay p { margin: 4px 0 0; color: #aeb6c5; font-size: 12px; }
 
-.connection-qr {
+.connection-qr-visibility {
   position: absolute;
   z-index: 12;
   left: 18px;
   bottom: 18px;
+  opacity: 1;
+  transition: opacity var(--sidebar-transition-duration) ease;
+}
+
+.connection-qr {
   display: grid;
   justify-items: center;
   gap: 6px;
@@ -120,7 +126,7 @@ button, input, select { font: inherit; }
   -webkit-backdrop-filter: blur(12px);
   scrollbar-color: #414858 transparent;
   transform: translateX(0);
-  transition: transform 220ms ease, opacity var(--ui-fade-duration) ease-out;
+  transition: transform var(--sidebar-transition-duration) ease, opacity var(--ui-fade-duration) ease-out;
   will-change: transform, opacity;
 }
 
@@ -180,7 +186,8 @@ button, input, select { font: inherit; }
 }
 
 #app.sidebar-no-transition #sidebar,
-#app.sidebar-no-transition .sidebar-toggle {
+#app.sidebar-no-transition .sidebar-toggle,
+#app.sidebar-no-transition .connection-qr-visibility {
   transition: none;
 }
 
@@ -201,7 +208,7 @@ button, input, select { font: inherit; }
   font-size: 18px;
   line-height: 1;
   transition:
-    right 220ms ease,
+    right var(--sidebar-transition-duration) ease,
     background 120ms ease,
     color 120ms ease,
     opacity var(--ui-fade-duration) ease-out;
@@ -214,6 +221,13 @@ button, input, select { font: inherit; }
 
 #app.sidebar-hidden .sidebar-toggle {
   right: 0;
+}
+
+@media (min-width: 901px) {
+  #app.sidebar-hidden .connection-qr-visibility {
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -376,9 +390,11 @@ details[open] summary { border-bottom: 1px solid #2b313d; }
   .sidebar-toggle,
   .sidebar-resizer { display: none; }
   .viewer-overlay { padding: 16px; }
-  .connection-qr {
+  .connection-qr-visibility {
     left: 12px;
     bottom: 12px;
+  }
+  .connection-qr {
     padding: 5px;
   }
   .connection-qr-code {
