@@ -152,6 +152,7 @@ This separation keeps the SDK reusable by non-Three.js applications and keeps re
 │   ├── connection.js                   # WebSocket/retry/protocol controller
 │   ├── setup-store.js                  # Setup cache + partial update merging
 │   ├── motion.js                       # Consumer-side velocity → speed helper
+│   ├── qr.js                           # QR rendering + copy interaction
 │   ├── viewer.js                       # Three.js scene, camera, clusters + points
 │   ├── zones.js                        # Zone geometry, presence + XY pad rendering
 │   ├── zone-state.js                   # Pure zone-event state extraction/cache input
@@ -164,14 +165,17 @@ This separation keeps the SDK reusable by non-Three.js applications and keeps re
 │   ├── demo.test.mjs                   # Synthetic World/Scene hierarchy
 │   ├── setup-store.test.mjs            # Partial setup update regression tests
 │   ├── share-link.test.mjs             # Shared connection URL regression tests
+│   ├── zone-slider-parser.test.mjs     # Current Pleiades slider wire-shape regression
 │   └── zone-state.test.mjs             # Zone event state regression tests
-├── vendor/AugmentaClientSDK-JS         # Git submodule
+├── scripts/assemble-site.mjs            # Self-contained Pages artifact assembly
+├── vendor/AugmentaClientSDK-JS          # Git submodule
+├── vendor/qrcode-generator/qrcode.js    # Vendored QR generator
 ├── LICENSE
 ├── THIRD_PARTY_LICENSES
 └── README.md
 ```
 
-Three.js is loaded as an ES module from jsDelivr and pinned to `0.186.1`. The QR overlay uses the MIT-licensed `qrcode-generator` ES module pinned to `2.0.4`, with QR contents generated entirely in the browser. The Augmenta SDK is built from the submodule and imported directly from its generated ESM output.
+For local development, Three.js is loaded as an ES module from jsDelivr and pinned to `0.186.1`. The GitHub Pages build copies that same pinned Three.js runtime into the revisioned static artifact, so the deployed viewer has no runtime CDN dependency. The QR overlay uses the vendored MIT-licensed `qrcode-generator` module pinned to `2.0.4`, with QR contents generated entirely in the browser. The Augmenta SDK is built from the submodule and its complete ESM graph is copied under a revisioned Pages path to avoid mixed-version browser caches.
 
 ## GitHub Pages deployment
 
@@ -181,7 +185,7 @@ The workflow:
 
 1. checks out this repository and its submodule;
 2. installs, builds and tests the pinned SDK submodule;
-3. validates the example and runs setup-update regression tests;
+3. validates the example JavaScript and runs the full example regression test suite;
 4. assembles a minimal static `_site` artifact;
 5. deploys that artifact with GitHub Pages.
 
