@@ -245,11 +245,11 @@ button, input, select { font: inherit; }
   }
 }
 
-#app.sidebar-handle-idle {
+#app.sidebar-handle-idle:not(.sidebar-hidden) {
   --sidebar-handle-fade-duration: 1200ms;
 }
 
-#app.sidebar-handle-idle .sidebar-toggle {
+#app.sidebar-handle-idle:not(.sidebar-hidden) .sidebar-toggle {
   opacity: 0;
   pointer-events: none;
 }
