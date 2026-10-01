@@ -34,7 +34,7 @@ const ui = {
   app: $('#app'), sidebar: $('#sidebar'), sidebarResizer: $('#sidebar-resizer'), serverAddress: $('#server-address'), port: $('#port'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
   demo: $('#demo'), status: $('#status'), note: $('#connection-note'), summary: $('#summary'),
   debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'), scenes: $('#scenes'),
-  sidebarToggle: $('#sidebar-toggle'), connectionQrVisibility: $('.connection-qr-visibility'),
+  sidebarToggle: $('#sidebar-toggle'), viewerTitle: $('.viewer-title'), connectionQrVisibility: $('.connection-qr-visibility'),
   showClusters: $('#show-clusters'), showPoints: $('#show-points'), showScene: $('#show-scene'), showZones: $('#show-zones'), showVectors: $('#show-vectors')
 };
 
@@ -64,8 +64,43 @@ function resetSidebarHandleIdle() {
   }, SIDEBAR_HANDLE_IDLE_DELAY_MS);
 }
 
+function isTextEntryTarget(target) {
+  return target instanceof Element
+    && Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
+}
+
+function handleGlobalShortcut(event) {
+  if (event.defaultPrevented) return;
+
+  if (event.key === 'Escape') {
+    if (!ui.app.classList.contains('sidebar-hidden')) {
+      event.preventDefault();
+      setSidebarHidden(true);
+      savePreferences();
+    }
+    return;
+  }
+
+  if (
+    event.ctrlKey
+    || event.metaKey
+    || event.altKey
+    || isTextEntryTarget(event.target)
+  ) {
+    return;
+  }
+
+  if (event.key.toLowerCase() === 'h') {
+    event.preventDefault();
+    ui.viewerTitle.hidden = !ui.viewerTitle.hidden;
+  }
+}
+
 window.addEventListener('mousemove', resetSidebarHandleIdle, { passive: true });
-window.addEventListener('keydown', resetSidebarHandleIdle);
+window.addEventListener('keydown', (event) => {
+  resetSidebarHandleIdle();
+  handleGlobalShortcut(event);
+});
 
 function isObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
