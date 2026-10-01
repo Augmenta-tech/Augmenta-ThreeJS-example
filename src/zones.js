@@ -3,7 +3,7 @@ import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { ShapeType } from 'augmenta-client-sdk';
-import { readZoneEventState } from './zone-state.js';
+import { isZoneStreamFresh, readZoneEventState } from './zone-state.js';
 
 const ZONE_PRESENCE_LABEL_GAP = 0.32;
 const ZONE_PRESENCE_LABEL_OPACITY = 0.9;
@@ -35,6 +35,7 @@ export function createZoneRenderer() {
   const presenceByAddress = new Map();
   const xyPadByAddress = new Map();
   const sliderByAddress = new Map();
+  const lastSeenByAddress = new Map();
 
   function resetViews() {
     views.clear();
@@ -44,6 +45,10 @@ export function createZoneRenderer() {
     const params = container.getZoneParameters();
     const geometry = zoneGeometry(params);
     if (!geometry) return;
+
+    const visualGroup = new THREE.Group();
+    visualGroup.name = 'Zone visuals';
+    group.add(visualGroup);
 
     const presenceGeometry = geometry.clone();
     const outline = createZoneOutline(params, geometry, ZONE_OUTLINE_COLOR);
@@ -75,10 +80,10 @@ export function createZoneRenderer() {
     presenceMesh.renderOrder = 5;
 
     outline.renderOrder = 6;
-    group.add(presenceMesh, outline);
+    visualGroup.add(presenceMesh, outline);
 
     const xyPad = params.isBox() ? createBoxXYPad(params) : undefined;
-    if (xyPad) group.add(xyPad.group);
+    if (xyPad) visualGroup.add(xyPad.group);
 
     const slider = params.isCylinder() || params.isSphere()
       ? createRoundZoneSlider(params, presenceGeometry)
@@ -86,7 +91,7 @@ export function createZoneRenderer() {
     if (slider) {
       slider.mesh.position.copy(outline.position);
       slider.mesh.rotation.copy(outline.rotation);
-      group.add(slider.mesh);
+      visualGroup.add(slider.mesh);
     }
 
     const address = container.getAddress();
@@ -95,9 +100,13 @@ export function createZoneRenderer() {
     const label = createZonePresenceLabel('');
     label.visible = false;
     positionZoneLabel(label, params);
-    group.add(label);
+    visualGroup.add(label);
 
+    const lastSeenAt = lastSeenByAddress.get(address);
     const view = {
+      address,
+      visualGroup,
+      lastSeenAt,
       label,
       labelText: '',
       labelBaseScale: label.scale.clone(),
@@ -111,6 +120,8 @@ export function createZoneRenderer() {
       labelFlashStartedAt: 0,
       labelPulseDirection: 1
     };
+    visualGroup.visible = isZoneStreamFresh(lastSeenAt, performance.now());
+
     views.set(address, view);
     setPresence(view, presenceByAddress.get(address) ?? 0);
 
@@ -121,10 +132,15 @@ export function createZoneRenderer() {
     if (sliderValue !== undefined) updateRoundZoneSlider(view.slider, sliderValue);
   }
 
-  function update(events) {
+  function update(events, now = performance.now()) {
     for (const event of events) {
       const state = readZoneEventState(event);
       const { address, presence } = state;
+
+      // Pleiades emits zone events only for zones currently processed/enabled.
+      // Keep a short heartbeat so a disabled or removed zone disappears even
+      // if its setup/control entry remains available.
+      lastSeenByAddress.set(address, now);
 
       // Cache the complete event before touching the view. Setup/control
       // messages can race live data, so a zone created on the next setup
@@ -136,6 +152,8 @@ export function createZoneRenderer() {
       const view = views.get(address);
       if (!view) continue;
 
+      view.lastSeenAt = now;
+      view.visualGroup.visible = true;
       setPresence(view, presence);
       if (state.slider !== undefined) updateRoundZoneSlider(view.slider, state.slider);
       if (state.xyPad) updateBoxXYPad(view.xyPad, state.xyPad.x, state.xyPad.y);
@@ -146,7 +164,11 @@ export function createZoneRenderer() {
     presenceByAddress.clear();
     xyPadByAddress.clear();
     sliderByAddress.clear();
+    lastSeenByAddress.clear();
+
     for (const view of views.values()) {
+      view.lastSeenAt = undefined;
+      view.visualGroup.visible = false;
       setPresence(view, 0);
       if (view.xyPad) view.xyPad.group.visible = false;
       if (view.slider) view.slider.mesh.visible = false;
@@ -154,7 +176,12 @@ export function createZoneRenderer() {
   }
 
   function pruneState(validAddresses) {
-    for (const cache of [presenceByAddress, xyPadByAddress, sliderByAddress]) {
+    for (const cache of [
+      presenceByAddress,
+      xyPadByAddress,
+      sliderByAddress,
+      lastSeenByAddress
+    ]) {
       for (const address of cache.keys()) {
         if (!validAddresses.has(address)) cache.delete(address);
       }
@@ -163,6 +190,16 @@ export function createZoneRenderer() {
 
   function animate(now) {
     for (const view of views.values()) {
+      if (!isZoneStreamFresh(view.lastSeenAt, now)) {
+        if (view.visualGroup.visible) {
+          view.visualGroup.visible = false;
+          setPresence(view, 0);
+        }
+        continue;
+      }
+
+      if (!view.visualGroup.visible) view.visualGroup.visible = true;
+
       if (view.presence > 0) {
         const elapsed = Math.max(0, now - view.presenceStartedAt);
         const phase = (elapsed % ZONE_OUTLINE_PULSE_DURATION_MS) / ZONE_OUTLINE_PULSE_DURATION_MS;

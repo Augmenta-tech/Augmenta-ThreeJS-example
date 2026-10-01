@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { collectZoneAddresses, readZoneEventState } from '../src/zone-state.js';
+import { collectZoneAddresses, isZoneStreamFresh, readZoneEventState, ZONE_STREAM_STALE_MS } from '../src/zone-state.js';
 
 function slider(value) {
   return {
@@ -68,4 +68,20 @@ test('zone address collection follows the full setup hierarchy', () => {
     [...collectZoneAddresses(root)].sort(),
     ['/scene-a/group/zone-2', '/scene-a/zone-1', '/scene-b/zone-3']
   );
+});
+
+
+test('zone stream stays visible only within the stale grace period', () => {
+  const lastSeenAt = 1000;
+
+  assert.equal(isZoneStreamFresh(lastSeenAt, lastSeenAt), true);
+  assert.equal(
+    isZoneStreamFresh(lastSeenAt, lastSeenAt + ZONE_STREAM_STALE_MS),
+    true
+  );
+  assert.equal(
+    isZoneStreamFresh(lastSeenAt, lastSeenAt + ZONE_STREAM_STALE_MS + 1),
+    false
+  );
+  assert.equal(isZoneStreamFresh(undefined, lastSeenAt), false);
 });
