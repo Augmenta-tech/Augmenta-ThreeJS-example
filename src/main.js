@@ -9,14 +9,12 @@ import {
   readConnectionOptionsFromUrl,
   resolveConnectionOptions
 } from './share-link.js';
+import qrcode from '../vendor/qrcode-generator/qrcode.js';
 
 const DISCONNECT_CLEANUP_DELAY_MS = 500;
 const CAMERA_PREFERENCE_SAVE_DELAY_MS = 250;
 const QR_COPY_FEEDBACK_DELAY_MS = 1400;
-const QR_CODE_LOAD_RETRY_DELAY_MS = 400;
-const QR_CODE_LOAD_MAX_RETRIES = 2;
 const SIDEBAR_HANDLE_IDLE_DELAY_MS = 3000;
-const QR_CODE_MODULE_URL = 'https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.mjs';
 const SIDEBAR_MIN_WIDTH = 320;
 const SIDEBAR_MAX_WIDTH = 450;
 const SIDEBAR_VIEWPORT_MARGIN = 160;
@@ -48,8 +46,6 @@ const debug = createDebugPanel(ui.summary, ui.debug);
 let disconnectCleanupTimer;
 let cameraPreferenceSaveTimer;
 let sidebarHandleIdleTimer;
-let qrCodeFactoryPromise;
-let qrCodeRetryTimer;
 let qrCopyFeedbackTimer;
 let qrHovering = false;
 let localConnectionPreferences = {};
@@ -364,28 +360,11 @@ function getConnectionSettings() {
   };
 }
 
-function getQrCodeFactory() {
-  if (!qrCodeFactoryPromise) {
-    qrCodeFactoryPromise = import(QR_CODE_MODULE_URL)
-      .then((module) => module.qrcode)
-      .catch((error) => {
-        // A transient first-load CDN failure must not poison all later retries.
-        qrCodeFactoryPromise = undefined;
-        throw error;
-      });
-  }
-  return qrCodeFactoryPromise;
-}
-
-async function refreshConnectionQr(attempt = 0) {
+function refreshConnectionQr() {
   const shareUrl = buildConnectionShareUrl(window.location.href, getConnectionSettings());
   ui.connectionQr.href = shareUrl;
 
   try {
-    const qrcode = await getQrCodeFactory();
-    // Connection fields may have changed while the module was loading.
-    if (ui.connectionQr.href !== shareUrl) return;
-
     const qr = qrcode(0, 'M');
     qr.addData(shareUrl);
     qr.make();
@@ -394,23 +373,9 @@ async function refreshConnectionQr(attempt = 0) {
       margin: 8,
       scalable: true
     });
-
-    if (qrCodeRetryTimer) {
-      window.clearTimeout(qrCodeRetryTimer);
-      qrCodeRetryTimer = undefined;
-    }
     ui.connectionQr.hidden = false;
   } catch {
-    if (attempt < QR_CODE_LOAD_MAX_RETRIES) {
-      if (qrCodeRetryTimer) window.clearTimeout(qrCodeRetryTimer);
-      qrCodeRetryTimer = window.setTimeout(() => {
-        qrCodeRetryTimer = undefined;
-        refreshConnectionQr(attempt + 1);
-      }, QR_CODE_LOAD_RETRY_DELAY_MS * (attempt + 1));
-      return;
-    }
-
-    // QR sharing is optional; keep the viewer usable if the CDN stays down.
+    // QR sharing is optional; keep the viewer usable if generation fails.
     ui.connectionQr.hidden = true;
   }
 }
