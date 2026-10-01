@@ -8,6 +8,8 @@ export function createDebugPanel(summary, content) {
   let lastRender = 0;
   let cachedControl;
   let cachedControlHtml = '';
+  let pendingOpenSections;
+  let pendingScrollTop;
 
   function render(frame, control, fps, sceneSize, zoneNameForAddress, force = false) {
     const now = performance.now();
@@ -31,10 +33,11 @@ export function createDebugPanel(summary, content) {
       blocks.push(cachedControlHtml);
     }
 
-    const openSections = new Map(
+    const openSections = pendingOpenSections ?? new Map(
       [...content.querySelectorAll('details[data-debug-section]')]
         .map((details) => [details.dataset.debugSection, details.open])
     );
+    pendingOpenSections = undefined;
 
     content.innerHTML = blocks.join('');
 
@@ -42,12 +45,33 @@ export function createDebugPanel(summary, content) {
       const previous = openSections.get(details.dataset.debugSection);
       if (previous !== undefined) details.open = previous;
     }
+
+    content.style.minHeight = '';
+    if (pendingScrollTop !== undefined) {
+      const scrollParent = content.closest('#sidebar');
+      if (scrollParent) scrollParent.scrollTop = pendingScrollTop;
+      pendingScrollTop = undefined;
+    }
   }
 
-  function clear() {
+  function clear(preserveLayout = false) {
     lastRender = 0;
     cachedControl = undefined;
     cachedControlHtml = '';
+
+    if (preserveLayout) {
+      pendingOpenSections = new Map(
+        [...content.querySelectorAll('details[data-debug-section]')]
+          .map((details) => [details.dataset.debugSection, details.open])
+      );
+      pendingScrollTop = content.closest('#sidebar')?.scrollTop;
+      content.style.minHeight = `${content.offsetHeight}px`;
+    } else {
+      pendingOpenSections = undefined;
+      pendingScrollTop = undefined;
+      content.style.minHeight = '';
+    }
+
     summary.textContent = 'No data yet';
     content.innerHTML = '<div class="empty-state">Connect to Augmenta or run the demo to inspect the stream.</div>';
   }
