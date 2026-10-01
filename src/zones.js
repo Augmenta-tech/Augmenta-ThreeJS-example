@@ -265,9 +265,10 @@ function setPresence(view, presence) {
     view.labelPulseDirection = nextPresence > previousPresence ? 1 : -1;
   }
 
-  const text = String(nextPresence);
+  const text = `x${nextPresence}`;
   if (view.labelText !== text || presenceChanged) {
     replaceZonePresenceLabelTexture(view.label, text, presenceChanged);
+    view.labelBaseScale.copy(view.label.scale);
     view.labelText = text;
   }
   view.label.visible = true;
@@ -669,51 +670,77 @@ function updateRoundZoneSlider(slider, rawValue) {
 }
 
 function createZonePresenceLabel(text) {
+  const texture = makeZonePresenceLabelTexture(text);
   const material = new THREE.SpriteMaterial({
-    map: makeZonePresenceLabelTexture(text),
+    map: texture,
     transparent: true,
     depthTest: false,
     depthWrite: false,
     opacity: ZONE_PRESENCE_LABEL_OPACITY
   });
   const sprite = new THREE.Sprite(material);
-  sprite.scale.set(0.63, 0.24, 1);
+  setZonePresenceLabelScale(sprite, texture);
   sprite.renderOrder = 10;
   return sprite;
 }
 
 function replaceZonePresenceLabelTexture(sprite, text, flash = false) {
   sprite.material.map?.dispose();
-  sprite.material.map = makeZonePresenceLabelTexture(text, flash);
+  const texture = makeZonePresenceLabelTexture(text, flash);
+  sprite.material.map = texture;
+  setZonePresenceLabelScale(sprite, texture);
   sprite.material.needsUpdate = true;
+}
+
+function setZonePresenceLabelScale(sprite, texture) {
+  const height = 0.24;
+  const width = height * (texture.image.width / texture.image.height);
+  sprite.scale.set(width, height, 1);
 }
 
 function makeZonePresenceLabelTexture(text, flash = false) {
   const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 96;
-
   const ctx = canvas.getContext('2d');
   if (!ctx) return new THREE.CanvasTexture(canvas);
 
-  const outlineColor = `#${ZONE_ACTIVE_OUTLINE_COLOR.getHexString()}`;
+  const font = '700 36px Inter, Arial, sans-serif';
+  const height = 72;
+  const horizontalPadding = 18;
+  ctx.font = font;
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  roundedRect(ctx, 28, 16, 200, 64, 21);
+  const measuredWidth = Math.ceil(ctx.measureText(text || 'x0').width);
+  const width = Math.max(height, measuredWidth + horizontalPadding * 2);
+
+  canvas.width = width;
+  canvas.height = height;
+
+  // Canvas resize resets the context state.
+  ctx.font = font;
+  ctx.clearRect(0, 0, width, height);
+
+  const borderInset = ZONE_LABEL_OUTLINE_WIDTH / 2;
+  roundedRect(
+    ctx,
+    borderInset,
+    borderInset,
+    width - ZONE_LABEL_OUTLINE_WIDTH,
+    height - ZONE_LABEL_OUTLINE_WIDTH,
+    8
+  );
+
   ctx.fillStyle = flash
-    ? 'rgba(70, 76, 88, 0.96)'
-    : 'rgba(10, 13, 18, 0.94)';
+    ? 'rgba(255, 255, 255, 0.99)'
+    : 'rgba(238, 240, 243, 0.97)';
   ctx.fill();
 
-  ctx.strokeStyle = outlineColor;
+  ctx.strokeStyle = `#${ZONE_ACTIVE_OUTLINE_COLOR.getHexString()}`;
   ctx.lineWidth = ZONE_LABEL_OUTLINE_WIDTH;
   ctx.stroke();
 
-  ctx.fillStyle = '#d7dbe1';
-  ctx.font = '700 36px Inter, Arial, sans-serif';
+  ctx.fillStyle = '#15181e';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, 128, 49);
+  ctx.fillText(text, width / 2, height / 2 + 1);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
