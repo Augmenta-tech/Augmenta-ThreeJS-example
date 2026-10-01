@@ -6,7 +6,7 @@ import { ShapeType } from 'augmenta-client-sdk';
 import { isZoneStreamFresh, readZoneEventState } from './zone-state.js';
 
 const ZONE_PRESENCE_LABEL_GAP = 0.32;
-const ZONE_PRESENCE_LABEL_OPACITY = 0.9;
+const ZONE_PRESENCE_LABEL_OPACITY = 0.78;
 const ZONE_PRESENCE_LABEL_PULSE_DURATION_MS = 180;
 const ZONE_PRESENCE_LABEL_FLASH_DURATION_MS = 220;
 const ZONE_FILL_OPACITY = 0.025;
@@ -265,7 +265,7 @@ function setPresence(view, presence) {
     view.labelPulseDirection = nextPresence > previousPresence ? 1 : -1;
   }
 
-  const text = `x${nextPresence}`;
+  const text = String(nextPresence);
   if (view.labelText !== text || presenceChanged) {
     replaceZonePresenceLabelTexture(view.label, text, presenceChanged);
     view.labelBaseScale.copy(view.label.scale);
@@ -708,7 +708,7 @@ function makeZonePresenceLabelTexture(text, flash = false) {
   const horizontalPadding = 18;
   ctx.font = font;
 
-  const measuredWidth = Math.ceil(ctx.measureText(text || 'x0').width);
+  const measuredWidth = Math.ceil(ctx.measureText(text || '0').width);
   const width = Math.max(height, measuredWidth + horizontalPadding * 2);
 
   canvas.width = width;
@@ -728,15 +728,16 @@ function makeZonePresenceLabelTexture(text, flash = false) {
     8
   );
 
-  ctx.fillStyle = flash
-    ? 'rgba(255, 255, 255, 0.99)'
-    : 'rgba(238, 240, 243, 0.97)';
+  ctx.fillStyle = `#${ZONE_OUTLINE_COLOR.getHexString()}`;
+  ctx.globalAlpha = flash ? 0.82 : 0.66;
   ctx.fill();
 
-  ctx.strokeStyle = `#${ZONE_ACTIVE_OUTLINE_COLOR.getHexString()}`;
+  ctx.strokeStyle = `#${ZONE_OUTLINE_COLOR.getHexString()}`;
+  ctx.globalAlpha = flash ? 0.95 : 0.8;
   ctx.lineWidth = ZONE_LABEL_OUTLINE_WIDTH;
   ctx.stroke();
 
+  ctx.globalAlpha = 1;
   ctx.fillStyle = '#15181e';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
