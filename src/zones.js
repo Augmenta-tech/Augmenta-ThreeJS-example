@@ -732,7 +732,7 @@ function makeZonePresenceLabelTexture(text, flash = false) {
   ctx.globalAlpha = flash ? 0.82 : 0.66;
   ctx.fill();
 
-  ctx.strokeStyle = `#${ZONE_OUTLINE_COLOR.getHexString()}`;
+  ctx.strokeStyle = `#${ZONE_ACTIVE_OUTLINE_COLOR.getHexString()}`;
   ctx.globalAlpha = flash ? 0.95 : 0.8;
   ctx.lineWidth = ZONE_LABEL_OUTLINE_WIDTH;
   ctx.stroke();
