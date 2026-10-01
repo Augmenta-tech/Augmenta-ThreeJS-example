@@ -7,6 +7,10 @@ import { collectZoneAddresses } from './zone-state.js';
 
 const FLOOR_Y = 0;
 const GHOST_COLOR = new THREE.Color(0x8a909b);
+const LOOK_AT_FACE_OPACITY = 0.18;
+const LOOK_AT_FACE_GHOST_OPACITY = 0.09;
+const LOOK_AT_FACE_INSET = 0.94;
+const LOCAL_BOX_Z = new THREE.Vector3(0, 0, 1);
 const SESSION_COLOR_OFFSET = Math.floor(Math.random() * 1000);
 const PALETTE = [
   0x4cc9f0, // cyan
@@ -62,6 +66,7 @@ export function createViewer(host) {
   const unitBox = new THREE.BoxGeometry(1, 1, 1);
   const unitBoxEdges = new THREE.EdgesGeometry(unitBox);
   unitBox.dispose();
+  const unitLookAtFace = new THREE.PlaneGeometry(1, 1);
   const centroidGeometry = new THREE.SphereGeometry(0.045, 12, 8);
 
   const homePosition = new THREE.Vector3(0, 2.5, 7.5);
@@ -219,6 +224,22 @@ export function createViewer(host) {
       })
     );
 
+    const lookAtFace = new THREE.Mesh(
+      unitLookAtFace,
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: LOOK_AT_FACE_OPACITY,
+        side: THREE.FrontSide,
+        depthWrite: false
+      })
+    );
+    lookAtFace.name = 'Look-at face';
+    lookAtFace.scale.set(LOOK_AT_FACE_INSET, LOOK_AT_FACE_INSET, 1);
+    lookAtFace.visible = false;
+    lookAtFace.renderOrder = 4;
+    box.add(lookAtFace);
+
     const centroid = new THREE.Mesh(
       centroidGeometry,
       new THREE.MeshBasicMaterial({ color })
@@ -256,7 +277,17 @@ export function createViewer(host) {
     pointGroup.add(points);
     labelGroup.add(label);
 
-    return { box, centroid, velocity, points, label, labelText: id === undefined ? '' : String(id), color, sceneAddress };
+    return {
+      box,
+      lookAtFace,
+      centroid,
+      velocity,
+      points,
+      label,
+      labelText: id === undefined ? '' : String(id),
+      color,
+      sceneAddress
+    };
   }
 
   function updateLabel(view, id, uuid) {
@@ -290,6 +321,7 @@ export function createViewer(host) {
     // Pleiades sends its native Y-up/left-handed quaternion. Reflect it across
     // Z to express the exact same orientation in Three.js' right-handed space.
     setLeftHandedQuaternion(view.box.quaternion, rotation);
+    updateLookAtFace(view, cluster.getLookAt());
 
     view.centroid.visible = true;
     view.centroid.position.fromArray(centroid);
@@ -299,11 +331,17 @@ export function createViewer(host) {
     const state = cluster.getState();
     const color = state === ClusterState.Ghost ? GHOST_COLOR : view.color;
     view.box.material.color.copy(color);
+    view.lookAtFace.material.color.copy(color);
     view.centroid.material.color.copy(color);
     view.velocity.setColor(color);
     view.points.material.color.copy(color);
 
     view.box.material.opacity = state === ClusterState.WillLeave ? 0.35 : 0.95;
+    view.lookAtFace.material.opacity = state === ClusterState.Ghost
+      ? LOOK_AT_FACE_GHOST_OPACITY
+      : state === ClusterState.WillLeave
+        ? LOOK_AT_FACE_OPACITY * 0.55
+        : LOOK_AT_FACE_OPACITY;
     view.points.material.opacity = state === ClusterState.Ghost ? 0.45 : 0.92;
 
     const pointBounds = view.points.geometry.boundingSphere ?? new THREE.Sphere();
@@ -318,6 +356,34 @@ export function createViewer(host) {
     const top = center[1] + Math.abs(size[1]) * 0.5 + 0.18;
     view.label.position.set(center[0], Math.max(top, FLOOR_Y + 0.16), center[2]);
     view.label.material.opacity = state === ClusterState.Ghost ? 0.55 : 1;
+  }
+
+  function updateLookAtFace(view, lookAt) {
+    if (!validVector3(lookAt)) {
+      view.lookAtFace.visible = false;
+      return;
+    }
+
+    const direction = new THREE.Vector3().fromArray(lookAt);
+    if (direction.lengthSq() < 1e-8) {
+      view.lookAtFace.visible = false;
+      return;
+    }
+
+    direction.normalize();
+
+    // The streamed look-at vector is already mapped to Three.js' requested
+    // Y-up/right-handed coordinates. Compare it with the rendered box's local
+    // +Z normal and choose whichever Z face actually points in that direction.
+    // With the current LH -> RH quaternion reflection this is normally -Z.
+    const positiveZWorld = LOCAL_BOX_Z.clone()
+      .applyQuaternion(view.box.quaternion)
+      .normalize();
+    const side = positiveZWorld.dot(direction) >= 0 ? 1 : -1;
+
+    view.lookAtFace.position.set(0, 0, side * 0.501);
+    view.lookAtFace.rotation.set(0, side > 0 ? 0 : Math.PI, 0);
+    view.lookAtFace.visible = true;
   }
 
   function updatePoints(view, cloud) {
@@ -490,6 +556,7 @@ export function createViewer(host) {
     labelGroup.remove(view.label);
 
     view.box.material.dispose();
+    view.lookAtFace.material.dispose();
     view.centroid.material.dispose();
     view.points.geometry.dispose();
     view.points.material.dispose();
