@@ -220,12 +220,7 @@ export function createConnectionController({
       }
 
       retrying = true;
-      publish(
-        'retrying',
-        location.protocol === 'https:' && target.url.startsWith('ws://')
-          ? 'Connection failed. This HTTPS page may block an insecure ws:// endpoint; retrying automatically…'
-          : 'Connection failed; retrying automatically…'
-      );
+      publish('retrying', 'Connection failed; retrying automatically…');
     });
 
     connection.on('controlMessage', (message) => {
@@ -268,8 +263,8 @@ export function createConnectionController({
     }
   }
 
-  function start({ resetProtocol = true } = {}) {
-    if (resetProtocol) autoNegotiatedVersion = undefined;
+  function start() {
+    autoNegotiatedVersion = undefined;
     wantsConnection = true;
     retrying = false;
     attemptConnection();
@@ -283,10 +278,10 @@ export function createConnectionController({
     publish('idle', 'Connection stopped. Scene and zones are kept visible.');
   }
 
-  function restart(reason, { resetProtocol = false } = {}) {
+  function restart(reason) {
     if (!wantsConnection) return;
     retrying = false;
-    if (resetProtocol) autoNegotiatedVersion = undefined;
+    autoNegotiatedVersion = undefined;
     stopTransport(reason);
     attemptConnection();
   }
