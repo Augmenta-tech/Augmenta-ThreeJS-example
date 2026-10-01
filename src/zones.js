@@ -25,10 +25,13 @@ const ZONE_SILHOUETTE_IDLE_WIDTH = 0.16;
 const ZONE_SILHOUETTE_ACTIVE_WIDTH = 0.23;
 const ZONE_OUTLINE_PULSE_DURATION_MS = 1400;
 const ZONE_XY_PAD_FILL_OPACITY = 0.18;
+const ZONE_XY_PAD_IDLE_FILL_OPACITY = 0.07;
 const ZONE_XY_PAD_AXIS_OPACITY = 0.78;
+const ZONE_XY_PAD_IDLE_AXIS_OPACITY = 0.28;
 const ZONE_XY_PAD_AXIS_WIDTH = 1.5;
 const ZONE_SLIDER_FILL_OPACITY = 0.22;
-const ZONE_LABEL_OUTLINE_WIDTH = 4;
+const ZONE_SLIDER_IDLE_FILL_OPACITY = 0.08;
+const ZONE_VALUE_IDLE_COLOR = new THREE.Color(0xb0b5bd);
 const ROUND_OUTLINE_SEGMENTS = 32;
 
 export function createZoneRenderer() {
@@ -234,7 +237,7 @@ export function createZoneRenderer() {
         && now - view.labelFlashStartedAt >= ZONE_PRESENCE_LABEL_FLASH_DURATION_MS
       ) {
         view.labelFlashStartedAt = 0;
-        replaceZonePresenceLabelTexture(view.label, view.labelText, false);
+        replaceZonePresenceLabelTexture(view.label, view.labelText, false, view.presence > 0);
       }
     }
   }
@@ -257,6 +260,7 @@ function setPresence(view, presence, animateChange = true) {
   if (active && previousPresence <= 0) view.presenceStartedAt = now;
   if (!active) view.presenceStartedAt = 0;
   updateOutlineStyle(view, active, 0);
+  updateZoneValueStyle(view, active);
 
   if (presenceChanged) {
     view.labelPulseStartedAt = now;
@@ -271,7 +275,7 @@ function setPresence(view, presence, animateChange = true) {
     // Disconnect/reset paths pass animateChange=false and hide immediately.
     if (presenceChanged && previousPresence > 0) {
       const text = String(nextPresence);
-      replaceZonePresenceLabelTexture(view.label, text, false);
+      replaceZonePresenceLabelTexture(view.label, text, false, false);
       view.labelBaseScale.copy(view.label.scale);
       view.labelText = text;
       view.label.visible = true;
@@ -292,7 +296,7 @@ function setPresence(view, presence, animateChange = true) {
 
   const text = String(nextPresence);
   if (view.labelText !== text || presenceChanged) {
-    replaceZonePresenceLabelTexture(view.label, text, presenceChanged);
+    replaceZonePresenceLabelTexture(view.label, text, presenceChanged, true);
     view.labelBaseScale.copy(view.label.scale);
     view.labelText = text;
   }
@@ -334,6 +338,29 @@ function updateOutlineStyle(view, active, pulse) {
         : idleWidth;
     }
   });
+}
+
+function updateZoneValueStyle(view, active) {
+  const color = active ? ZONE_ACTIVE_OUTLINE_COLOR : ZONE_VALUE_IDLE_COLOR;
+
+  if (view.xyPad) {
+    view.xyPad.axes.material.color.copy(color);
+    view.xyPad.axes.material.opacity = active
+      ? ZONE_XY_PAD_AXIS_OPACITY
+      : ZONE_XY_PAD_IDLE_AXIS_OPACITY;
+    view.xyPad.fill.material.color.copy(color);
+    view.xyPad.fill.material.opacity = active
+      ? ZONE_XY_PAD_FILL_OPACITY
+      : ZONE_XY_PAD_IDLE_FILL_OPACITY;
+  }
+
+  if (view.slider) {
+    const uniforms = view.slider.mesh.material.uniforms;
+    uniforms.fillColor.value.copy(color);
+    uniforms.fillOpacity.value = active
+      ? ZONE_SLIDER_FILL_OPACITY
+      : ZONE_SLIDER_IDLE_FILL_OPACITY;
+  }
 }
 
 function positionZoneLabel(label, params) {
@@ -548,11 +575,11 @@ function createBoxXYPad(params) {
 
   const axes = createWideLineSegments(
     [0, y, 0, 0, y, -depth, 0, y, 0, width, y, 0],
-    ZONE_OUTLINE_COLOR,
+    ZONE_VALUE_IDLE_COLOR,
     ZONE_XY_PAD_AXIS_WIDTH,
     'Zone XY pad axes'
   );
-  axes.material.opacity = ZONE_XY_PAD_AXIS_OPACITY;
+  axes.material.opacity = ZONE_XY_PAD_IDLE_AXIS_OPACITY;
   axes.renderOrder = 8;
 
   const fillGeometry = new THREE.BufferGeometry();
@@ -565,9 +592,9 @@ function createBoxXYPad(params) {
   const fill = new THREE.Mesh(
     fillGeometry,
     new THREE.MeshBasicMaterial({
-      color: ZONE_ACTIVE_OUTLINE_COLOR,
+      color: ZONE_VALUE_IDLE_COLOR,
       transparent: true,
-      opacity: ZONE_XY_PAD_FILL_OPACITY,
+      opacity: ZONE_XY_PAD_IDLE_FILL_OPACITY,
       side: THREE.DoubleSide,
       depthTest: false,
       depthWrite: false
@@ -639,8 +666,8 @@ function createRoundZoneSlider(params, sourceGeometry) {
 
   const material = new THREE.ShaderMaterial({
     uniforms: {
-      fillColor: { value: ZONE_ACTIVE_OUTLINE_COLOR.clone() },
-      fillOpacity: { value: ZONE_SLIDER_FILL_OPACITY },
+      fillColor: { value: ZONE_VALUE_IDLE_COLOR.clone() },
+      fillOpacity: { value: ZONE_SLIDER_IDLE_FILL_OPACITY },
       sliderAxis: { value: axis },
       sliderMin: { value: min },
       sliderMax: { value: max },
@@ -695,7 +722,7 @@ function updateRoundZoneSlider(slider, rawValue) {
 }
 
 function createZonePresenceLabel(text) {
-  const texture = makeZonePresenceLabelTexture(text);
+  const texture = makeZonePresenceLabelTexture(text, false, false);
   const material = new THREE.SpriteMaterial({
     map: texture,
     transparent: true,
@@ -709,9 +736,9 @@ function createZonePresenceLabel(text) {
   return sprite;
 }
 
-function replaceZonePresenceLabelTexture(sprite, text, flash = false) {
+function replaceZonePresenceLabelTexture(sprite, text, flash = false, active = true) {
   sprite.material.map?.dispose();
-  const texture = makeZonePresenceLabelTexture(text, flash);
+  const texture = makeZonePresenceLabelTexture(text, flash, active);
   sprite.material.map = texture;
   setZonePresenceLabelScale(sprite, texture);
   sprite.material.needsUpdate = true;
@@ -723,14 +750,14 @@ function setZonePresenceLabelScale(sprite, texture) {
   sprite.scale.set(width, height, 1);
 }
 
-function makeZonePresenceLabelTexture(text, flash = false) {
+function makeZonePresenceLabelTexture(text, flash = false, active = true) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) return new THREE.CanvasTexture(canvas);
 
   const font = '700 36px Inter, Arial, sans-serif';
   const height = 72;
-  const horizontalPadding = 18;
+  const horizontalPadding = 24;
   ctx.font = font;
 
   const measuredWidth = Math.ceil(ctx.measureText(text || '0').width);
@@ -743,13 +770,14 @@ function makeZonePresenceLabelTexture(text, flash = false) {
   ctx.font = font;
   ctx.clearRect(0, 0, width, height);
 
-  const borderInset = ZONE_LABEL_OUTLINE_WIDTH / 2;
+  const outlineWidth = active ? ZONE_ACTIVE_OUTLINE_WIDTH : ZONE_OUTLINE_WIDTH;
+  const borderInset = outlineWidth / 2;
   roundedRect(
     ctx,
     borderInset,
     borderInset,
-    width - ZONE_LABEL_OUTLINE_WIDTH,
-    height - ZONE_LABEL_OUTLINE_WIDTH,
+    width - outlineWidth,
+    height - outlineWidth,
     8
   );
 
@@ -757,9 +785,9 @@ function makeZonePresenceLabelTexture(text, flash = false) {
   ctx.globalAlpha = flash ? 0.82 : 0.66;
   ctx.fill();
 
-  ctx.strokeStyle = `#${ZONE_ACTIVE_OUTLINE_COLOR.getHexString()}`;
-  ctx.globalAlpha = flash ? 0.95 : 0.8;
-  ctx.lineWidth = ZONE_LABEL_OUTLINE_WIDTH;
+  ctx.strokeStyle = `#${(active ? ZONE_ACTIVE_OUTLINE_COLOR : ZONE_OUTLINE_COLOR).getHexString()}`;
+  ctx.globalAlpha = flash ? 0.95 : active ? 0.8 : 0.55;
+  ctx.lineWidth = outlineWidth;
   ctx.stroke();
 
   ctx.globalAlpha = 1;
