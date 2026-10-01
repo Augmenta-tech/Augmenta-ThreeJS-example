@@ -523,7 +523,7 @@ function createBoxXYPad(params) {
 
   const axes = createWideLineSegments(
     [0, y, 0, 0, y, -depth, 0, y, 0, width, y, 0],
-    ZONE_ACTIVE_OUTLINE_COLOR,
+    ZONE_OUTLINE_COLOR,
     ZONE_XY_PAD_AXIS_WIDTH,
     'Zone XY pad axes'
   );
