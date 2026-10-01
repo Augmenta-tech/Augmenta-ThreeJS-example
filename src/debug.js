@@ -11,7 +11,7 @@ export function createDebugPanel(summary, content) {
   let pendingOpenSections;
   let pendingScrollTop;
 
-  function render(frame, control, fps, sceneSize, zoneNameForAddress, force = false) {
+  function render(frame, control, fps, sceneSize, zoneNameForAddress, zoneShapeForAddress, force = false) {
     const now = performance.now();
     if (!force && now - lastRender < DEBUG_RENDER_INTERVAL_MS) return;
     lastRender = now;
@@ -23,7 +23,11 @@ export function createDebugPanel(summary, content) {
 
     const blocks = [];
     if (frame) {
-      blocks.push(frameBlock(sceneSize), objectsBlock(frame), zonesBlock(frame, zoneNameForAddress));
+      blocks.push(
+        frameBlock(sceneSize),
+        objectsBlock(frame),
+        zonesBlock(frame, zoneNameForAddress, zoneShapeForAddress)
+      );
     }
     if (control) {
       if (control !== cachedControl) {
@@ -120,12 +124,17 @@ function objectsBlock(frame) {
   return `<details data-debug-section="objects" open><summary>Objects (${objects.length})</summary><table class="debug-table objects-table"><colgroup><col class="id-column"><col class="cluster-column"><col class="points-column"></colgroup><thead><tr><th>ID / UUID</th><th>Cluster</th><th>Point cloud</th></tr></thead><tbody>${rows}</tbody></table></details>`;
 }
 
-function zonesBlock(frame, zoneNameForAddress) {
+function zonesBlock(frame, zoneNameForAddress, zoneShapeForAddress) {
   const zones = frame.getZoneEvents();
   if (!zones.length) return '<details data-debug-section="zones"><summary>Zones (0)</summary><div class="debug-block muted">No zone data in this frame.</div></details>';
 
   const rows = zones.map((zone) => {
-    const props = zone.getProperties().map((p) => {
+    const address = zone.getEmitterZoneAddress();
+    const shape = zoneShapeForAddress?.(address);
+    const propertyRows = [];
+    if (shape !== undefined) propertyRows.push(`shape: ${esc(shapeName(shape))}`);
+
+    propertyRows.push(...zone.getProperties().map((p) => {
       const name = ZonePropertyType[p.getType()] ?? p.getType();
       if (p.isSlider()) return `${name}: ${fmt(p.getSliderParameters().value)}`;
       if (p.isXYPad()) {
@@ -137,10 +146,11 @@ function zonesBlock(frame, zoneNameForAddress) {
         return `${name}: ${cloudSummary(cloud)}`;
       }
       return name;
-    }).join('<br>') || '—';
-    const address = zone.getEmitterZoneAddress();
+    }));
+
+    const props = propertyRows.join('<br>') || '—';
     const name = zoneNameForAddress?.(address) || address || '—';
-    return `<tr><td title="${esc(address)}">${esc(name)}</td><td>enter ${zone.getEnters()}<br>leave ${zone.getLeaves()}<br>presence ${zone.getPresence()}</td><td>${props}</td></tr>`;
+    return `<tr><td title="${esc(address)}">${esc(name)}</td><td>presence ${zone.getPresence()}<br>enter ${zone.getEnters()}<br>leave ${zone.getLeaves()}</td><td>${props}</td></tr>`;
   }).join('');
 
   return `<details data-debug-section="zones" open><summary>Zones (${zones.length})</summary><table class="debug-table"><thead><tr><th>Zone</th><th>Occupancy</th><th>Properties</th></tr></thead><tbody>${rows}</tbody></table></details>`;
