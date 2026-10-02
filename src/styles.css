@@ -593,7 +593,7 @@ button.text-button:hover { color: var(--accent-hover); background: transparent; 
   padding-bottom: 0;
 }
 
-.debug-panel > summary.sticky-heading {
+.debug-panel > summary.section-summary {
   position: sticky;
   top: 0;
   z-index: 3;
@@ -643,4 +643,10 @@ button.text-button:hover { color: var(--accent-hover); background: transparent; 
     padding: 3px;
   }
   .connection-qr-label { font-size: 8.5px; }
+  .connection-advanced-grid {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+  .connection-advanced-grid > :last-child {
+    grid-column: 1 / -1;
+  }
 }
