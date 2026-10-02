@@ -11,7 +11,16 @@ export function createDebugPanel(summary, content) {
   let pendingOpenSections;
   let pendingScrollTop;
 
-  function render(frame, control, fps, sceneSize, zoneNameForAddress, zoneShapeForAddress, force = false) {
+  function render(
+    frame,
+    control,
+    fps,
+    sceneSize,
+    zoneNameForAddress,
+    zoneShapeForAddress,
+    force = false,
+    renderContent = true
+  ) {
     const now = performance.now();
     if (!force && now - lastRender < DEBUG_RENDER_INTERVAL_MS) return;
     lastRender = now;
@@ -20,6 +29,8 @@ export function createDebugPanel(summary, content) {
     summary.textContent = frame
       ? `${frame.getObjectCount()} objects · ${frame.getZoneEventCount()} zones · ${fps} fps`
       : 'Waiting for tracking data';
+
+    if (!renderContent) return;
 
     const blocks = [];
     if (frame) {

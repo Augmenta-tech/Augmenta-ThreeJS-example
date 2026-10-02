@@ -349,7 +349,8 @@ function renderDebug(force = false) {
     sceneSizeForFrame(lastFrame),
     zoneNameForAddress,
     zoneShapeForAddress,
-    force
+    force,
+    ui.debugSection.open
   );
 }
 
@@ -525,11 +526,15 @@ for (const section of [
   ui.connectionSection,
   ui.connectionAdvanced,
   ui.displaySection,
-  ui.displayAdvanced,
-  ui.debugSection
+  ui.displayAdvanced
 ]) {
   section.addEventListener('toggle', savePreferences);
 }
+
+ui.debugSection.addEventListener('toggle', () => {
+  savePreferences();
+  if (ui.debugSection.open) renderDebug(true);
+});
 
 // The panel overlays the renderer. Shift the camera projection by the visible
 // panel width so the orbit target stays centered in the unobscured viewport.

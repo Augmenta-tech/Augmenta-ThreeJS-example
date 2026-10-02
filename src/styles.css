@@ -476,7 +476,7 @@ button.subtle-button.active:hover {
 }
 
 .panel-content {
-  padding: 8px 18px 10px;
+  padding: 14px 18px 6px;
 }
 
 .advanced-panel {
@@ -618,21 +618,6 @@ button.subtle-button.active:hover {
   accent-color: var(--accent);
 }
 
-.compact-action {
-  justify-self: start;
-  min-height: 30px;
-  padding: 5px 10px;
-  border-color: #303744;
-  color: #aab3c2;
-  background: #171b23;
-  font-size: 10.5px;
-}
-
-.compact-action:hover {
-  color: #d6dce6;
-  background: #1d222c;
-}
-
 .panel-section.debug-panel {
   padding-bottom: 0;
 }
@@ -643,10 +628,10 @@ button.subtle-button.active:hover {
   z-index: 3;
 }
 
-.debug-actions {
+.panel-actions {
   display: flex;
   justify-content: flex-end;
-  margin: 0 0 7px;
+  margin: 0 0 9px;
 }
 
 .text-action {
