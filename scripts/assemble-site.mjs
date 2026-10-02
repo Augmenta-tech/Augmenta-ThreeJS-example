@@ -22,6 +22,13 @@ function requirePath(path, label) {
   }
 }
 
+function replaceRequired(source, search, replacement) {
+  if (!source.includes(search)) {
+    throw new Error(`Missing expected build token: ${search}`);
+  }
+  return source.replaceAll(search, replacement);
+}
+
 requirePath(join(root, 'vendor', 'AugmentaClientSDK-JS', 'dist', 'esm'), 'built Augmenta SDK');
 requirePath(join(root, 'vendor', 'qrcode-generator', 'qrcode.js'), 'vendored QR generator');
 requirePath(join(threeRoot, 'build', 'three.module.js'), 'Three.js runtime');
@@ -71,23 +78,29 @@ cpSync(
 
 const indexPath = join(out, 'index.html');
 let html = readFileSync(indexPath, 'utf8');
-html = html
-  .replace('  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>\n', '')
-  .replace(
-    'https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js',
-    `./vendor/three/${rev}/build/three.module.js`
-  )
-  .replace(
-    'https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/',
-    `./vendor/three/${rev}/examples/jsm/`
-  )
-  .replace(
-    './vendor/AugmentaClientSDK-JS/dist/esm/index.js',
-    `./vendor/AugmentaClientSDK-JS/${rev}/dist/esm/index.js`
-  )
-  .replaceAll('./src/styles.css', `./src/styles.css?v=${rev}`)
-  .replaceAll('./src/qr.js', `./src/qr.js?v=${rev}`)
-  .replaceAll('./src/main.js', `./src/main.js?v=${rev}`);
+html = replaceRequired(
+  html,
+  '  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>\n',
+  ''
+);
+html = replaceRequired(
+  html,
+  'https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js',
+  `./vendor/three/${rev}/build/three.module.js`
+);
+html = replaceRequired(
+  html,
+  'https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/',
+  `./vendor/three/${rev}/examples/jsm/`
+);
+html = replaceRequired(
+  html,
+  './vendor/AugmentaClientSDK-JS/dist/esm/index.js',
+  `./vendor/AugmentaClientSDK-JS/${rev}/dist/esm/index.js`
+);
+html = replaceRequired(html, './src/styles.css', `./src/styles.css?v=${rev}`);
+html = replaceRequired(html, './src/qr.js', `./src/qr.js?v=${rev}`);
+html = replaceRequired(html, './src/main.js', `./src/main.js?v=${rev}`);
 
 if (html.includes('cdn.jsdelivr.net')) {
   throw new Error('Built Pages index still contains a runtime CDN dependency.');
