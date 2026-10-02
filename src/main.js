@@ -1,3 +1,4 @@
+import { APP_VERSION } from './app-info.js';
 import { createConnectionController } from './connection.js';
 import { createSetupStore } from './setup-store.js';
 import { createViewer } from './viewer.js';
@@ -37,9 +38,11 @@ const ui = {
   sidebarToggle: $('#sidebar-toggle'), viewerTitle: $('.viewer-title'), connectionQrVisibility: $('.connection-qr-visibility'),
   connectionSection: $('#connection-section'), connectionAdvanced: $('#connection-advanced'), connectionAdvancedSummary: $('#connection-advanced-summary'),
   displaySection: $('#display-section'), displayAdvanced: $('#display-advanced'), displaySectionSummary: $('#display-section-summary'),
-  debugSection: $('#debug-section'),
+  debugSection: $('#debug-section'), appVersion: $('#app-version'),
   showClusters: $('#show-clusters'), showPoints: $('#show-points'), showScene: $('#show-scene'), showZones: $('#show-zones'), showVectors: $('#show-vectors')
 };
+
+ui.appVersion.textContent = `Version ${APP_VERSION}`;
 
 const viewer = createViewer($('#canvas-host'));
 const debug = createDebugPanel(ui.summary, ui.debug);
