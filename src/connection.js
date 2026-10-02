@@ -1,6 +1,7 @@
 import {
   AugmentaWebSocketClient, AxisMode, CoordinateSpace, OriginMode, RotationMode
 } from 'augmenta-client-sdk';
+import { APP_VERSION } from './app-info.js';
 
 const RECONNECT_DELAY_MS = 1000;
 const CONNECTION_ATTEMPT_TIMEOUT_MS = 2500;
@@ -156,7 +157,7 @@ export function createConnectionController({
     const connection = new AugmentaWebSocketClient(target.url, {
       clientName: 'Augmenta Three.js Debug Viewer',
       applicationName: 'Augmenta ThreeJS Example',
-      applicationVersion: '1.0.0',
+      applicationVersion: APP_VERSION,
       options: {
         version,
         downSample,
