@@ -398,6 +398,13 @@ button.text-button:hover { color: var(--accent-hover); background: transparent; 
   padding-bottom: 12px;
 }
 
+.panel-section:not([open]) > summary {
+  height: 44px;
+  min-height: 44px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
 .section-chevron {
   width: 7px;
   height: 7px;
@@ -479,12 +486,15 @@ button.text-button:hover { color: var(--accent-hover); background: transparent; 
 .advanced-panel > summary::after {
   content: "";
   grid-column: 2;
+  grid-row: 1;
+  align-self: center;
   height: 1px;
   background: #2b313d;
 }
 
 .advanced-label {
   grid-column: 1;
+  grid-row: 1;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -513,6 +523,8 @@ button.text-button:hover { color: var(--accent-hover); background: transparent; 
 
 .advanced-summary-value {
   grid-column: 3;
+  grid-row: 1;
+  align-self: center;
   min-width: 0;
   overflow: hidden;
   color: #697385;
