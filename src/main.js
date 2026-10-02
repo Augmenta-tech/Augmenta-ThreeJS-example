@@ -14,9 +14,13 @@ import { refreshConnectionQr } from './qr.js';
 const DISCONNECT_CLEANUP_DELAY_MS = 500;
 const CAMERA_PREFERENCE_SAVE_DELAY_MS = 250;
 const SIDEBAR_HANDLE_IDLE_DELAY_MS = 3000;
+const FPS_WINDOW_MS = 1000;
+const DEMO_FRAME_INTERVAL_MS = 33;
 const SIDEBAR_MIN_WIDTH = 320;
 const SIDEBAR_MAX_WIDTH = 450;
 const SIDEBAR_VIEWPORT_MARGIN = 160;
+const SIDEBAR_RESIZE_STEP_PX = 16;
+const SIDEBAR_RESIZE_LARGE_STEP_PX = 40;
 const MOBILE_MEDIA_QUERY = '(max-width: 900px), (pointer: coarse) and (max-width: 1100px)';
 const SETTINGS_STORAGE_KEY = 'augmenta-threejs-settings:v1';
 
@@ -285,7 +289,7 @@ function trackFrame(frame) {
   lastFrame = frame;
   const now = performance.now();
   frameTimes.push(now);
-  frameTimes = frameTimes.filter((time) => time >= now - 1000);
+  frameTimes = frameTimes.filter((time) => time >= now - FPS_WINDOW_MS);
   viewer.renderFrame(frame);
   renderDebug();
 }
@@ -487,7 +491,7 @@ function startSimulation() {
   const start = performance.now();
   const tick = () => trackFrame(makeDemoFrame((performance.now() - start) / 1000));
   tick();
-  demoTimer = window.setInterval(tick, 33);
+  demoTimer = window.setInterval(tick, DEMO_FRAME_INTERVAL_MS);
   updateSimulationButton();
 }
 
@@ -619,12 +623,12 @@ function setSidebarWidth(width) {
 }
 
 function resizeSidebar(event) {
-  if (window.matchMedia(MOBILE_MEDIA_QUERY).matches) return;
+  if (isMobileLayout()) return;
   setSidebarWidth(window.innerWidth - event.clientX);
 }
 
 ui.sidebarResizer.addEventListener('pointerdown', (event) => {
-  if (window.matchMedia(MOBILE_MEDIA_QUERY).matches || ui.app.classList.contains('sidebar-hidden')) return;
+  if (isMobileLayout() || ui.app.classList.contains('sidebar-hidden')) return;
   event.preventDefault();
   ui.sidebarResizer.setPointerCapture(event.pointerId);
   ui.app.classList.add('sidebar-resizing');
@@ -647,7 +651,7 @@ ui.sidebarResizer.addEventListener('pointercancel', stopSidebarResize);
 ui.sidebarResizer.addEventListener('keydown', (event) => {
   if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
   event.preventDefault();
-  const step = event.shiftKey ? 40 : 16;
+  const step = event.shiftKey ? SIDEBAR_RESIZE_LARGE_STEP_PX : SIDEBAR_RESIZE_STEP_PX;
   const current = ui.sidebar.getBoundingClientRect().width;
   setSidebarWidth(current + (event.key === 'ArrowLeft' ? step : -step));
   savePreferences();

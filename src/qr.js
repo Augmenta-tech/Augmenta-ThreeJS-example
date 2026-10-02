@@ -16,7 +16,6 @@ const ui = {
 
 let qrCopyFeedbackTimer;
 let qrHovering = false;
-let initialized = false;
 
 function getConnectionSettings() {
   return {
@@ -118,8 +117,7 @@ async function handleConnectionQrClick(event) {
 }
 
 function initializeConnectionQr() {
-  if (initialized || !ui.connectionQr) return;
-  initialized = true;
+  if (!ui.connectionQr) return;
 
   ui.connectionQr.addEventListener('click', handleConnectionQrClick);
   ui.connectionQr.addEventListener('mouseenter', () => {

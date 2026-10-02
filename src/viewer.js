@@ -6,6 +6,11 @@ import { createZoneRenderer } from './zones.js';
 import { collectZoneAddresses } from './zone-state.js';
 
 const FLOOR_Y = 0;
+const PANEL_INSET_ANIMATION_DURATION_MS = 220;
+const MIN_GEOMETRY_SIZE = 0.001;
+const MIN_ARROW_LENGTH_M = 0.001;
+const MIN_VISIBLE_SPEED_MPS = 0.001;
+const CAMERA_FLOOR_CLEARANCE_M = 0.02;
 const GHOST_COLOR = new THREE.Color(0x8a909b);
 const LOOK_AT_MARKER_OPACITY = 0.58;
 const LOOK_AT_MARKER_GHOST_OPACITY = 0.24;
@@ -172,7 +177,7 @@ export function createViewer(host) {
 
     const start = rightInset;
     const startedAt = performance.now();
-    const duration = 220;
+    const duration = PANEL_INSET_ANIMATION_DURATION_MS;
 
     const tick = (now) => {
       const t = Math.min((now - startedAt) / duration, 1);
@@ -259,7 +264,7 @@ export function createViewer(host) {
     const velocity = new THREE.ArrowHelper(
       new THREE.Vector3(0, 0, 1),
       new THREE.Vector3(),
-      0.001,
+      MIN_ARROW_LENGTH_M,
       color.getHex(),
       0.12,
       0.07
@@ -325,9 +330,9 @@ export function createViewer(host) {
     view.box.visible = true;
     view.box.position.fromArray(center);
     view.box.scale.set(
-      Math.max(Math.abs(size[0]), 0.001),
-      Math.max(Math.abs(size[1]), 0.001),
-      Math.max(Math.abs(size[2]), 0.001)
+      Math.max(Math.abs(size[0]), MIN_GEOMETRY_SIZE),
+      Math.max(Math.abs(size[1]), MIN_GEOMETRY_SIZE),
+      Math.max(Math.abs(size[2]), MIN_GEOMETRY_SIZE)
     );
     // Pleiades sends its native Y-up/left-handed quaternion. Reflect it across
     // Z to express the exact same orientation in Three.js' right-handed space.
@@ -359,7 +364,7 @@ export function createViewer(host) {
     pointBounds.center.fromArray(center);
     pointBounds.radius = Math.max(
       Math.hypot(Math.abs(size[0]), Math.abs(size[1]), Math.abs(size[2])) * 0.5,
-      0.001
+      MIN_GEOMETRY_SIZE
     );
     view.points.geometry.boundingSphere = pointBounds;
     view.points.frustumCulled = true;
@@ -592,8 +597,8 @@ export function createViewer(host) {
 
     // Orbiting stays above the world floor. With screenSpacePanning=false,
     // right-drag panning also remains parallel to the floor plane.
-    if (camera.position.y < FLOOR_Y + 0.02) {
-      camera.position.y = FLOOR_Y + 0.02;
+    if (camera.position.y < FLOOR_Y + CAMERA_FLOOR_CLEARANCE_M) {
+      camera.position.y = FLOOR_Y + CAMERA_FLOOR_CLEARANCE_M;
     }
 
     renderer.render(scene, camera);
@@ -676,7 +681,7 @@ function configureArrow(arrow) {
 function updateVelocity(arrow, origin, velocity, color, direction) {
   const speed = speedFromVelocity(velocity);
 
-  if (!Number.isFinite(speed) || speed < 0.001) {
+  if (!Number.isFinite(speed) || speed < MIN_VISIBLE_SPEED_MPS) {
     arrow.visible = false;
     return;
   }
@@ -785,7 +790,7 @@ function hashString(value) {
 // Scene dimensions are magnitudes. Placement above preserves the requested
 // Y-up/right-handed direction while this helper keeps geometry sizes valid.
 function positiveSize(size) {
-  return size.map((v) => Math.max(Math.abs(v), 0.001));
+  return size.map((v) => Math.max(Math.abs(v), MIN_GEOMETRY_SIZE));
 }
 
 function clearGroup(group) {
