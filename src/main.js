@@ -539,35 +539,45 @@ ui.debugSection.addEventListener('toggle', () => {
 // The panel overlays the renderer. Shift the camera projection by the visible
 // panel width so the orbit target stays centered in the unobscured viewport.
 function syncPanelCamera(animate = false) {
-  const isMobile = window.matchMedia(MOBILE_MEDIA_QUERY).matches;
   const hidden = ui.app.classList.contains('sidebar-hidden');
-  const inset = isMobile || hidden ? 0 : ui.sidebar.getBoundingClientRect().width;
+  const inset = isMobileLayout() || hidden ? 0 : ui.sidebar.getBoundingClientRect().width;
   viewer.setRightInset(inset, animate);
 }
 
+function isMobileLayout() {
+  return window.matchMedia(MOBILE_MEDIA_QUERY).matches;
+}
+
+function updateSidebarTogglePresentation() {
+  const hidden = ui.app.classList.contains('sidebar-hidden');
+  const mobile = isMobileLayout();
+  const label = hidden ? (mobile ? 'Show menu' : 'Show panel') : (mobile ? 'Hide menu' : 'Hide panel');
+
+  ui.sidebarToggle.textContent = mobile
+    ? (hidden ? '⌃' : '⌄')
+    : (hidden ? '<' : '>');
+  ui.sidebarToggle.title = label;
+  ui.sidebarToggle.setAttribute('aria-label', label);
+  ui.sidebarToggle.setAttribute('aria-expanded', String(!hidden));
+}
+
 function syncSidebarAccessibility() {
-  const foldedOnDesktop = ui.app.classList.contains('sidebar-hidden')
-    && !window.matchMedia(MOBILE_MEDIA_QUERY).matches;
+  const hidden = ui.app.classList.contains('sidebar-hidden');
+  const mobile = isMobileLayout();
+  const hideQr = hidden && !mobile;
 
-  ui.sidebar.inert = foldedOnDesktop;
-  ui.connectionQrVisibility.inert = foldedOnDesktop;
+  ui.sidebar.inert = hidden;
+  ui.sidebar.toggleAttribute('aria-hidden', hidden);
 
-  if (foldedOnDesktop) {
-    ui.sidebar.setAttribute('aria-hidden', 'true');
-    ui.connectionQrVisibility.setAttribute('aria-hidden', 'true');
-  } else {
-    ui.sidebar.removeAttribute('aria-hidden');
-    ui.connectionQrVisibility.removeAttribute('aria-hidden');
-  }
+  ui.connectionQrVisibility.inert = hideQr;
+  ui.connectionQrVisibility.toggleAttribute('aria-hidden', hideQr);
 }
 
 function setSidebarHidden(hidden, animate = true) {
   if (!animate) ui.app.classList.add('sidebar-no-transition');
 
   ui.app.classList.toggle('sidebar-hidden', hidden);
-  ui.sidebarToggle.textContent = hidden ? '<' : '>';
-  ui.sidebarToggle.title = hidden ? 'Show panel' : 'Hide panel';
-  ui.sidebarToggle.setAttribute('aria-expanded', String(!hidden));
+  updateSidebarTogglePresentation();
   syncSidebarAccessibility();
   syncPanelCamera(animate);
 
@@ -643,8 +653,9 @@ ui.sidebarResizer.addEventListener('keydown', (event) => {
 window.addEventListener('pagehide', savePreferences);
 
 window.addEventListener('resize', () => {
+  updateSidebarTogglePresentation();
   syncSidebarAccessibility();
-  if (!window.matchMedia(MOBILE_MEDIA_QUERY).matches) {
+  if (!isMobileLayout()) {
     setSidebarWidth(ui.sidebar.getBoundingClientRect().width);
   } else {
     syncPanelCamera(false);
