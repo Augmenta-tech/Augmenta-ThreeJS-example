@@ -16,7 +16,7 @@ const SIDEBAR_HANDLE_IDLE_DELAY_MS = 3000;
 const SIDEBAR_MIN_WIDTH = 320;
 const SIDEBAR_MAX_WIDTH = 450;
 const SIDEBAR_VIEWPORT_MARGIN = 160;
-const MOBILE_MEDIA_QUERY = '(max-width: 900px)';
+const MOBILE_MEDIA_QUERY = '(max-width: 900px), (pointer: coarse) and (max-width: 1100px)';
 const SETTINGS_STORAGE_KEY = 'augmenta-threejs-settings:v1';
 
 const $ = (selector) => document.querySelector(selector);
