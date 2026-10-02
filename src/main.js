@@ -552,7 +552,7 @@ function syncPanelCamera(animate = false) {
 }
 
 function isMobileLayout() {
-  return isMobileLayout();
+  return window.matchMedia(MOBILE_MEDIA_QUERY).matches;
 }
 
 function updateSidebarTogglePresentation() {
