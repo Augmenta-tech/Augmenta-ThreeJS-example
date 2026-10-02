@@ -35,7 +35,7 @@ export function collectZoneAddresses(container, result = new Set()) {
 }
 
 
-export const ZONE_STREAM_STALE_MS = 250;
+export const ZONE_STREAM_STALE_MS = 50;
 
 export function isZoneStreamFresh(lastSeenAt, now, staleMs = ZONE_STREAM_STALE_MS) {
   return Number.isFinite(lastSeenAt)
