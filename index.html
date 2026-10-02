@@ -74,7 +74,7 @@
     ></div>
 
     <aside id="sidebar">
-      <details id="connection-section" class="panel panel-section connection-panel" open>
+      <details id="connection-section" class="panel-section" open>
         <summary class="section-summary">
           <span class="section-chevron" aria-hidden="true"></span>
           <span class="panel-heading-copy">
@@ -85,7 +85,7 @@
         </summary>
 
         <div class="panel-content">
-          <div class="server-address-field">
+          <div >
             <label for="server-address">Augmenta Server Address</label>
             <input id="server-address" type="text" value="127.0.0.1" spellcheck="false" autocomplete="off" placeholder="192.168.1.42 or augmenta-WA12031.local">
             <p class="field-subtitle">IP address or hostname</p>
@@ -127,7 +127,7 @@
         </div>
       </details>
 
-      <details id="display-section" class="panel panel-section display-panel" open>
+      <details id="display-section" class="panel-section" open>
         <summary class="section-summary">
           <span class="section-chevron" aria-hidden="true"></span>
           <span class="panel-heading-copy">
@@ -169,7 +169,7 @@
         </div>
       </details>
 
-      <details id="debug-section" class="panel panel-section debug-panel" open>
+      <details id="debug-section" class="panel-section debug-panel" open>
         <summary class="section-summary">
           <span class="section-chevron" aria-hidden="true"></span>
           <span class="panel-heading-copy">
@@ -211,7 +211,6 @@
     </aside>
   </main>
 
-  <script type="module" src="./src/qr.js"></script>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>
