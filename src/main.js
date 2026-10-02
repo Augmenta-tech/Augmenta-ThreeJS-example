@@ -35,6 +35,9 @@ const ui = {
   demo: $('#demo'), status: $('#status'), note: $('#connection-note'), summary: $('#summary'),
   debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'), scenes: $('#scenes'),
   sidebarToggle: $('#sidebar-toggle'), viewerTitle: $('.viewer-title'), connectionQrVisibility: $('.connection-qr-visibility'),
+  connectionSection: $('#connection-section'), connectionAdvanced: $('#connection-advanced'), connectionAdvancedSummary: $('#connection-advanced-summary'),
+  displaySection: $('#display-section'), displayAdvanced: $('#display-advanced'), displaySectionSummary: $('#display-section-summary'),
+  debugSection: $('#debug-section'), debugAdvanced: $('#debug-advanced'),
   showClusters: $('#show-clusters'), showPoints: $('#show-points'), showScene: $('#show-scene'), showZones: $('#show-zones'), showVectors: $('#show-vectors')
 };
 
@@ -133,7 +136,15 @@ function savePreferences() {
     ui: {
       sidebarHidden: ui.app.classList.contains('sidebar-hidden'),
       sidebarWidth: Number.isFinite(sidebarWidth) ? sidebarWidth : SIDEBAR_MAX_WIDTH,
-      cameraView: viewer.getCameraView()
+      cameraView: viewer.getCameraView(),
+      sections: {
+        connection: ui.connectionSection.open,
+        connectionAdvanced: ui.connectionAdvanced.open,
+        display: ui.displaySection.open,
+        displayAdvanced: ui.displayAdvanced.open,
+        debug: ui.debugSection.open,
+        debugAdvanced: ui.debugAdvanced.open
+      }
     }
   };
 
@@ -164,6 +175,7 @@ function restorePreferences() {
   const sharedConnection = readConnectionOptionsFromUrl(window.location.href);
   const display = isObject(savedPreferences.display) ? savedPreferences.display : {};
   const uiPreferences = isObject(savedPreferences.ui) ? savedPreferences.ui : {};
+  const sectionPreferences = isObject(uiPreferences.sections) ? uiPreferences.sections : {};
 
   applyConnectionSettings(normalizeConnectionOptions(connection));
   // Persist only this browser's own connection defaults. Shared/QR values are
@@ -187,6 +199,20 @@ function restorePreferences() {
   const sidebarWidth = Number(uiPreferences.sidebarWidth);
   if (Number.isFinite(sidebarWidth)) setSidebarWidth(sidebarWidth);
   setSidebarHidden(uiPreferences.sidebarHidden === true, false);
+
+  for (const [key, element] of [
+    ['connection', ui.connectionSection],
+    ['connectionAdvanced', ui.connectionAdvanced],
+    ['display', ui.displaySection],
+    ['displayAdvanced', ui.displayAdvanced],
+    ['debug', ui.debugSection],
+    ['debugAdvanced', ui.debugAdvanced]
+  ]) {
+    if (typeof sectionPreferences[key] === 'boolean') {
+      element.open = sectionPreferences[key];
+    }
+  }
+
   viewer.setCameraView(uiPreferences.cameraView);
 }
 
@@ -346,6 +372,18 @@ function zoneNameForAddress(address) {
   return parts.at(-1) || address || '—';
 }
 
+function updateDisplaySectionSummary() {
+  ui.displaySectionSummary.textContent = ui.scenes.selectedOptions[0]?.textContent
+    ?? (ui.scenes.disabled ? 'No scenes' : 'All scenes');
+}
+
+function updateConnectionAdvancedSummary() {
+  const protocolLabel = ui.protocol.selectedOptions[0]?.textContent?.split(' — ')[0]
+    ?? ui.protocol.value;
+  ui.connectionAdvancedSummary.textContent =
+    `${ui.port.value || '—'} · ${protocolLabel} · ×${ui.downsample.value || '—'}`;
+}
+
 function syncSceneSelector() {
   const previous = ui.scenes.value;
   scenes = setupStore.getScenes();
@@ -363,6 +401,7 @@ function syncSceneSelector() {
     || scenes.some((scene) => scene.getAddress() === requested);
   ui.scenes.value = stillAvailable ? requested : 'all';
   ui.scenes.disabled = scenes.length === 0;
+  updateDisplaySectionSummary();
 }
 
 function setSetup(root) {
@@ -479,9 +518,21 @@ ui.clear.addEventListener('click', () => clearDebugData(true));
 ui.resetCamera.addEventListener('click', viewer.resetCamera);
 ui.scenes.addEventListener('change', () => {
   preferredSceneAddress = ui.scenes.value;
+  updateDisplaySectionSummary();
   savePreferences();
   renderSelectedScenes();
 });
+
+for (const section of [
+  ui.connectionSection,
+  ui.connectionAdvanced,
+  ui.displaySection,
+  ui.displayAdvanced,
+  ui.debugSection,
+  ui.debugAdvanced
+]) {
+  section.addEventListener('toggle', savePreferences);
+}
 
 // The panel overlays the renderer. Shift the camera projection by the visible
 // panel width so the orbit target stays centered in the unobscured viewport.
@@ -615,6 +666,7 @@ function handleServerFieldEnter(event) {
 
 function saveConnectionField(key, value) {
   rememberLocalConnectionSetting(key, value);
+  updateConnectionAdvancedSummary();
   savePreferences();
   refreshConnectionQr();
 }
@@ -654,6 +706,8 @@ ui.downsample.addEventListener('change', () => {
 function syncPreferencesToUi() {
   restorePreferences();
   applyVisibility();
+  updateConnectionAdvancedSummary();
+  updateDisplaySectionSummary();
   syncPanelCamera(false);
   refreshConnectionQr();
 }
