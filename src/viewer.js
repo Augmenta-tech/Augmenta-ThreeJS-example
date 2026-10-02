@@ -8,6 +8,7 @@ import { collectZoneAddresses } from './zone-state.js';
 const FLOOR_Y = 0;
 const PANEL_INSET_ANIMATION_DURATION_MS = 220;
 const MIN_GEOMETRY_SIZE = 0.001;
+const MIN_ARROW_LENGTH_M = 0.001;
 const MIN_VISIBLE_SPEED_MPS = 0.001;
 const CAMERA_FLOOR_CLEARANCE_M = 0.02;
 const GHOST_COLOR = new THREE.Color(0x8a909b);
@@ -263,7 +264,7 @@ export function createViewer(host) {
     const velocity = new THREE.ArrowHelper(
       new THREE.Vector3(0, 0, 1),
       new THREE.Vector3(),
-      0.001,
+      MIN_ARROW_LENGTH_M,
       color.getHex(),
       0.12,
       0.07
