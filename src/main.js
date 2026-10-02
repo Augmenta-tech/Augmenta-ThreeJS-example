@@ -37,7 +37,7 @@ const ui = {
   sidebarToggle: $('#sidebar-toggle'), viewerTitle: $('.viewer-title'), connectionQrVisibility: $('.connection-qr-visibility'),
   connectionSection: $('#connection-section'), connectionAdvanced: $('#connection-advanced'), connectionAdvancedSummary: $('#connection-advanced-summary'),
   displaySection: $('#display-section'), displayAdvanced: $('#display-advanced'), displaySectionSummary: $('#display-section-summary'),
-  debugSection: $('#debug-section'), debugAdvanced: $('#debug-advanced'),
+  debugSection: $('#debug-section'),
   showClusters: $('#show-clusters'), showPoints: $('#show-points'), showScene: $('#show-scene'), showZones: $('#show-zones'), showVectors: $('#show-vectors')
 };
 
@@ -142,8 +142,7 @@ function savePreferences() {
         connectionAdvanced: ui.connectionAdvanced.open,
         display: ui.displaySection.open,
         displayAdvanced: ui.displayAdvanced.open,
-        debug: ui.debugSection.open,
-        debugAdvanced: ui.debugAdvanced.open
+        debug: ui.debugSection.open
       }
     }
   };
@@ -205,8 +204,7 @@ function restorePreferences() {
     ['connectionAdvanced', ui.connectionAdvanced],
     ['display', ui.displaySection],
     ['displayAdvanced', ui.displayAdvanced],
-    ['debug', ui.debugSection],
-    ['debugAdvanced', ui.debugAdvanced]
+    ['debug', ui.debugSection]
   ]) {
     if (typeof sectionPreferences[key] === 'boolean') {
       element.open = sectionPreferences[key];
@@ -528,8 +526,7 @@ for (const section of [
   ui.connectionAdvanced,
   ui.displaySection,
   ui.displayAdvanced,
-  ui.debugSection,
-  ui.debugAdvanced
+  ui.debugSection
 ]) {
   section.addEventListener('toggle', savePreferences);
 }
