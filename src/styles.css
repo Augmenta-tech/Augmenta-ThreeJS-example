@@ -442,6 +442,12 @@ button.text-button:hover { color: var(--accent-hover); background: transparent; 
   display: none;
 }
 
+.panel-section:not([open]) .panel-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .panel-summary-value {
   justify-self: end;
   max-width: 150px;
@@ -618,7 +624,7 @@ button.text-button:hover { color: var(--accent-hover); background: transparent; 
   margin-bottom: 10px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 900px), (pointer: coarse) and (max-width: 1100px) {
   body { overflow: auto; }
   #app,
   #app.sidebar-hidden {
@@ -641,6 +647,10 @@ button.text-button:hover { color: var(--accent-hover); background: transparent; 
   }
   .sidebar-toggle,
   .sidebar-resizer { display: none; }
+  #app.sidebar-hidden .connection-qr-visibility {
+    opacity: 1;
+    pointer-events: auto;
+  }
   .viewer-overlay { padding: 16px; }
   .connection-qr-visibility {
     left: 12px;
