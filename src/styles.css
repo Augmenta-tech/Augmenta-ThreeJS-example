@@ -353,6 +353,11 @@ button.subtle-button.active:hover {
 
 /* Sidebar section hierarchy: compact top-level sections with denser Advanced controls. */
 .panel-section {
+  --section-title-size: 13px;
+  --advanced-title-size: 10.5px;
+  --disclosure-chevron-size: .54em;
+  --disclosure-chevron-stroke: .115em;
+
   margin: 0;
   padding: 0;
   border: 0;
@@ -373,6 +378,7 @@ button.subtle-button.active:hover {
   border: 0;
   color: #f5f7fb;
   background: transparent;
+  font-size: var(--section-title-size);
   cursor: pointer;
   list-style: none;
   user-select: none;
@@ -416,10 +422,10 @@ button.subtle-button.active:hover {
 }
 
 .section-chevron {
-  width: 7px;
-  height: 7px;
-  border-right: 1.5px solid #7f899b;
-  border-bottom: 1.5px solid #7f899b;
+  width: var(--disclosure-chevron-size);
+  height: var(--disclosure-chevron-size);
+  border-right: var(--disclosure-chevron-stroke) solid #7f899b;
+  border-bottom: var(--disclosure-chevron-stroke) solid #7f899b;
   transform: rotate(-45deg);
   transform-origin: center;
   transition: transform 140ms ease, border-color 120ms ease;
@@ -437,7 +443,7 @@ button.subtle-button.active:hover {
 }
 
 .panel-title {
-  font-size: 13px;
+  font-size: 1em;
   font-weight: 650;
   letter-spacing: .01em;
 }
@@ -485,9 +491,9 @@ button.subtle-button.active:hover {
 
 .advanced-panel > summary {
   display: grid;
-  grid-template-columns: 18px auto minmax(14px, 1fr) auto;
+  grid-template-columns: 1em auto minmax(1.4em, 1fr) auto;
   align-items: center;
-  gap: 6px;
+  gap: .55em;
   min-height: 30px;
   padding: 6px 0 5px;
   border: 0;
@@ -495,7 +501,7 @@ button.subtle-button.active:hover {
   background: transparent;
   cursor: pointer;
   list-style: none;
-  font-size: 10.5px;
+  font-size: var(--advanced-title-size);
   user-select: none;
   font-weight: 650;
 }
@@ -528,10 +534,10 @@ button.subtle-button.active:hover {
 
 .advanced-label::before {
   content: "";
-  width: 6px;
-  height: 6px;
-  border-right: 1.5px solid #737d8e;
-  border-bottom: 1.5px solid #737d8e;
+  width: var(--disclosure-chevron-size);
+  height: var(--disclosure-chevron-size);
+  border-right: var(--disclosure-chevron-stroke) solid #737d8e;
+  border-bottom: var(--disclosure-chevron-stroke) solid #737d8e;
   transform: rotate(-45deg);
   transform-origin: center;
   transition: transform 140ms ease, border-color 120ms ease;
