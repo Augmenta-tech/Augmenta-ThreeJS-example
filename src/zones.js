@@ -33,6 +33,9 @@ const ZONE_SLIDER_FILL_OPACITY = 0.22;
 const ZONE_SLIDER_IDLE_FILL_OPACITY = 0.08;
 const ZONE_VALUE_IDLE_COLOR = new THREE.Color(0xb0b5bd);
 const ROUND_OUTLINE_SEGMENTS = 32;
+const SPHERE_WIDTH_SEGMENTS = 24;
+const SPHERE_HEIGHT_SEGMENTS = 16;
+const MIN_GEOMETRY_SIZE = 0.001;
 
 export function createZoneRenderer() {
   const views = new Map();
@@ -128,7 +131,7 @@ export function createZoneRenderer() {
     visualGroup.visible = isZoneStreamFresh(lastSeenAt, performance.now());
 
     views.set(address, view);
-    setPresence(view, presenceByAddress.get(address) ?? 0);
+    setPresence(view, presenceByAddress.get(address) ?? 0, false);
 
     const xyPadValue = xyPadByAddress.get(address);
     if (xyPadValue) updateBoxXYPad(view.xyPad, xyPadValue.x, xyPadValue.y);
@@ -387,18 +390,18 @@ function zoneGeometry(params) {
     case ShapeType.Cylinder: {
       const { radius, height } = params.getCylinderShapeParameters();
       return new THREE.CylinderGeometry(
-        Math.max(Math.abs(radius), 0.001),
-        Math.max(Math.abs(radius), 0.001),
-        Math.max(Math.abs(height), 0.001),
-        32
+        Math.max(Math.abs(radius), MIN_GEOMETRY_SIZE),
+        Math.max(Math.abs(radius), MIN_GEOMETRY_SIZE),
+        Math.max(Math.abs(height), MIN_GEOMETRY_SIZE),
+        ROUND_OUTLINE_SEGMENTS
       );
     }
 
     case ShapeType.Sphere:
       return new THREE.SphereGeometry(
         Math.max(Math.abs(params.getSphereShapeParameters().radius), 0.001),
-        24,
-        16
+        SPHERE_WIDTH_SEGMENTS,
+        SPHERE_HEIGHT_SEGMENTS
       );
 
     default:
@@ -444,8 +447,8 @@ function createZoneOutline(params, sourceGeometry, color) {
   if (params.isCylinder()) {
     const { radius, height } = params.getCylinderShapeParameters();
     guidePositions = cylinderRingPositions(
-      Math.max(Math.abs(radius), 0.001),
-      Math.max(Math.abs(height), 0.001)
+      Math.max(Math.abs(radius), MIN_GEOMETRY_SIZE),
+      Math.max(Math.abs(height), MIN_GEOMETRY_SIZE)
     );
   } else if (params.isSphere()) {
     guidePositions = sphereEquatorPositions(
@@ -654,8 +657,8 @@ function createRoundZoneSlider(params, sourceGeometry) {
   let max = 0.5;
   if (params.isCylinder()) {
     const { radius, height } = params.getCylinderShapeParameters();
-    const r = Math.max(Math.abs(radius), 0.001);
-    const h = Math.max(Math.abs(height), 0.001);
+    const r = Math.max(Math.abs(radius), MIN_GEOMETRY_SIZE);
+    const h = Math.max(Math.abs(height), MIN_GEOMETRY_SIZE);
     min = axisName === 'y' ? -h / 2 : -r;
     max = axisName === 'y' ? h / 2 : r;
   } else if (params.isSphere()) {
@@ -827,5 +830,5 @@ function roundedRect(ctx, x, y, width, height, radius) {
 }
 
 function positiveSize(size) {
-  return size.map((v) => Math.max(Math.abs(v), 0.001));
+  return size.map((v) => Math.max(Math.abs(v), MIN_GEOMETRY_SIZE));
 }
