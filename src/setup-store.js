@@ -32,14 +32,7 @@ export function createSetupStore() {
     return root;
   }
 
-  function clear() {
-    root = undefined;
-    scenes = [];
-    byAddress = new Map();
-  }
-
   return {
-    clear,
     setRoot,
     applyUpdate,
     getRoot: () => root,
