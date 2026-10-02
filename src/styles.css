@@ -700,6 +700,7 @@ button.subtle-button.active:hover {
 
   #app {
     height: auto;
+    min-height: 100vh;
     min-height: 100dvh;
     grid-template-columns: 1fr;
     grid-template-rows: 58vh auto;
@@ -708,8 +709,11 @@ button.subtle-button.active:hover {
   }
 
   #app.sidebar-hidden {
+    height: 100vh;
     height: 100dvh;
+    min-height: 100vh;
     min-height: 100dvh;
+    grid-template-rows: 100vh 0;
     grid-template-rows: 100dvh 0;
     overflow: hidden;
   }
