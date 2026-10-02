@@ -357,6 +357,9 @@ button.subtle-button.active:hover {
   --advanced-title-size: 10.5px;
   --disclosure-chevron-size: .54em;
   --disclosure-chevron-stroke: .115em;
+  --section-space: 8px;
+  --section-space-relaxed: calc(var(--section-space) * 1.5);
+  --section-space-compact: calc(var(--section-space) * .5);
 
   margin: 0;
   padding: 0;
@@ -476,7 +479,11 @@ button.subtle-button.active:hover {
 }
 
 .panel-content {
-  padding: 14px 18px 6px;
+  padding: var(--section-space-relaxed) 18px var(--section-space);
+}
+
+.panel-content:has(> .panel-actions:first-child) {
+  padding-top: var(--section-space);
 }
 
 .advanced-panel {
@@ -495,7 +502,7 @@ button.subtle-button.active:hover {
   align-items: center;
   gap: .55em;
   min-height: 30px;
-  padding: 6px 0 5px;
+  padding: var(--section-space-compact) 0;
   border: 0;
   color: #7f899b;
   background: transparent;
@@ -568,8 +575,12 @@ button.subtle-button.active:hover {
 
 .advanced-content {
   display: grid;
-  gap: 8px;
-  padding: 3px 0 0 14px;
+  gap: var(--section-space);
+  padding: var(--section-space-compact) 0 0 14px;
+}
+
+.advanced-panel:last-child[open] > .advanced-content {
+  padding-bottom: var(--section-space-compact);
 }
 
 .advanced-grid {
@@ -631,7 +642,7 @@ button.subtle-button.active:hover {
 .panel-actions {
   display: flex;
   justify-content: flex-end;
-  margin: 0 0 9px;
+  margin: 0 0 var(--section-space);
 }
 
 .text-action {
