@@ -383,6 +383,11 @@ button.subtle-button.active:hover {
   display: none;
 }
 
+.panel-section > summary,
+.advanced-panel > summary {
+  -webkit-tap-highlight-color: transparent;
+}
+
 .panel-section > summary:hover {
   background: rgba(255, 255, 255, .028);
 }
