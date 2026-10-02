@@ -475,7 +475,7 @@ button.subtle-button.active:hover {
 
 .advanced-panel {
   margin-top: 12px;
-  margin-left: 8px;
+  margin-left: 0;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -485,9 +485,9 @@ button.subtle-button.active:hover {
 
 .advanced-panel > summary {
   display: grid;
-  grid-template-columns: 16px auto minmax(14px, 1fr) auto;
+  grid-template-columns: 18px auto minmax(14px, 1fr) auto;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-height: 30px;
   padding: 6px 0 5px;
   border: 0;
@@ -573,7 +573,7 @@ button.subtle-button.active:hover {
 
 .connection-advanced-grid {
   grid-template-columns: 72px minmax(0, 1fr) 112px;
-  align-items: end;
+  align-items: start;
 }
 
 .advanced-panel label {
@@ -584,10 +584,16 @@ button.subtle-button.active:hover {
 
 .advanced-panel input,
 .advanced-panel select {
-  min-height: 31px;
-  padding: 5px 7px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 8px;
   border-radius: 6px;
   font-size: 11px;
+  line-height: 1.2;
+}
+
+.advanced-panel select {
+  line-height: normal;
 }
 
 .advanced-toggle {
