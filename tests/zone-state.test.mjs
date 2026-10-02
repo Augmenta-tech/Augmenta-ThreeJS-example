@@ -71,8 +71,8 @@ test('zone address collection follows the full setup hierarchy', () => {
 });
 
 
-test('zone stream stale grace period stays at 250 ms', () => {
-  assert.equal(ZONE_STREAM_STALE_MS, 250);
+test('zone stream stale grace period stays at 50 ms', () => {
+  assert.equal(ZONE_STREAM_STALE_MS, 50);
 });
 
 test('zone stream stays visible only within the stale grace period', () => {
