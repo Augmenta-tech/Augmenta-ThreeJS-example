@@ -624,7 +624,6 @@ button.subtle-button.active:hover {
   position: sticky;
   top: 0;
   z-index: 3;
-  padding: 13px 18px 12px;
 }
 
 .debug-advanced {
