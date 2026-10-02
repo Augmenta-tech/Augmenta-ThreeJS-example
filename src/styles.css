@@ -476,7 +476,7 @@ button.subtle-button.active:hover {
 }
 
 .panel-content {
-  padding: 0 18px 18px;
+  padding: 8px 18px 10px;
 }
 
 .advanced-panel {
@@ -569,7 +569,7 @@ button.subtle-button.active:hover {
 .advanced-content {
   display: grid;
   gap: 8px;
-  padding: 3px 0 2px 14px;
+  padding: 3px 0 0 14px;
 }
 
 .advanced-grid {
@@ -643,9 +643,31 @@ button.subtle-button.active:hover {
   z-index: 3;
 }
 
-.debug-advanced {
-  margin-top: 0;
-  margin-bottom: 10px;
+.debug-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 7px;
+}
+
+.text-action {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: #8f99aa;
+  background: transparent;
+  font-size: 10.5px;
+  text-decoration: none;
+}
+
+.text-action:hover {
+  color: #c5ccd8;
+  background: transparent;
+}
+
+.text-action:focus-visible {
+  outline: 1px solid #3b4351;
+  outline-offset: 3px;
 }
 
 @media (max-width: 900px), (pointer: coarse) and (max-width: 1100px) {
