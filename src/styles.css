@@ -353,16 +353,20 @@ button.active { border-color: #3f8d68; background: #1c4d36; }
 button.active:hover { background: #245f43; }
 button.subtle-button {
   border-color: transparent;
-  color: var(--accent);
+  color: #9da7b9;
   background: transparent;
   font-size: 12px;
 }
 button.subtle-button:hover,
-button.subtle-button.active,
 button.subtle-button.active:hover {
   border-color: var(--accent-border);
   color: var(--accent-hover);
   background: var(--accent-focus);
+}
+button.subtle-button.active {
+  border-color: transparent;
+  color: #9da7b9;
+  background: transparent;
 }
 .status { justify-self: end; min-width: 76px; padding: 4px 8px; border-radius: 999px; text-align: center; font-size: 10px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
 .status.idle { color: #aeb6c5; background: #272d38; }
@@ -741,7 +745,7 @@ button.subtle-button.active:hover {
   padding: 0;
   border: 0;
   border-radius: 0;
-  color: var(--accent);
+  color: #9da7b9;
   background: transparent;
   font-size: 10.5px;
   text-decoration: none;
