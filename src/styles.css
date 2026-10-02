@@ -22,6 +22,8 @@ button, input, select { font: inherit; }
   --sidebar-width: 430px;
   --sidebar-transition-duration: 220ms;
   --sidebar-handle-fade-duration: 120ms;
+  --sidebar-handle-width: 32px;
+  --sidebar-handle-inline-padding: 4px;
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -278,10 +280,10 @@ button, input, select { font: inherit; }
   z-index: 20;
   top: 50%;
   right: var(--sidebar-width);
-  width: 26px;
+  width: var(--sidebar-handle-width);
   height: 64px;
   min-height: 64px;
-  padding: 0;
+  padding: 0 var(--sidebar-handle-inline-padding);
   transform: translateY(-50%);
   border-right: 0;
   border-radius: 8px 0 0 8px;
@@ -351,24 +353,16 @@ button.active { border-color: #3f8d68; background: #1c4d36; }
 button.active:hover { background: #245f43; }
 button.subtle-button {
   border-color: transparent;
-  color: #8b95a6;
+  color: var(--accent);
   background: transparent;
   font-size: 12px;
 }
-button.subtle-button:hover {
-  border-color: #2b313d;
-  color: #c7cfdb;
-  background: #171b23;
-}
-button.subtle-button.active {
-  border-color: rgba(77, 151, 111, .28);
-  color: #8ec8a8;
-  background: rgba(28, 77, 54, .28);
-}
+button.subtle-button:hover,
+button.subtle-button.active,
 button.subtle-button.active:hover {
-  border-color: rgba(77, 151, 111, .42);
-  color: #a8d9bd;
-  background: rgba(28, 77, 54, .42);
+  border-color: var(--accent-border);
+  color: var(--accent-hover);
+  background: var(--accent-focus);
 }
 .status { justify-self: end; min-width: 76px; padding: 4px 8px; border-radius: 999px; text-align: center; font-size: 10px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
 .status.idle { color: #aeb6c5; background: #272d38; }
@@ -747,19 +741,19 @@ button.subtle-button.active:hover {
   padding: 0;
   border: 0;
   border-radius: 0;
-  color: #8f99aa;
+  color: var(--accent);
   background: transparent;
   font-size: 10.5px;
   text-decoration: none;
 }
 
 .text-action:hover {
-  color: #c5ccd8;
+  color: var(--accent-hover);
   background: transparent;
 }
 
 .text-action:focus-visible {
-  outline: 1px solid #3b4351;
+  outline: 1px solid var(--accent);
   outline-offset: 3px;
 }
 
