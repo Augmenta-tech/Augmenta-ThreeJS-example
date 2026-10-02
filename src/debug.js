@@ -2,6 +2,7 @@ import { ClusterState, ShapeType, ZonePropertyType } from 'augmenta-client-sdk';
 import { speedFromVelocity } from './motion.js';
 
 const DEBUG_RENDER_INTERVAL_MS = 250;
+const DEBUG_INTERACTION_SETTLE_MS = DEBUG_RENDER_INTERVAL_MS * 2;
 const INTENSITY_SAMPLE_LIMIT = 2048;
 
 export function createDebugPanel(summary, content) {
@@ -10,6 +11,17 @@ export function createDebugPanel(summary, content) {
   let cachedControlHtml = '';
   let pendingOpenSections;
   let pendingScrollTop;
+  let interactionHoldUntil = 0;
+
+  function holdInteraction() {
+    interactionHoldUntil = performance.now() + DEBUG_INTERACTION_SETTLE_MS;
+  }
+
+  content.addEventListener('pointerdown', holdInteraction, { passive: true });
+  content.addEventListener('click', holdInteraction);
+  content.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') holdInteraction();
+  });
 
   function render(
     frame,
@@ -30,7 +42,7 @@ export function createDebugPanel(summary, content) {
       ? `${frame.getObjectCount()} objects · ${frame.getZoneEventCount()} zones · ${fps} fps`
       : 'Waiting for tracking data';
 
-    if (!renderContent) return;
+    if (!renderContent || (!force && now < interactionHoldUntil)) return;
 
     const blocks = [];
     if (frame) {
