@@ -399,7 +399,7 @@ function zoneGeometry(params) {
 
     case ShapeType.Sphere:
       return new THREE.SphereGeometry(
-        Math.max(Math.abs(params.getSphereShapeParameters().radius), 0.001),
+        Math.max(Math.abs(params.getSphereShapeParameters().radius), MIN_GEOMETRY_SIZE),
         SPHERE_WIDTH_SEGMENTS,
         SPHERE_HEIGHT_SEGMENTS
       );
@@ -452,7 +452,7 @@ function createZoneOutline(params, sourceGeometry, color) {
     );
   } else if (params.isSphere()) {
     guidePositions = sphereEquatorPositions(
-      Math.max(Math.abs(params.getSphereShapeParameters().radius), 0.001)
+      Math.max(Math.abs(params.getSphereShapeParameters().radius), MIN_GEOMETRY_SIZE)
     );
   }
 
@@ -662,7 +662,7 @@ function createRoundZoneSlider(params, sourceGeometry) {
     min = axisName === 'y' ? -h / 2 : -r;
     max = axisName === 'y' ? h / 2 : r;
   } else if (params.isSphere()) {
-    const radius = Math.max(Math.abs(params.getSphereShapeParameters().radius), 0.001);
+    const radius = Math.max(Math.abs(params.getSphereShapeParameters().radius), MIN_GEOMETRY_SIZE);
     min = -radius;
     max = radius;
   }
