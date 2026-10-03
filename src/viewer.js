@@ -8,7 +8,7 @@ import { VIEW_TRANSITION, viewTransitionEase } from './view-transition.js';
 
 const FLOOR_Y = 0;
 const PANEL_INSET_ANIMATION_DURATION_MS = 220;
-const CAMERA_VIEW_TRANSITION_MS = 550;
+const ORTHOGRAPHIC_ENTRY_TRANSITION_MS = 550;
 const MIN_GEOMETRY_SIZE = 0.001;
 const MIN_ARROW_LENGTH_M = 0.001;
 const MIN_VISIBLE_SPEED_MPS = 0.001;
@@ -116,7 +116,7 @@ export function createViewer(host) {
   let orthoHalfWidth = 4;
   let rightInset = 0;
   let insetAnimationFrame;
-  let cameraTransition;
+  let cameraTransitionFrame;
   let cameraInteractionArmed = false;
   let cameraInteractionActive = false;
   let cameraChangeHandler;
@@ -235,12 +235,8 @@ export function createViewer(host) {
   }
 
   function cancelCameraTransition() {
-    if (!cameraTransition) return;
-
-    if (cameraTransition.frame) cancelAnimationFrame(cameraTransition.frame);
-    const { onComplete } = cameraTransition;
-    cameraTransition = undefined;
-    onComplete?.(false);
+    if (cameraTransitionFrame) cancelAnimationFrame(cameraTransitionFrame);
+    cameraTransitionFrame = undefined;
   }
 
   function configureProjectionControls() {
@@ -274,10 +270,9 @@ export function createViewer(host) {
     target,
     {
       mode,
-      duration = CAMERA_VIEW_TRANSITION_MS,
+      duration = ORTHOGRAPHIC_ENTRY_TRANSITION_MS,
       path = 'orbit',
-      easing = easeOutQuint,
-      onComplete
+      easing = easeOutQuint
     }
   ) {
     cancelCameraTransition();
@@ -302,8 +297,6 @@ export function createViewer(host) {
       ? shortestAngleDelta(startSpherical.theta, endSpherical.theta)
       : 0;
 
-    const transition = { frame: undefined, onComplete };
-    cameraTransition = transition;
     switchCamera(mode);
     camera.position.copy(startPosition);
     controls.target.copy(startTarget);
@@ -314,16 +307,13 @@ export function createViewer(host) {
       camera.position.copy(position);
       controls.target.copy(target);
       controls.update();
-      cameraTransition = undefined;
+      cameraTransitionFrame = undefined;
       notifyViewState();
-      onComplete?.(true);
       return;
     }
 
     const startedAt = performance.now();
     const tick = (now) => {
-      if (cameraTransition !== transition) return;
-
       const t = Math.min((now - startedAt) / duration, 1);
       const progress = easing(t);
       animatedTarget.lerpVectors(startTarget, target, progress);
@@ -351,31 +341,25 @@ export function createViewer(host) {
       notifyViewState();
 
       if (t < 1) {
-        transition.frame = requestAnimationFrame(tick);
+        cameraTransitionFrame = requestAnimationFrame(tick);
         return;
       }
 
-      transition.frame = undefined;
+      cameraTransitionFrame = undefined;
       camera.position.copy(position);
       controls.target.copy(target);
       controls.update();
-      cameraTransition = undefined;
       notifyViewState();
-      onComplete?.(true);
     };
 
-    transition.frame = requestAnimationFrame(tick);
+    cameraTransitionFrame = requestAnimationFrame(tick);
   }
 
-  function returnToPerspective({
-    duration = VIEW_TRANSITION.durationMs,
-    onComplete
-  } = {}) {
+  function returnToPerspective() {
     activeView = PERSPECTIVE_VIEW_ID;
 
-    if (camera.isPerspectiveCamera && !cameraTransition) {
+    if (camera.isPerspectiveCamera && !cameraTransitionFrame) {
       rememberPerspectiveView();
-      onComplete?.(true);
       notifyViewState();
       return false;
     }
@@ -385,27 +369,20 @@ export function createViewer(host) {
       perspectiveTarget.clone(),
       {
         mode: 'perspective',
-        duration,
+        duration: VIEW_TRANSITION.durationMs,
         path: 'direct',
-        easing: viewTransitionEase,
-        onComplete
+        easing: viewTransitionEase
       }
     );
     return true;
   }
 
-  function leaveOrthographicFromCurrentView({ onComplete } = {}) {
-    if (!camera.isOrthographicCamera) {
-      onComplete?.(true);
-      return false;
-    }
+  function leaveOrthographicFromCurrentView() {
+    if (!camera.isOrthographicCamera) return false;
 
     const target = controls.target.clone();
     const offset = camera.position.clone().sub(target);
-    if (offset.lengthSq() < MIN_CAMERA_OFFSET_SQ) {
-      onComplete?.(false);
-      return false;
-    }
+    if (offset.lengthSq() < MIN_CAMERA_OFFSET_SQ) return false;
 
     const direction = offset.normalize();
     const halfHeight = (orthoHalfWidth / Math.max(orthographicCamera.zoom, 1e-6))
@@ -427,11 +404,10 @@ export function createViewer(host) {
     controls.update();
     rememberPerspectiveView();
     notifyViewState();
-    onComplete?.(true);
     return true;
   }
 
-  function setOrthographicView(view, { duration = CAMERA_VIEW_TRANSITION_MS } = {}) {
+  function setOrthographicView(view, { duration = ORTHOGRAPHIC_ENTRY_TRANSITION_MS } = {}) {
     if (!isOrthographicView(view)) return false;
 
     // Entering an orthographic face view must not destroy the perspective
@@ -456,7 +432,7 @@ export function createViewer(host) {
   function orbitCamera(deltaAzimuth, deltaPolar) {
     if (!Number.isFinite(deltaAzimuth) || !Number.isFinite(deltaPolar)) return false;
     if (deltaAzimuth === 0 && deltaPolar === 0) return true;
-    if (cameraTransition || camera.isOrthographicCamera) return false;
+    if (cameraTransitionFrame || camera.isOrthographicCamera) return false;
 
     cameraOffset.copy(camera.position).sub(controls.target);
     if (cameraOffset.lengthSq() < MIN_CAMERA_OFFSET_SQ) return false;
@@ -537,7 +513,7 @@ export function createViewer(host) {
     // An Ortho -> perspective transition already owns the camera pose. Do not
     // snapshot an intermediate animation frame as the new perspective history
     // when the pointer is released before that transition has finished.
-    if (wasActive && !cameraTransition) syncManualViewState();
+    if (wasActive && !cameraTransitionFrame) syncManualViewState();
     interactionStartDirection.set(0, 0, 0);
     if (wasActive) notifyViewState();
   }
@@ -548,7 +524,7 @@ export function createViewer(host) {
     // A pointer-down only arms the interaction. The ViewCube becomes visible
     // only after OrbitControls reports an actual camera change, so a simple
     // click with no movement never flashes the folded ViewCube.
-    if (!cameraTransition) {
+    if (!cameraTransitionFrame) {
       if (cameraInteractionArmed) cameraInteractionActive = true;
       syncManualViewState();
       notifyViewState();
