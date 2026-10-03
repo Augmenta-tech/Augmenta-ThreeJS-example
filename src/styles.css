@@ -63,10 +63,11 @@ button, input, select { font: inherit; }
   --view-cube-fade-out-duration: 440ms;
   --view-cube-opacity-duration: var(--view-cube-fade-out-duration);
   --view-cube-panel-width: 224px;
+  --view-cube-header-height: 24px;
   --view-cube-title-height: 12px;
   --view-cube-scene-width: 116px;
   --view-cube-scene-height: 94px;
-  --view-cube-ortho-scene-height: 74px;
+  --view-cube-ortho-scene-height: 90px;
   --view-cube-action-height: 26px;
   --view-cube-action-gap: 5px;
   --view-cube-panel-gap: 6px;
@@ -91,7 +92,10 @@ button, input, select { font: inherit; }
 
 .view-cube.controls-visible {
   width: var(--view-cube-panel-width);
-  grid-template-rows: var(--view-cube-ortho-scene-height) auto;
+  grid-template-rows:
+    var(--view-cube-header-height)
+    var(--view-cube-ortho-scene-height)
+    auto;
   row-gap: var(--view-cube-panel-gap);
   padding: var(--view-cube-panel-gap);
 }
@@ -230,14 +234,16 @@ button, input, select { font: inherit; }
 .view-cube-title {
   position: absolute;
   z-index: 2;
-  top: calc(var(--view-cube-panel-gap) + 6px);
+  top: var(--view-cube-panel-gap);
   left: var(--view-cube-panel-gap);
-  height: var(--view-cube-title-height);
+  height: var(--view-cube-header-height);
   margin: 0;
+  display: flex;
+  align-items: center;
   color: rgba(143, 153, 170, .5);
   font-size: 9px;
   font-weight: 600;
-  line-height: var(--view-cube-title-height);
+  line-height: 1;
   letter-spacing: .08em;
   text-align: left;
   text-transform: uppercase;
@@ -330,7 +336,7 @@ button, input, select { font: inherit; }
   width: 100%;
   height: var(--view-cube-ortho-scene-height);
   min-height: 0;
-  place-items: start center;
+  place-items: center;
 }
 
 .view-cube.controls-visible .view-cube-actions {
@@ -372,10 +378,12 @@ button, input, select { font: inherit; }
   background: var(--accent-focus);
 }
 
-.view-cube-actions button.active {
+.view-cube-actions button.active,
+.view-cube-actions button.active:hover {
   color: #f5f7fb;
   border-color: var(--accent);
   background: var(--accent-strong);
+  opacity: 1;
 }
 
 .view-cube button:focus-visible {
@@ -1163,9 +1171,10 @@ button.subtle-button.active {
   .view-cube,
   #app.sidebar-hidden .view-cube {
     --view-cube-panel-width: 180px;
+    --view-cube-header-height: 24px;
     --view-cube-scene-width: 94px;
     --view-cube-scene-height: 74px;
-    --view-cube-ortho-scene-height: 58px;
+    --view-cube-ortho-scene-height: 72px;
     --view-cube-action-height: 22px;
     --view-cube-panel-gap: 5px;
     top: 10px;
@@ -1177,7 +1186,10 @@ button.subtle-button.active {
   .view-cube.controls-visible,
   #app.sidebar-hidden .view-cube.controls-visible {
     width: var(--view-cube-panel-width);
-    grid-template-rows: var(--view-cube-ortho-scene-height) auto;
+    grid-template-rows:
+      var(--view-cube-header-height)
+      var(--view-cube-ortho-scene-height)
+      auto;
     row-gap: var(--view-cube-panel-gap);
     padding: var(--view-cube-panel-gap);
   }
