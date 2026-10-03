@@ -4,11 +4,11 @@ import { ClusterState } from 'augmenta-client-sdk';
 import { speedFromVelocity } from './motion.js';
 import { createZoneRenderer } from './zones.js';
 import { collectZoneAddresses } from './zone-state.js';
+import { VIEW_TRANSITION_MS, cubicBezierEase } from './view-transition.js';
 
 const FLOOR_Y = 0;
 const PANEL_INSET_ANIMATION_DURATION_MS = 220;
 const CAMERA_VIEW_TRANSITION_MS = 550;
-const VIEW_CUBE_TRANSITION_BEZIER = Object.freeze([0.2, 0.8, 0.2, 1]);
 const MIN_GEOMETRY_SIZE = 0.001;
 const MIN_ARROW_LENGTH_M = 0.001;
 const MIN_VISIBLE_SPEED_MPS = 0.001;
@@ -119,6 +119,7 @@ export function createViewer(host) {
   let cameraTransitionFrame;
   let cameraTransitionActive = false;
   let cameraInteractionActive = false;
+  let orthographicOrbitExitPending = false;
   let cameraChangeHandler;
   let viewStateChangeHandler;
   let cameraUserControlled = false;
@@ -316,7 +317,7 @@ export function createViewer(host) {
     const tick = (now) => {
       const t = Math.min((now - startedAt) / duration, 1);
       const progress = easing === 'view-cube'
-        ? cubicBezierEase(t, ...VIEW_CUBE_TRANSITION_BEZIER)
+        ? cubicBezierEase(t)
         : 1 - Math.pow(1 - t, 5);
       animatedTarget.lerpVectors(startTarget, target, progress);
 
@@ -439,13 +440,14 @@ export function createViewer(host) {
     if (cameraOffset.lengthSq() < MIN_CAMERA_OFFSET_SQ) return;
     cameraOffset.normalize();
 
-    // Pan and zoom preserve direction and stay in Ortho. Any actual orbit
-    // changes direction relative to the interaction start and exits Ortho.
+    // Pan and zoom preserve direction and stay in Ortho. Mark a real orbit
+    // during the drag, then animate back to the remembered perspective pose
+    // when the interaction ends so the projection change remains visible.
     if (
       interactionStartDirection.lengthSq() >= MIN_CAMERA_OFFSET_SQ
       && cameraOffset.dot(interactionStartDirection) < ORTHOGRAPHIC_VIEW_ALIGNMENT_DOT
     ) {
-      leaveOrthographicForManualOrbit();
+      orthographicOrbitExitPending = true;
     }
   }
 
@@ -454,6 +456,7 @@ export function createViewer(host) {
     cameraInteractionActive = true;
     cameraUserControlled = true;
 
+    orthographicOrbitExitPending = false;
     interactionStartDirection.set(0, 0, 0);
     if (camera.isOrthographicCamera) {
       cameraOffset.copy(camera.position).sub(controls.target);
@@ -470,6 +473,14 @@ export function createViewer(host) {
     cameraInteractionActive = false;
     syncManualViewState();
     interactionStartDirection.set(0, 0, 0);
+
+    if (orthographicOrbitExitPending && camera.isOrthographicCamera) {
+      orthographicOrbitExitPending = false;
+      setView(ISO_VIEW_ID, VIEW_TRANSITION_MS);
+      return;
+    }
+
+    orthographicOrbitExitPending = false;
     notifyViewState();
   }
 
@@ -1021,30 +1032,6 @@ function normalizeDegrees(value) {
 
 function shortestAngleDelta(from, to) {
   return THREE.MathUtils.euclideanModulo(to - from + Math.PI, Math.PI * 2) - Math.PI;
-}
-
-function cubicBezierEase(progress, x1, y1, x2, y2) {
-  if (progress <= 0 || progress >= 1) return progress;
-
-  let lower = 0;
-  let upper = 1;
-  let parameter = progress;
-
-  // CSS cubic-bezier easing is defined by x->y, so invert x numerically.
-  for (let i = 0; i < 12; i += 1) {
-    parameter = (lower + upper) / 2;
-    if (cubicBezierCoordinate(parameter, x1, x2) < progress) lower = parameter;
-    else upper = parameter;
-  }
-
-  return cubicBezierCoordinate(parameter, y1, y2);
-}
-
-function cubicBezierCoordinate(t, control1, control2) {
-  const inverse = 1 - t;
-  return 3 * inverse * inverse * t * control1
-    + 3 * inverse * t * t * control2
-    + t * t * t;
 }
 
 function validVector3(value) {
