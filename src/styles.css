@@ -85,6 +85,9 @@ button, input, select { font: inherit; }
   height: 224px;
   min-height: 224px;
   aspect-ratio: 1 / 1;
+  box-sizing: border-box;
+  grid-template-rows: 18px minmax(0, 1fr) auto;
+  row-gap: 6px;
 }
 
 .view-cube::before {
@@ -243,7 +246,8 @@ button, input, select { font: inherit; }
 
 .view-cube.controls-visible .view-cube-title {
   height: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 0;
+  align-self: center;
   opacity: 1;
 }
 
@@ -288,10 +292,9 @@ button, input, select { font: inherit; }
   width: 100%;
   max-height: 0;
   margin-top: 0;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: center;
-  justify-content: center;
   gap: 5px;
   overflow: hidden;
   opacity: 0;
@@ -303,17 +306,22 @@ button, input, select { font: inherit; }
     opacity 140ms ease;
 }
 
+.view-cube.controls-visible .view-cube-scene {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
 .view-cube.controls-visible .view-cube-actions {
-  max-height: 58px;
-  margin-top: 10px;
+  max-height: 57px;
+  margin-top: 0;
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
 }
 
 .view-cube-actions button {
-  flex: 0 0 auto;
-  width: auto;
+  width: 100%;
   min-width: 0;
   min-height: 0;
   height: 26px;
@@ -1127,6 +1135,8 @@ button.subtle-button.active {
     width: 180px;
     height: 180px;
     min-height: 180px;
+    grid-template-rows: 16px minmax(0, 1fr) auto;
+    row-gap: 4px;
   }
   .view-cube-scene {
     width: 94px;
