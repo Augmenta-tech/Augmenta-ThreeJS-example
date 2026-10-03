@@ -15,6 +15,8 @@ const PERSPECTIVE_MIN_POLAR_ANGLE = THREE.MathUtils.degToRad(2);
 const PERSPECTIVE_MAX_POLAR_ANGLE = THREE.MathUtils.degToRad(178.5);
 const ORTHOGRAPHIC_MIN_POLAR_ANGLE = 0.001;
 const ORTHOGRAPHIC_MAX_POLAR_ANGLE = Math.PI - 0.001;
+const CAMERA_NEAR_PLANE = 0.02;
+const CAMERA_FAR_PLANE = 1000;
 const MIN_CAMERA_DISTANCE = 0.05;
 const MAX_CAMERA_DISTANCE = 500;
 const MIN_CAMERA_OFFSET_SQ = 1e-8;
@@ -59,8 +61,20 @@ export function createViewer(host) {
   scene.background = new THREE.Color(0x0c0f14);
   scene.fog = new THREE.FogExp2(0x0c0f14, 0.014);
 
-  const perspectiveCamera = new THREE.PerspectiveCamera(48, 1, 0.02, 500);
-  const orthographicCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.02, 500);
+  const perspectiveCamera = new THREE.PerspectiveCamera(
+    48,
+    1,
+    CAMERA_NEAR_PLANE,
+    CAMERA_FAR_PLANE
+  );
+  const orthographicCamera = new THREE.OrthographicCamera(
+    -1,
+    1,
+    1,
+    -1,
+    CAMERA_NEAR_PLANE,
+    CAMERA_FAR_PLANE
+  );
   let camera = perspectiveCamera;
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
