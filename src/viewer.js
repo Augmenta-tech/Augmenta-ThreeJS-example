@@ -19,6 +19,10 @@ const ORTHOGRAPHIC_MIN_POLAR_ANGLE = 0.001;
 const ORTHOGRAPHIC_MAX_POLAR_ANGLE = Math.PI - 0.001;
 const MIN_CAMERA_OFFSET_SQ = 1e-8;
 const ORTHOGRAPHIC_VIEW_ALIGNMENT_DOT = 0.99999;
+const DEFAULT_ORTHO_HALF_WIDTH = 4;
+const MIN_CAMERA_ZOOM = 1e-6;
+const MIN_PROJECTION_ASPECT = 0.1;
+const MIN_VIEWPORT_AFTER_INSET_PX = 80;
 const PERSPECTIVE_VIEW_ID = 'home'; // Persisted value kept for backward compatibility.
 const VIEW_DIRECTIONS = Object.freeze({
   // Three.js right-handed world axes, matching THREE.AxesHelper.
@@ -112,8 +116,8 @@ export function createViewer(host) {
   const cameraOffset = new THREE.Vector3();
   const cameraSpherical = new THREE.Spherical();
   const interactionStartDirection = new THREE.Vector3();
-  let homeOrthoHalfWidth = 4;
-  let orthoHalfWidth = 4;
+  let homeOrthoHalfWidth = DEFAULT_ORTHO_HALF_WIDTH;
+  let orthoHalfWidth = DEFAULT_ORTHO_HALF_WIDTH;
   let rightInset = 0;
   let insetAnimationFrame;
   let cameraTransitionFrame;
@@ -392,7 +396,7 @@ export function createViewer(host) {
     const distance = offset.length();
     if (distance * distance < MIN_CAMERA_OFFSET_SQ) return false;
 
-    const orthoHalfHeight = (orthoHalfWidth / Math.max(orthographicCamera.zoom, 1e-6))
+    const orthoHalfHeight = (orthoHalfWidth / Math.max(orthographicCamera.zoom, MIN_CAMERA_ZOOM))
       / projectionMetrics().aspect;
     const perspectiveHalfAngle = THREE.MathUtils.degToRad(perspectiveCamera.fov) / 2;
 
@@ -400,8 +404,8 @@ export function createViewer(host) {
     // Preserve that radius/target and match the perspective scale optically,
     // so leaving Ortho does not move the camera in or out.
     perspectiveCamera.zoom = Math.max(
-      distance * Math.tan(perspectiveHalfAngle) / Math.max(orthoHalfHeight, 1e-6),
-      1e-6
+      distance * Math.tan(perspectiveHalfAngle) / Math.max(orthoHalfHeight, MIN_CAMERA_ZOOM),
+      MIN_CAMERA_ZOOM
     );
 
     cancelCameraTransition();
@@ -558,7 +562,7 @@ export function createViewer(host) {
   function projectionMetrics() {
     const width = Math.max(host.clientWidth, 1);
     const height = Math.max(host.clientHeight, 1);
-    const hasInset = rightInset > 0 && width > rightInset + 80;
+    const hasInset = rightInset > 0 && width > rightInset + MIN_VIEWPORT_AFTER_INSET_PX;
     const virtualWidth = hasInset ? width + rightInset : width;
 
     return {
@@ -566,7 +570,7 @@ export function createViewer(host) {
       height,
       hasInset,
       virtualWidth,
-      aspect: Math.max(virtualWidth / height, 0.1)
+      aspect: Math.max(virtualWidth / height, MIN_PROJECTION_ASPECT)
     };
   }
 
@@ -1017,8 +1021,8 @@ export function createViewer(host) {
       perspectivePosition.copy(homePosition);
       perspectiveTarget.copy(homeTarget);
     }
-    homeOrthoHalfWidth = 4;
-    orthoHalfWidth = 4;
+    homeOrthoHalfWidth = DEFAULT_ORTHO_HALF_WIDTH;
+    orthoHalfWidth = DEFAULT_ORTHO_HALF_WIDTH;
   }
 
   function disposeView(view) {
