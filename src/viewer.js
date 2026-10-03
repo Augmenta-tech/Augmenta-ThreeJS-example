@@ -16,6 +16,7 @@ const PERSPECTIVE_MIN_POLAR_ANGLE = THREE.MathUtils.degToRad(2);
 const PERSPECTIVE_MAX_POLAR_ANGLE = THREE.MathUtils.degToRad(88.5);
 const ORTHOGRAPHIC_MIN_POLAR_ANGLE = 0.001;
 const ORTHOGRAPHIC_MAX_POLAR_ANGLE = Math.PI - 0.001;
+const ISO_VIEW_ID = 'home'; // Kept for persisted-state compatibility.
 const VIEW_DIRECTIONS = Object.freeze({
   // Three.js right-handed world axes, matching THREE.AxesHelper.
   front: new THREE.Vector3(0, 0, 1),
@@ -25,7 +26,6 @@ const VIEW_DIRECTIONS = Object.freeze({
   top: new THREE.Vector3(0, 1, 0),
   bottom: new THREE.Vector3(0, -1, 0)
 });
-const VIEW_IDS = new Set(['home', ...Object.keys(VIEW_DIRECTIONS)]);
 const GHOST_COLOR = new THREE.Color(0x8a909b);
 const LOOK_AT_MARKER_OPACITY = 0.58;
 const LOOK_AT_MARKER_GHOST_OPACITY = 0.24;
@@ -117,7 +117,7 @@ export function createViewer(host) {
   let cameraChangeHandler;
   let viewStateChangeHandler;
   let cameraUserControlled = false;
-  let activeView = 'home';
+  let activeView = ISO_VIEW_ID;
 
   function getCameraView() {
     return {
@@ -158,9 +158,11 @@ export function createViewer(host) {
       orthographicCamera.zoom = view.zoom;
     }
 
-    activeView = view?.mode === 'orthographic'
-      ? (VIEW_DIRECTIONS[view?.activeView] ? view.activeView : 'free')
-      : 'home';
+    activeView = view?.mode === 'orthographic' && isOrthographicView(view?.activeView)
+      ? view.activeView
+      : view?.mode === 'orthographic'
+        ? 'free'
+        : ISO_VIEW_ID;
 
     switchCamera(view?.mode === 'orthographic' ? 'orthographic' : 'perspective');
     camera.position.fromArray(position);
@@ -245,7 +247,6 @@ export function createViewer(host) {
     controls.object = camera;
     configureProjectionControls();
     updateCameraProjection();
-    controls.update();
   }
 
   function animateCameraTo(position, target, mode, duration = CAMERA_VIEW_TRANSITION_MS) {
@@ -328,13 +329,12 @@ export function createViewer(host) {
   }
 
   function setView(view, duration = CAMERA_VIEW_TRANSITION_MS) {
-    if (!VIEW_IDS.has(view)) return false;
-
-    if (view === 'home') {
-      activeView = 'home';
+    if (view === ISO_VIEW_ID) {
+      activeView = ISO_VIEW_ID;
       animateCameraTo(isoPosition.clone(), isoTarget.clone(), 'perspective', duration);
       return true;
     }
+    if (!isOrthographicView(view)) return false;
 
     // Entering an orthographic face view must not destroy the perspective
     // composition the user was working in. ISO is a projection mode/history,
@@ -372,7 +372,7 @@ export function createViewer(host) {
     cameraOffset.setFromSpherical(cameraSpherical);
     camera.position.copy(controls.target).add(cameraOffset);
     cameraUserControlled = true;
-    activeView = camera.isPerspectiveCamera ? 'home' : 'free';
+    activeView = camera.isPerspectiveCamera ? ISO_VIEW_ID : 'free';
     controls.update();
     return true;
   }
@@ -385,7 +385,7 @@ export function createViewer(host) {
 
   function syncManualViewState() {
     if (camera.isPerspectiveCamera) {
-      activeView = 'home';
+      activeView = ISO_VIEW_ID;
       rememberIsoView();
       return;
     }
@@ -422,7 +422,7 @@ export function createViewer(host) {
   function resetCamera() {
     cancelCameraTransition();
     cameraUserControlled = false;
-    activeView = 'home';
+    activeView = ISO_VIEW_ID;
     switchCamera('perspective');
     camera.position.copy(homePosition);
     controls.target.copy(homeTarget);
@@ -940,6 +940,10 @@ export function createViewer(host) {
     setViewStateChangeHandler,
     setVisibility
   };
+}
+
+function isOrthographicView(view) {
+  return Object.hasOwn(VIEW_DIRECTIONS, view);
 }
 
 function normalizeDegrees(value) {

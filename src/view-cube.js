@@ -16,6 +16,8 @@ export function createViewCube(root, viewer) {
   let dragLastY = 0;
   let dragMoved = false;
   let suppressNextClick = false;
+  let renderedActiveView = null;
+  let renderedProjection = '';
 
   function render(state = {}) {
     if (cube && typeof state.cubeTransform === 'string') {
@@ -26,12 +28,20 @@ export function createViewCube(root, viewer) {
     }
 
     const activeView = viewIds.has(state.activeView) ? state.activeView : undefined;
-    for (const button of buttons) {
-      button.classList.toggle('active', button.dataset.view === activeView);
-      button.setAttribute('aria-pressed', String(button.dataset.view === activeView));
+    if (activeView !== renderedActiveView) {
+      for (const button of buttons) {
+        const active = button.dataset.view === activeView;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      }
+      renderedActiveView = activeView;
     }
 
-    root.dataset.projection = state.mode === 'orthographic' ? 'orthographic' : 'perspective';
+    const projection = state.mode === 'orthographic' ? 'orthographic' : 'perspective';
+    if (projection !== renderedProjection) {
+      root.dataset.projection = projection;
+      renderedProjection = projection;
+    }
   }
 
   scene?.addEventListener('pointerdown', (event) => {
