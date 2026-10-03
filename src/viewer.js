@@ -117,6 +117,7 @@ export function createViewer(host) {
   let rightInset = 0;
   let insetAnimationFrame;
   let cameraTransition;
+  let cameraInteractionArmed = false;
   let cameraInteractionActive = false;
   let cameraChangeHandler;
   let viewStateChangeHandler;
@@ -487,7 +488,7 @@ export function createViewer(host) {
 
   function beginCameraInteraction() {
     cancelCameraTransition();
-    cameraInteractionActive = true;
+    cameraInteractionArmed = true;
     cameraUserControlled = true;
 
     interactionStartDirection.set(0, 0, 0);
@@ -497,24 +498,26 @@ export function createViewer(host) {
         interactionStartDirection.copy(cameraOffset).normalize();
       }
     }
-
-    notifyViewState();
   }
 
   function endCameraInteraction() {
-    if (!cameraInteractionActive) return;
+    const wasActive = cameraInteractionActive;
+    cameraInteractionArmed = false;
     cameraInteractionActive = false;
-    syncManualViewState();
+
+    if (wasActive) syncManualViewState();
     interactionStartDirection.set(0, 0, 0);
-    notifyViewState();
+    if (wasActive) notifyViewState();
   }
 
   controls.addEventListener('start', beginCameraInteraction);
   controls.addEventListener('end', endCameraInteraction);
   controls.addEventListener('change', () => {
-    // Programmatic camera transitions emit ViewCube state explicitly on every
-    // animation frame. Manual movement updates selection and perspective history here.
+    // A pointer-down only arms the interaction. The ViewCube becomes visible
+    // only after OrbitControls reports an actual camera change, so a simple
+    // click with no movement never flashes the folded ViewCube.
     if (!cameraTransition) {
+      if (cameraInteractionArmed) cameraInteractionActive = true;
       syncManualViewState();
       notifyViewState();
     }
@@ -523,6 +526,7 @@ export function createViewer(host) {
 
   function resetCamera() {
     cancelCameraTransition();
+    cameraInteractionArmed = false;
     cameraInteractionActive = false;
     cameraUserControlled = false;
     activeView = PERSPECTIVE_VIEW_ID;
