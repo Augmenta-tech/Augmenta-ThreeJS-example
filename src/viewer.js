@@ -118,7 +118,6 @@ export function createViewer(host) {
   let insetAnimationFrame;
   let cameraTransition;
   let cameraInteractionActive = false;
-  let orthographicOrbitExitPending = false;
   let cameraChangeHandler;
   let viewStateChangeHandler;
   let cameraUserControlled = false;
@@ -416,10 +415,28 @@ export function createViewer(host) {
     return true;
   }
 
+  function exitOrthographicForOrbit() {
+    if (!camera.isOrthographicCamera) return false;
+
+    cancelCameraTransition();
+    activeView = PERSPECTIVE_VIEW_ID;
+    switchCamera('perspective');
+    cameraUserControlled = true;
+    rememberPerspectiveView();
+    controls.update();
+    notifyViewState();
+    return true;
+  }
+
   function orbitCamera(deltaAzimuth, deltaPolar) {
     if (!Number.isFinite(deltaAzimuth) || !Number.isFinite(deltaPolar)) return false;
     if (deltaAzimuth === 0 && deltaPolar === 0) return true;
-    if (cameraTransition || camera.isOrthographicCamera) return false;
+    if (cameraTransition) return false;
+
+    // A drag out of Ortho keeps the camera exactly where the drag reached it;
+    // only the projection changes. The remembered pre-Ortho perspective pose
+    // is reserved for the explicit close button.
+    exitOrthographicForOrbit();
 
     cameraOffset.copy(camera.position).sub(controls.target);
     if (cameraOffset.lengthSq() < MIN_CAMERA_OFFSET_SQ) return false;
@@ -457,14 +474,14 @@ export function createViewer(host) {
     if (cameraOffset.lengthSq() < MIN_CAMERA_OFFSET_SQ) return;
     cameraOffset.normalize();
 
-    // Pan and zoom preserve direction and stay in Ortho. Mark a real orbit
-    // during the drag, then animate back to the remembered perspective pose
-    // when the interaction ends so the projection change remains visible.
+    // Pan and zoom preserve direction and stay in Ortho. Once an actual orbit
+    // starts, switch projection in place so the drag continues from the camera
+    // pose the user reached instead of restoring the pre-Ortho perspective pose.
     if (
       interactionStartDirection.lengthSq() >= MIN_CAMERA_OFFSET_SQ
       && cameraOffset.dot(interactionStartDirection) < ORTHOGRAPHIC_VIEW_ALIGNMENT_DOT
     ) {
-      orthographicOrbitExitPending = true;
+      exitOrthographicForOrbit();
     }
   }
 
@@ -473,7 +490,6 @@ export function createViewer(host) {
     cameraInteractionActive = true;
     cameraUserControlled = true;
 
-    orthographicOrbitExitPending = false;
     interactionStartDirection.set(0, 0, 0);
     if (camera.isOrthographicCamera) {
       cameraOffset.copy(camera.position).sub(controls.target);
@@ -490,14 +506,6 @@ export function createViewer(host) {
     cameraInteractionActive = false;
     syncManualViewState();
     interactionStartDirection.set(0, 0, 0);
-
-    if (orthographicOrbitExitPending && camera.isOrthographicCamera) {
-      orthographicOrbitExitPending = false;
-      returnToPerspective();
-      return;
-    }
-
-    orthographicOrbitExitPending = false;
     notifyViewState();
   }
 
@@ -1026,6 +1034,7 @@ export function createViewer(host) {
     clearSetup,
     beginCameraInteraction,
     endCameraInteraction,
+    exitOrthographicForOrbit,
     getCameraView,
     isCameraUserControlled,
     resetCamera,
