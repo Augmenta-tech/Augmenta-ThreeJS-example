@@ -67,7 +67,7 @@ button, input, select { font: inherit; }
   --view-cube-title-height: 12px;
   --view-cube-scene-width: 116px;
   --view-cube-scene-height: 94px;
-  --view-cube-ortho-scene-height: 90px;
+  --view-cube-ortho-scene-height: 116px;
   --view-cube-action-height: 26px;
   --view-cube-action-gap: 5px;
   --view-cube-panel-gap: 6px;
@@ -1171,7 +1171,7 @@ button.subtle-button.active {
     --view-cube-header-height: 24px;
     --view-cube-scene-width: 94px;
     --view-cube-scene-height: 74px;
-    --view-cube-ortho-scene-height: 72px;
+    --view-cube-ortho-scene-height: 96px;
     --view-cube-action-height: 22px;
     --view-cube-panel-gap: 5px;
     top: 10px;
