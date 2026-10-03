@@ -4,7 +4,7 @@ import { ClusterState } from 'augmenta-client-sdk';
 import { speedFromVelocity } from './motion.js';
 import { createZoneRenderer } from './zones.js';
 import { collectZoneAddresses } from './zone-state.js';
-import { VIEW_TRANSITION_MS, cubicBezierEase } from './view-transition.js';
+import { VIEW_TRANSITION, viewTransitionEase } from './view-transition.js';
 
 const FLOOR_Y = 0;
 const PANEL_INSET_ANIMATION_DURATION_MS = 220;
@@ -118,6 +118,7 @@ export function createViewer(host) {
   let insetAnimationFrame;
   let cameraTransitionFrame;
   let cameraTransitionActive = false;
+  let cameraTransitionCompleteHandler;
   let cameraInteractionActive = false;
   let orthographicOrbitExitPending = false;
   let cameraChangeHandler;
@@ -239,6 +240,10 @@ export function createViewer(host) {
     if (cameraTransitionFrame) cancelAnimationFrame(cameraTransitionFrame);
     cameraTransitionFrame = undefined;
     cameraTransitionActive = false;
+
+    const onComplete = cameraTransitionCompleteHandler;
+    cameraTransitionCompleteHandler = undefined;
+    onComplete?.(false);
   }
 
   function configureProjectionControls() {
@@ -270,10 +275,13 @@ export function createViewer(host) {
   function animateCameraTo(
     position,
     target,
-    mode,
-    duration = CAMERA_VIEW_TRANSITION_MS,
-    interpolation = 'orbit',
-    easing = 'default'
+    {
+      mode,
+      duration = CAMERA_VIEW_TRANSITION_MS,
+      path = 'orbit',
+      easing = easeOutQuint,
+      onComplete
+    }
   ) {
     cancelCameraTransition();
 
@@ -281,7 +289,7 @@ export function createViewer(host) {
     const startTarget = controls.target.clone();
     const startOffset = startPosition.clone().sub(startTarget);
     const endOffset = position.clone().sub(target);
-    const canOrbit = interpolation === 'orbit'
+    const canOrbit = path === 'orbit'
       && startOffset.lengthSq() > MIN_CAMERA_OFFSET_SQ
       && endOffset.lengthSq() > MIN_CAMERA_OFFSET_SQ;
     const animatedTarget = new THREE.Vector3();
@@ -298,6 +306,7 @@ export function createViewer(host) {
       : 0;
 
     cameraTransitionActive = true;
+    cameraTransitionCompleteHandler = onComplete;
     switchCamera(mode);
     camera.position.copy(startPosition);
     controls.target.copy(startTarget);
@@ -309,16 +318,17 @@ export function createViewer(host) {
       controls.target.copy(target);
       controls.update();
       cameraTransitionActive = false;
+      const complete = cameraTransitionCompleteHandler;
+      cameraTransitionCompleteHandler = undefined;
       notifyViewState();
+      complete?.(true);
       return;
     }
 
     const startedAt = performance.now();
     const tick = (now) => {
       const t = Math.min((now - startedAt) / duration, 1);
-      const progress = easing === 'view-cube'
-        ? cubicBezierEase(t)
-        : 1 - Math.pow(1 - t, 5);
+      const progress = easing(t);
       animatedTarget.lerpVectors(startTarget, target, progress);
 
       if (canOrbit) {
@@ -345,37 +355,55 @@ export function createViewer(host) {
 
       if (t < 1) {
         cameraTransitionFrame = requestAnimationFrame(tick);
-      } else {
-        cameraTransitionFrame = undefined;
-        camera.position.copy(position);
-        controls.target.copy(target);
-        controls.update();
-        cameraTransitionActive = false;
-        notifyViewState();
+        return;
       }
+
+      cameraTransitionFrame = undefined;
+      camera.position.copy(position);
+      controls.target.copy(target);
+      controls.update();
+      cameraTransitionActive = false;
+      const complete = cameraTransitionCompleteHandler;
+      cameraTransitionCompleteHandler = undefined;
+      notifyViewState();
+      complete?.(true);
     };
 
     cameraTransitionFrame = requestAnimationFrame(tick);
   }
 
-  function setView(view, duration = CAMERA_VIEW_TRANSITION_MS) {
-    if (view === ISO_VIEW_ID) {
-      activeView = ISO_VIEW_ID;
-      animateCameraTo(
-        perspectivePosition.clone(),
-        perspectiveTarget.clone(),
-        'perspective',
-        duration,
-        'linear',
-        'view-cube'
-      );
-      return true;
+  function returnToPerspective({
+    duration = VIEW_TRANSITION.durationMs,
+    onComplete
+  } = {}) {
+    activeView = ISO_VIEW_ID;
+
+    if (camera.isPerspectiveCamera && !cameraTransitionActive) {
+      rememberPerspectiveView();
+      onComplete?.(true);
+      notifyViewState();
+      return false;
     }
+
+    animateCameraTo(
+      perspectivePosition.clone(),
+      perspectiveTarget.clone(),
+      {
+        mode: 'perspective',
+        duration,
+        path: 'direct',
+        easing: viewTransitionEase,
+        onComplete
+      }
+    );
+    return true;
+  }
+
+  function setOrthographicView(view, { duration = CAMERA_VIEW_TRANSITION_MS } = {}) {
     if (!isOrthographicView(view)) return false;
 
     // Entering an orthographic face view must not destroy the perspective
-    // composition the user was working in. ISO is a projection mode/history,
-    // not a fixed home pose.
+    // composition the user was working in.
     if (camera.isPerspectiveCamera) rememberPerspectiveView();
 
     activeView = view;
@@ -386,17 +414,26 @@ export function createViewer(host) {
 
     orthographicCamera.zoom = 1;
     orthoHalfWidth = homeOrthoHalfWidth;
-    const transitionDuration = camera.isOrthographicCamera ? 0 : duration;
-    animateCameraTo(position, target, 'orthographic', transitionDuration);
+    animateCameraTo(position, target, {
+      mode: 'orthographic',
+      duration: camera.isOrthographicCamera ? 0 : duration
+    });
     return true;
+  }
+
+  // Compatibility wrapper for callers that still use the legacy "home" view
+  // identifier. New code should use the explicit projection methods above.
+  function setView(view, duration = CAMERA_VIEW_TRANSITION_MS) {
+    return view === ISO_VIEW_ID
+      ? returnToPerspective({ duration })
+      : setOrthographicView(view, { duration });
   }
 
   function orbitCamera(deltaAzimuth, deltaPolar) {
     if (!Number.isFinite(deltaAzimuth) || !Number.isFinite(deltaPolar)) return false;
     if (deltaAzimuth === 0 && deltaPolar === 0) return true;
+    if (cameraTransitionActive || camera.isOrthographicCamera) return false;
 
-    cancelCameraTransition();
-    leaveOrthographicForManualOrbit();
     cameraOffset.copy(camera.position).sub(controls.target);
     if (cameraOffset.lengthSq() < MIN_CAMERA_OFFSET_SQ) return false;
 
@@ -420,13 +457,6 @@ export function createViewer(host) {
     if (!camera.isPerspectiveCamera) return;
     perspectivePosition.copy(camera.position);
     perspectiveTarget.copy(controls.target);
-  }
-
-  function leaveOrthographicForManualOrbit() {
-    if (!camera.isOrthographicCamera) return;
-    switchCamera('perspective');
-    activeView = ISO_VIEW_ID;
-    rememberPerspectiveView();
   }
 
   function syncManualViewState() {
@@ -476,7 +506,7 @@ export function createViewer(host) {
 
     if (orthographicOrbitExitPending && camera.isOrthographicCamera) {
       orthographicOrbitExitPending = false;
-      setView(ISO_VIEW_ID, VIEW_TRANSITION_MS);
+      returnToPerspective();
       return;
     }
 
@@ -1015,6 +1045,8 @@ export function createViewer(host) {
     orbitCamera,
     setCameraChangeHandler,
     setCameraView,
+    returnToPerspective,
+    setOrthographicView,
     setRightInset,
     setView,
     setViewStateChangeHandler,
@@ -1032,6 +1064,10 @@ function normalizeDegrees(value) {
 
 function shortestAngleDelta(from, to) {
   return THREE.MathUtils.euclideanModulo(to - from + Math.PI, Math.PI * 2) - Math.PI;
+}
+
+function easeOutQuint(progress) {
+  return 1 - Math.pow(1 - progress, 5);
 }
 
 function validVector3(value) {
