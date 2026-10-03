@@ -130,6 +130,7 @@ export function createViewer(host) {
       target: controls.target.toArray(),
       mode: camera.isOrthographicCamera ? 'orthographic' : 'perspective',
       zoom: camera.zoom,
+      perspectiveZoom: perspectiveCamera.zoom,
       orthoHalfWidth,
       activeView,
       perspectivePosition: perspectivePosition.toArray(),
@@ -169,9 +170,16 @@ export function createViewer(host) {
     if (Number.isFinite(view?.orthoHalfWidth) && view.orthoHalfWidth > 0) {
       orthoHalfWidth = view.orthoHalfWidth;
     }
-    if (Number.isFinite(view?.zoom) && view.zoom > 0) {
+
+    if (restoringOrthographic && Number.isFinite(view?.zoom) && view.zoom > 0) {
       orthographicCamera.zoom = view.zoom;
     }
+
+    perspectiveCamera.zoom = Number.isFinite(view?.perspectiveZoom) && view.perspectiveZoom > 0
+      ? view.perspectiveZoom
+      : !restoringOrthographic && Number.isFinite(view?.zoom) && view.zoom > 0
+        ? view.zoom
+        : 1;
 
     activeView = view?.mode === 'orthographic' && isOrthographicView(view?.activeView)
       ? view.activeView
@@ -380,26 +388,25 @@ export function createViewer(host) {
   function leaveOrthographicFromCurrentView() {
     if (!camera.isOrthographicCamera) return false;
 
-    const target = controls.target.clone();
-    const offset = camera.position.clone().sub(target);
-    if (offset.lengthSq() < MIN_CAMERA_OFFSET_SQ) return false;
+    const offset = camera.position.clone().sub(controls.target);
+    const distance = offset.length();
+    if (distance * distance < MIN_CAMERA_OFFSET_SQ) return false;
 
-    const direction = offset.normalize();
-    const halfHeight = (orthoHalfWidth / Math.max(orthographicCamera.zoom, 1e-6))
+    const orthoHalfHeight = (orthoHalfWidth / Math.max(orthographicCamera.zoom, 1e-6))
       / currentProjectionAspect();
-    const perspectiveDistance = Math.max(
-      halfHeight / Math.tan(THREE.MathUtils.degToRad(perspectiveCamera.fov) / 2),
-      perspectiveCamera.near * 2
+    const perspectiveHalfAngle = THREE.MathUtils.degToRad(perspectiveCamera.fov) / 2;
+
+    // Pleiades drives orthographic framing from the ArcRotate camera radius.
+    // Preserve that radius/target and match the perspective scale optically,
+    // so leaving Ortho does not move the camera in or out.
+    perspectiveCamera.zoom = Math.max(
+      distance * Math.tan(perspectiveHalfAngle) / Math.max(orthoHalfHeight, 1e-6),
+      1e-6
     );
 
-    // Switch projection and move to the framing-equivalent perspective
-    // position before the browser can render another frame. The drag therefore
-    // continues from the same target, direction and apparent zoom.
     cancelCameraTransition();
     activeView = PERSPECTIVE_VIEW_ID;
     switchCamera('perspective');
-    camera.position.copy(target).addScaledVector(direction, perspectiveDistance);
-    controls.target.copy(target);
     cameraUserControlled = true;
     controls.update();
     rememberPerspectiveView();
@@ -538,6 +545,7 @@ export function createViewer(host) {
     cameraInteractionActive = false;
     cameraUserControlled = false;
     activeView = PERSPECTIVE_VIEW_ID;
+    perspectiveCamera.zoom = 1;
     switchCamera('perspective');
     camera.position.copy(homePosition);
     controls.target.copy(homeTarget);
@@ -957,6 +965,7 @@ export function createViewer(host) {
     // center. A restored/panned/orbited camera keeps its own target so setup
     // refreshes cannot overwrite the persisted view.
     if (!cameraUserControlled) {
+      perspectiveCamera.zoom = 1;
       controls.target.copy(center);
       perspectivePosition.copy(homePosition);
       perspectiveTarget.copy(homeTarget);
@@ -1002,6 +1011,7 @@ export function createViewer(host) {
     homePosition.set(0, 2.5, 7.5);
     homeTarget.set(0, 1.2, 0);
     if (!cameraUserControlled) {
+      perspectiveCamera.zoom = 1;
       perspectivePosition.copy(homePosition);
       perspectiveTarget.copy(homeTarget);
     }
