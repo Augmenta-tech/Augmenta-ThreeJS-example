@@ -142,16 +142,17 @@ export function createViewer(host) {
 
     cancelCameraTransition();
 
+    const restoringOrthographic = view?.mode === 'orthographic';
     const savedIsoPosition = validVector3(view?.isoPosition);
     const savedIsoTarget = validVector3(view?.isoTarget);
-    if (savedIsoPosition && savedIsoTarget) {
-      isoPosition.fromArray(savedIsoPosition);
-      isoTarget.fromArray(savedIsoTarget);
-    } else if (view?.mode !== 'orthographic') {
-      // Backward compatibility with camera preferences saved before ISO
-      // history was persisted separately.
+    if (!restoringOrthographic) {
+      // In perspective, the visible camera pose is the return pose. This also
+      // repairs stale return data saved by older versions.
       isoPosition.fromArray(position);
       isoTarget.fromArray(target);
+    } else if (savedIsoPosition && savedIsoTarget) {
+      isoPosition.fromArray(savedIsoPosition);
+      isoTarget.fromArray(savedIsoTarget);
     }
 
     if (Number.isFinite(view?.orthoHalfWidth) && view.orthoHalfWidth > 0) {
@@ -364,6 +365,7 @@ export function createViewer(host) {
     if (deltaAzimuth === 0 && deltaPolar === 0) return true;
 
     cancelCameraTransition();
+    leaveOrthographicForManualOrbit();
     cameraOffset.copy(camera.position).sub(controls.target);
     if (cameraOffset.lengthSq() < MIN_CAMERA_OFFSET_SQ) return false;
 
@@ -378,7 +380,7 @@ export function createViewer(host) {
     cameraOffset.setFromSpherical(cameraSpherical);
     camera.position.copy(controls.target).add(cameraOffset);
     cameraUserControlled = true;
-    activeView = camera.isPerspectiveCamera ? ISO_VIEW_ID : 'free';
+    activeView = ISO_VIEW_ID;
     controls.update();
     return true;
   }
@@ -387,6 +389,13 @@ export function createViewer(host) {
     if (!camera.isPerspectiveCamera) return;
     isoPosition.copy(camera.position);
     isoTarget.copy(controls.target);
+  }
+
+  function leaveOrthographicForManualOrbit() {
+    if (!camera.isOrthographicCamera) return;
+    switchCamera('perspective');
+    activeView = ISO_VIEW_ID;
+    rememberIsoView();
   }
 
   function syncManualViewState() {
@@ -405,10 +414,12 @@ export function createViewer(host) {
       return;
     }
 
-    // Orthographic pan and zoom keep the same camera direction and therefore
-    // keep the selected face. Only a real rotation clears the face selection.
+    // Orthographic pan and zoom keep the same camera direction. A real orbit
+    // exits Ortho immediately, preserving the newly reached camera pose.
     cameraOffset.normalize();
-    if (cameraOffset.dot(direction) < ORTHOGRAPHIC_VIEW_ALIGNMENT_DOT) activeView = 'free';
+    if (cameraOffset.dot(direction) < ORTHOGRAPHIC_VIEW_ALIGNMENT_DOT) {
+      leaveOrthographicForManualOrbit();
+    }
   }
 
   function beginCameraInteraction() {
