@@ -322,6 +322,8 @@ export function createViewer(host) {
 
     const startedAt = performance.now();
     const tick = (now) => {
+      if (cameraTransition !== transition) return;
+
       const t = Math.min((now - startedAt) / duration, 1);
       const progress = easing(t);
       animatedTarget.lerpVectors(startTarget, target, progress);
@@ -357,7 +359,7 @@ export function createViewer(host) {
       camera.position.copy(position);
       controls.target.copy(target);
       controls.update();
-      if (cameraTransition === transition) cameraTransition = undefined;
+      cameraTransition = undefined;
       notifyViewState();
       onComplete?.(true);
     };
@@ -371,7 +373,7 @@ export function createViewer(host) {
   } = {}) {
     activeView = PERSPECTIVE_VIEW_ID;
 
-    if (camera.isPerspectiveCamera && !Boolean(cameraTransition)) {
+    if (camera.isPerspectiveCamera && !cameraTransition) {
       rememberPerspectiveView();
       onComplete?.(true);
       notifyViewState();
@@ -417,7 +419,7 @@ export function createViewer(host) {
   function orbitCamera(deltaAzimuth, deltaPolar) {
     if (!Number.isFinite(deltaAzimuth) || !Number.isFinite(deltaPolar)) return false;
     if (deltaAzimuth === 0 && deltaPolar === 0) return true;
-    if (Boolean(cameraTransition) || camera.isOrthographicCamera) return false;
+    if (cameraTransition || camera.isOrthographicCamera) return false;
 
     cameraOffset.copy(camera.position).sub(controls.target);
     if (cameraOffset.lengthSq() < MIN_CAMERA_OFFSET_SQ) return false;
@@ -504,7 +506,7 @@ export function createViewer(host) {
   controls.addEventListener('change', () => {
     // Programmatic camera transitions emit ViewCube state explicitly on every
     // animation frame. Manual movement updates selection and perspective history here.
-    if (!Boolean(cameraTransition)) {
+    if (!cameraTransition) {
       syncManualViewState();
       notifyViewState();
     }
