@@ -82,7 +82,9 @@ button, input, select { font: inherit; }
 
 .view-cube.controls-visible {
   width: 224px;
+  height: 224px;
   min-height: 224px;
+  aspect-ratio: 1 / 1;
 }
 
 .view-cube::before {
@@ -1123,7 +1125,8 @@ button.subtle-button.active {
   .view-cube.controls-visible,
   #app.sidebar-hidden .view-cube.controls-visible {
     width: 180px;
-    min-height: 182px;
+    height: 180px;
+    min-height: 180px;
   }
   .view-cube-scene {
     width: 94px;
