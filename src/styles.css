@@ -232,7 +232,7 @@ button, input, select { font: inherit; }
   position: absolute;
   z-index: 2;
   top: var(--view-cube-panel-gap);
-  left: var(--view-cube-panel-gap);
+  left: calc(var(--view-cube-panel-gap) * 2);
   height: 24px;
   margin: 0;
   display: flex;
@@ -372,9 +372,9 @@ button, input, select { font: inherit; }
 }
 
 .view-cube-actions button:hover {
-  color: var(--accent-hover);
-  border-color: var(--accent-border);
-  background: var(--accent-focus);
+  color: #f5f7fb;
+  border-color: var(--accent-hover);
+  background: var(--accent-strong-hover);
 }
 
 .view-cube-actions button.active,
