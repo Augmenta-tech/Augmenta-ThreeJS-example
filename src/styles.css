@@ -60,6 +60,8 @@ button, input, select { font: inherit; }
 
 .view-cube {
   --view-cube-fade-duration: 440ms;
+  --view-transition-duration: 320ms;
+  --view-transition-easing: cubic-bezier(.2, .8, .2, 1);
   position: absolute;
   z-index: 13;
   top: 14px;
@@ -86,8 +88,8 @@ button, input, select { font: inherit; }
   min-height: 224px;
   aspect-ratio: 1 / 1;
   box-sizing: border-box;
-  grid-template-rows: 18px minmax(0, 1fr) auto;
-  row-gap: 6px;
+  grid-template-rows: 24px minmax(0, 1fr) 57px;
+  row-gap: 4px;
 }
 
 .view-cube::before {
@@ -160,7 +162,7 @@ button, input, select { font: inherit; }
 .view-cube.preset-transition .view-cube-object,
 .view-cube.preset-transition .cube-face-top .cube-face-label,
 .view-cube.preset-transition .cube-face-bottom .cube-face-label {
-  transition: transform 320ms cubic-bezier(.2, .8, .2, 1);
+  transition: transform var(--view-transition-duration) var(--view-transition-easing);
 }
 
 .cube-face {
@@ -245,17 +247,18 @@ button, input, select { font: inherit; }
 }
 
 .view-cube.controls-visible .view-cube-title {
-  height: 12px;
+  height: 24px;
   margin-bottom: 0;
   align-self: center;
+  line-height: 24px;
   opacity: 1;
 }
 
 .view-cube-close {
   position: absolute;
   z-index: 2;
-  top: 8px;
-  right: 8px;
+  top: 12px;
+  right: 12px;
   width: 24px;
   height: 24px;
   min-height: 24px;
@@ -323,6 +326,10 @@ button, input, select { font: inherit; }
 .view-cube-actions button {
   width: 100%;
   min-width: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  line-height: 1;
   min-height: 0;
   height: 26px;
   appearance: none;
@@ -1135,12 +1142,20 @@ button.subtle-button.active {
     width: 180px;
     height: 180px;
     min-height: 180px;
-    grid-template-rows: 16px minmax(0, 1fr) auto;
-    row-gap: 4px;
+    grid-template-rows: 20px minmax(0, 1fr) 49px;
+    row-gap: 3px;
   }
   .view-cube-scene {
     width: 94px;
     height: 86px;
+  }
+  .view-cube.controls-visible .view-cube-title {
+    height: 20px;
+    line-height: 20px;
+  }
+  .view-cube.controls-visible .view-cube-close {
+    top: 8px;
+    right: 8px;
   }
   .view-cube-object {
     --cube-size: 58px;
