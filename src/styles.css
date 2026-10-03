@@ -216,12 +216,13 @@ button, input, select { font: inherit; }
   position: absolute;
   z-index: 2;
   top: 12px;
-  left: 14px;
-  color: #8f99aa;
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: .06em;
+  left: 50%;
+  color: rgba(143, 153, 170, .62);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .08em;
   text-transform: uppercase;
+  transform: translateX(-50%);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;

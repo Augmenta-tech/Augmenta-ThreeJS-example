@@ -366,7 +366,8 @@ export function createViewer(host) {
 
     orthographicCamera.zoom = 1;
     orthoHalfWidth = homeOrthoHalfWidth;
-    animateCameraTo(position, target, 'orthographic', duration);
+    const transitionDuration = camera.isOrthographicCamera ? 0 : duration;
+    animateCameraTo(position, target, 'orthographic', transitionDuration);
     return true;
   }
 
