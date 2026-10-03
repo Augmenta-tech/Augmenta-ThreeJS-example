@@ -394,10 +394,7 @@ export function createViewer(host) {
     return true;
   }
 
-  function leaveOrthographicFromCurrentView({
-    duration = VIEW_TRANSITION.durationMs,
-    onComplete
-  } = {}) {
+  function leaveOrthographicFromCurrentView({ onComplete } = {}) {
     if (!camera.isOrthographicCamera) {
       onComplete?.(true);
       return false;
@@ -417,19 +414,20 @@ export function createViewer(host) {
       halfHeight / Math.tan(THREE.MathUtils.degToRad(perspectiveCamera.fov) / 2),
       perspectiveCamera.near * 2
     );
-    const position = target.clone().addScaledVector(direction, perspectiveDistance);
 
+    // Switch projection and move to the framing-equivalent perspective
+    // position before the browser can render another frame. The drag therefore
+    // continues from the same target, direction and apparent zoom.
+    cancelCameraTransition();
     activeView = PERSPECTIVE_VIEW_ID;
-    animateCameraTo(position, target, {
-      mode: 'perspective',
-      duration,
-      path: 'direct',
-      easing: viewTransitionEase,
-      onComplete: (completed) => {
-        if (completed) rememberPerspectiveView();
-        onComplete?.(completed);
-      }
-    });
+    switchCamera('perspective');
+    camera.position.copy(target).addScaledVector(direction, perspectiveDistance);
+    controls.target.copy(target);
+    cameraUserControlled = true;
+    controls.update();
+    rememberPerspectiveView();
+    notifyViewState();
+    onComplete?.(true);
     return true;
   }
 
