@@ -265,14 +265,22 @@ export function createViewer(host) {
     updateCameraProjection();
   }
 
-  function animateCameraTo(position, target, mode, duration = CAMERA_VIEW_TRANSITION_MS) {
+  function animateCameraTo(
+    position,
+    target,
+    mode,
+    duration = CAMERA_VIEW_TRANSITION_MS,
+    interpolation = 'orbit'
+  ) {
     cancelCameraTransition();
 
     const startPosition = camera.position.clone();
     const startTarget = controls.target.clone();
     const startOffset = startPosition.clone().sub(startTarget);
     const endOffset = position.clone().sub(target);
-    const canOrbit = startOffset.lengthSq() > MIN_CAMERA_OFFSET_SQ && endOffset.lengthSq() > MIN_CAMERA_OFFSET_SQ;
+    const canOrbit = interpolation === 'orbit'
+      && startOffset.lengthSq() > MIN_CAMERA_OFFSET_SQ
+      && endOffset.lengthSq() > MIN_CAMERA_OFFSET_SQ;
     const animatedTarget = new THREE.Vector3();
     const animatedOffset = new THREE.Vector3();
     const animatedSpherical = new THREE.Spherical();
@@ -305,25 +313,27 @@ export function createViewer(host) {
     const startedAt = performance.now();
     const tick = (now) => {
       const t = Math.min((now - startedAt) / duration, 1);
-      const eased = 1 - Math.pow(1 - t, 5);
-      animatedTarget.lerpVectors(startTarget, target, eased);
+      const progress = interpolation === 'linear'
+        ? t
+        : 1 - Math.pow(1 - t, 5);
+      animatedTarget.lerpVectors(startTarget, target, progress);
 
       if (canOrbit) {
         animatedSpherical.radius = THREE.MathUtils.lerp(
           startSpherical.radius,
           endSpherical.radius,
-          eased
+          progress
         );
         animatedSpherical.phi = THREE.MathUtils.lerp(
           startSpherical.phi,
           endSpherical.phi,
-          eased
+          progress
         );
-        animatedSpherical.theta = startSpherical.theta + thetaDelta * eased;
+        animatedSpherical.theta = startSpherical.theta + thetaDelta * progress;
         animatedOffset.setFromSpherical(animatedSpherical);
         camera.position.copy(animatedTarget).add(animatedOffset);
       } else {
-        camera.position.lerpVectors(startPosition, position, eased);
+        camera.position.lerpVectors(startPosition, position, progress);
       }
 
       controls.target.copy(animatedTarget);
@@ -348,7 +358,13 @@ export function createViewer(host) {
   function setView(view, duration = CAMERA_VIEW_TRANSITION_MS) {
     if (view === ISO_VIEW_ID) {
       activeView = ISO_VIEW_ID;
-      animateCameraTo(perspectivePosition.clone(), perspectiveTarget.clone(), 'perspective', duration);
+      animateCameraTo(
+        perspectivePosition.clone(),
+        perspectiveTarget.clone(),
+        'perspective',
+        duration,
+        'linear'
+      );
       return true;
     }
     if (!isOrthographicView(view)) return false;

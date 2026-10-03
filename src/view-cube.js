@@ -1,5 +1,6 @@
 const DRAG_RADIANS_PER_PIXEL = 0.012;
 const DRAG_START_DISTANCE_PX = 3;
+const PRESET_CUBE_TRANSITION_MS = 320;
 
 export function createViewCube(root, viewer) {
   if (!root) return { refresh() {} };
@@ -18,6 +19,7 @@ export function createViewCube(root, viewer) {
   let dragMoved = false;
   let dragInteractionStarted = false;
   let suppressNextClick = false;
+  let presetTransitionTimer;
   let renderedActiveView = null;
   let projection = 'perspective';
   let controlsVisible;
@@ -134,7 +136,18 @@ export function createViewCube(root, viewer) {
     const button = event.target.closest('[data-view]');
     if (!button || !root.contains(button)) return;
     const view = button.dataset.view;
-    if (view) viewer.setView(view);
+    if (!view) return;
+
+    if (projection === 'orthographic' && view !== renderedActiveView) {
+      root.classList.add('preset-transition');
+      if (presetTransitionTimer) window.clearTimeout(presetTransitionTimer);
+      presetTransitionTimer = window.setTimeout(() => {
+        presetTransitionTimer = undefined;
+        root.classList.remove('preset-transition');
+      }, PRESET_CUBE_TRANSITION_MS);
+    }
+
+    viewer.setView(view);
   });
 
   viewer.setViewStateChangeHandler(render);

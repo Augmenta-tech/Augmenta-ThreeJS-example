@@ -81,8 +81,8 @@ button, input, select { font: inherit; }
 }
 
 .view-cube.controls-visible {
-  width: 214px;
-  min-height: 190px;
+  width: 224px;
+  min-height: 224px;
 }
 
 .view-cube::before {
@@ -152,6 +152,12 @@ button, input, select { font: inherit; }
   will-change: transform;
 }
 
+.view-cube.preset-transition .view-cube-object,
+.view-cube.preset-transition .cube-face-top .cube-face-label,
+.view-cube.preset-transition .cube-face-bottom .cube-face-label {
+  transition: transform 320ms cubic-bezier(.2, .8, .2, 1);
+}
+
 .cube-face {
   position: absolute;
   inset: 0;
@@ -213,25 +219,30 @@ button, input, select { font: inherit; }
 .cube-face-bottom .cube-face-label { transform: rotate(calc(0deg - var(--cube-yaw))); }
 
 .view-cube-title {
-  position: absolute;
+  position: relative;
   z-index: 2;
-  top: 12px;
-  left: 50%;
-  color: rgba(143, 153, 170, .62);
+  height: 0;
+  margin: 0;
+  overflow: hidden;
+  color: rgba(143, 153, 170, .5);
   font-size: 9px;
   font-weight: 600;
+  line-height: 12px;
   letter-spacing: .08em;
+  text-align: center;
   text-transform: uppercase;
-  transform: translateX(-50%);
   opacity: 0;
-  visibility: hidden;
   pointer-events: none;
-  transition: opacity 140ms ease;
+  transition:
+    height 140ms ease,
+    margin-bottom 140ms ease,
+    opacity 140ms ease;
 }
 
 .view-cube.controls-visible .view-cube-title {
+  height: 12px;
+  margin-bottom: 12px;
   opacity: 1;
-  visibility: visible;
 }
 
 .view-cube-close {
@@ -1111,8 +1122,8 @@ button.subtle-button.active {
   }
   .view-cube.controls-visible,
   #app.sidebar-hidden .view-cube.controls-visible {
-    width: 166px;
-    min-height: 166px;
+    width: 180px;
+    min-height: 182px;
   }
   .view-cube-scene {
     width: 94px;
