@@ -141,11 +141,13 @@ export function createViewer(host) {
       orthographicCamera.zoom = view.zoom;
     }
 
-    activeView = VIEW_IDS.has(view?.activeView)
-      ? view.activeView
-      : view?.mode === 'orthographic'
-        ? activeView
-        : 'home';
+    activeView = view?.activeView === 'free'
+      ? 'free'
+      : VIEW_IDS.has(view?.activeView)
+        ? view.activeView
+        : view?.mode === 'orthographic'
+          ? activeView
+          : 'home';
 
     switchCamera(view?.mode === 'orthographic' ? 'orthographic' : 'perspective');
     camera.position.fromArray(position);
@@ -332,9 +334,35 @@ export function createViewer(host) {
     return true;
   }
 
+  function orbitCamera(deltaAzimuth, deltaPolar) {
+    if (!Number.isFinite(deltaAzimuth) || !Number.isFinite(deltaPolar)) return false;
+    if (deltaAzimuth === 0 && deltaPolar === 0) return true;
+
+    cancelCameraTransition();
+    cameraOffset.copy(camera.position).sub(controls.target);
+    if (cameraOffset.lengthSq() < 1e-8) return false;
+
+    cameraSpherical.setFromVector3(cameraOffset);
+    cameraSpherical.theta += deltaAzimuth;
+    cameraSpherical.phi = THREE.MathUtils.clamp(
+      cameraSpherical.phi + deltaPolar,
+      controls.minPolarAngle,
+      controls.maxPolarAngle
+    );
+
+    cameraOffset.setFromSpherical(cameraSpherical);
+    camera.position.copy(controls.target).add(cameraOffset);
+    cameraUserControlled = true;
+    activeView = 'free';
+    controls.update();
+    return true;
+  }
+
   controls.addEventListener('start', () => {
     cancelCameraTransition();
     cameraUserControlled = true;
+    activeView = 'free';
+    notifyViewState();
   });
   controls.addEventListener('change', () => {
     // Programmatic camera transitions emit ViewCube state explicitly on every
@@ -848,6 +876,7 @@ export function createViewer(host) {
     getCameraView,
     isCameraUserControlled,
     resetCamera,
+    orbitCamera,
     setCameraChangeHandler,
     setCameraView,
     setRightInset,
