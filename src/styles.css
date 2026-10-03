@@ -59,7 +59,7 @@ button, input, select { font: inherit; }
 .viewer-overlay p { margin: 4px 0 0; color: #aeb6c5; font-size: 12px; }
 
 .view-cube {
-  --view-cube-fade-duration: 360ms;
+  --view-cube-fade-duration: 440ms;
   position: absolute;
   z-index: 13;
   top: 14px;
