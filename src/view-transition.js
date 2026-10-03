@@ -1,7 +1,9 @@
+const VIEW_TRANSITION_BEZIER = Object.freeze([0.2, 0.8, 0.2, 1]);
+
 export const VIEW_TRANSITION = Object.freeze({
   durationMs: 320,
-  bezier: Object.freeze([0.2, 0.8, 0.2, 1]),
-  cssEasing: 'cubic-bezier(.2, .8, .2, 1)'
+  bezier: VIEW_TRANSITION_BEZIER,
+  cssEasing: `cubic-bezier(${VIEW_TRANSITION_BEZIER.join(', ')})`
 });
 
 export function viewTransitionEase(progress) {
