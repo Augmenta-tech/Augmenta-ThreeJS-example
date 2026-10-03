@@ -16,7 +16,16 @@ const PERSPECTIVE_MIN_POLAR_ANGLE = THREE.MathUtils.degToRad(2);
 const PERSPECTIVE_MAX_POLAR_ANGLE = THREE.MathUtils.degToRad(88.5);
 const ORTHOGRAPHIC_MIN_POLAR_ANGLE = 0.001;
 const ORTHOGRAPHIC_MAX_POLAR_ANGLE = Math.PI - 0.001;
-const VIEW_IDS = new Set(['home', 'front', 'back', 'right', 'left', 'top', 'bottom']);
+const VIEW_DIRECTIONS = Object.freeze({
+  // Three.js right-handed world axes, matching THREE.AxesHelper.
+  front: new THREE.Vector3(0, 0, 1),
+  back: new THREE.Vector3(0, 0, -1),
+  right: new THREE.Vector3(1, 0, 0),
+  left: new THREE.Vector3(-1, 0, 0),
+  top: new THREE.Vector3(0, 1, 0),
+  bottom: new THREE.Vector3(0, -1, 0)
+});
+const VIEW_IDS = new Set(['home', ...Object.keys(VIEW_DIRECTIONS)]);
 const GHOST_COLOR = new THREE.Color(0x8a909b);
 const LOOK_AT_MARKER_OPACITY = 0.58;
 const LOOK_AT_MARKER_GHOST_OPACITY = 0.24;
@@ -272,17 +281,7 @@ export function createViewer(host) {
       return true;
     }
 
-    const directions = {
-      // Three.js right-handed world axes as shown by THREE.AxesHelper:
-      // Front +Z, Back -Z, Right +X, Left -X, Top +Y, Bottom -Y.
-      front: new THREE.Vector3(0, 0, 1),
-      back: new THREE.Vector3(0, 0, -1),
-      right: new THREE.Vector3(1, 0, 0),
-      left: new THREE.Vector3(-1, 0, 0),
-      top: new THREE.Vector3(0, 1, 0),
-      bottom: new THREE.Vector3(0, -1, 0)
-    };
-    const direction = directions[view];
+    const direction = VIEW_DIRECTIONS[view];
     const distance = Math.max(homePosition.distanceTo(homeTarget), 2);
     const target = homeTarget.clone();
     const position = target.clone().addScaledVector(direction, distance);

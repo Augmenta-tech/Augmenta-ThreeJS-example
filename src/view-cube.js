@@ -12,7 +12,6 @@ export function createViewCube(root, viewer) {
     }
     if (cube && Number.isFinite(state.cubeYaw)) {
       cube.style.setProperty('--cube-yaw', `${state.cubeYaw}deg`);
-      cube.style.setProperty('--cube-yaw-inverse', `${-state.cubeYaw}deg`);
     }
 
     const activeView = VIEW_IDS.has(state.activeView) ? state.activeView : 'home';
