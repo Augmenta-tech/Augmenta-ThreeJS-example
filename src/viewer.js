@@ -196,7 +196,7 @@ export function createViewer(host) {
       return {
         activeView,
         mode: camera.isOrthographicCamera ? 'orthographic' : 'perspective',
-        moving: isCameraMoving(),
+        interacting: cameraInteractionActive,
         cubeYaw: 0,
         cubeTransform: 'rotateX(0deg) rotateY(0deg) rotateZ(0deg)'
       };
@@ -212,14 +212,10 @@ export function createViewer(host) {
     return {
       activeView,
       mode: camera.isOrthographicCamera ? 'orthographic' : 'perspective',
-      moving: isCameraMoving(),
+      interacting: cameraInteractionActive,
       cubeYaw: y,
       cubeTransform: `rotateX(${x}deg) rotateY(${y}deg) rotateZ(0deg)`
     };
-  }
-
-  function isCameraMoving() {
-    return cameraTransitionActive || cameraInteractionActive;
   }
 
   function notifyViewState() {

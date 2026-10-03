@@ -20,14 +20,10 @@ export function createViewCube(root, viewer) {
   let suppressNextClick = false;
   let renderedActiveView = null;
   let projection = 'perspective';
-  let cameraMoving = false;
-  let pointerInside = false;
-  let focusInside = false;
   let controlsVisible;
 
   function syncControlsVisibility() {
-    const visible = projection === 'orthographic'
-      || (!cameraMoving && (pointerInside || focusInside));
+    const visible = projection === 'orthographic';
     if (visible === controlsVisible) return;
 
     controlsVisible = visible;
@@ -55,29 +51,9 @@ export function createViewCube(root, viewer) {
     }
 
     projection = state.mode === 'orthographic' ? 'orthographic' : 'perspective';
-    cameraMoving = state.moving === true;
-    root.classList.toggle('orthographic', projection === 'orthographic');
-    root.classList.toggle('camera-moving', cameraMoving);
+    root.classList.toggle('camera-interacting', state.interacting === true);
     syncControlsVisibility();
   }
-
-  root.addEventListener('pointerenter', () => {
-    pointerInside = true;
-    syncControlsVisibility();
-  });
-  root.addEventListener('pointerleave', () => {
-    pointerInside = false;
-    syncControlsVisibility();
-  });
-  root.addEventListener('focusin', () => {
-    focusInside = true;
-    syncControlsVisibility();
-  });
-  root.addEventListener('focusout', (event) => {
-    if (event.relatedTarget instanceof Node && root.contains(event.relatedTarget)) return;
-    focusInside = false;
-    syncControlsVisibility();
-  });
 
   scene?.addEventListener('pointerdown', (event) => {
     if (!event.isPrimary || event.button !== 0) return;

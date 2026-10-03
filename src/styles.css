@@ -63,8 +63,8 @@ button, input, select { font: inherit; }
   z-index: 13;
   top: 14px;
   right: calc(var(--sidebar-width) + 14px);
-  width: 214px;
-  min-height: 190px;
+  width: 140px;
+  min-height: 132px;
   display: grid;
   align-content: start;
   justify-items: center;
@@ -74,7 +74,14 @@ button, input, select { font: inherit; }
   opacity: 1;
   transition:
     right var(--sidebar-transition-duration) ease,
+    width var(--sidebar-transition-duration) ease,
+    min-height var(--sidebar-transition-duration) ease,
     opacity var(--sidebar-transition-duration) ease;
+}
+
+.view-cube.controls-visible {
+  width: 214px;
+  min-height: 190px;
 }
 
 .view-cube::before {
@@ -107,8 +114,8 @@ button, input, select { font: inherit; }
   pointer-events: none;
 }
 
-#app.sidebar-hidden .view-cube.camera-moving,
-#app.sidebar-hidden .view-cube.orthographic {
+#app.sidebar-hidden .view-cube.camera-interacting,
+#app.sidebar-hidden .view-cube.controls-visible {
   opacity: 1;
   pointer-events: auto;
 }
@@ -203,6 +210,27 @@ button, input, select { font: inherit; }
    Counter-rotate only their labels so the words stay upright and centered. */
 .cube-face-top .cube-face-label { transform: rotate(var(--cube-yaw)); }
 .cube-face-bottom .cube-face-label { transform: rotate(calc(0deg - var(--cube-yaw))); }
+
+.view-cube-title {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  left: 14px;
+  color: #8f99aa;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 140ms ease;
+}
+
+.view-cube.controls-visible .view-cube-title {
+  opacity: 1;
+  visibility: visible;
+}
 
 .view-cube-close {
   position: absolute;
@@ -1075,9 +1103,14 @@ button.subtle-button.active {
   #app.sidebar-hidden .view-cube {
     top: 10px;
     right: 10px;
+    width: 114px;
+    min-height: 106px;
+    padding: 10px;
+  }
+  .view-cube.controls-visible,
+  #app.sidebar-hidden .view-cube.controls-visible {
     width: 166px;
     min-height: 166px;
-    padding: 10px;
   }
   .view-cube-scene {
     width: 94px;
