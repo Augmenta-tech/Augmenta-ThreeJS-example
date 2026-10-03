@@ -1,4 +1,4 @@
-import { VIEW_TRANSITION_MS } from './view-transition.js';
+import { VIEW_TRANSITION } from './view-transition.js';
 
 const DRAG_RADIANS_PER_PIXEL = 0.012;
 const DRAG_START_DISTANCE_PX = 3;
@@ -12,6 +12,9 @@ export function createViewCube(root, viewer) {
   const buttons = [...root.querySelectorAll('[data-view]')];
   const viewIds = new Set(buttons.map((button) => button.dataset.view).filter(Boolean));
 
+  root.style.setProperty('--view-transition-duration', `${VIEW_TRANSITION.durationMs}ms`);
+  root.style.setProperty('--view-transition-easing', VIEW_TRANSITION.cssEasing);
+
   let dragPointerId;
   let dragStartX = 0;
   let dragStartY = 0;
@@ -19,7 +22,7 @@ export function createViewCube(root, viewer) {
   let dragLastY = 0;
   let dragMoved = false;
   let dragInteractionStarted = false;
-  let dragExitTransitionUntil = 0;
+  let dragExitTransitioning = false;
   let suppressNextClick = false;
   let presetTransitionTimer;
   let renderedActiveView = null;
@@ -86,18 +89,26 @@ export function createViewCube(root, viewer) {
     event.preventDefault();
     scene.classList.add('dragging');
 
-    // Dragging the ViewCube out of Ortho uses the exact same transition as
-    // the close button: duration, easing and remembered perspective pose.
-    if (!dragInteractionStarted && projection === 'orthographic') {
+    // Exit Ortho through the viewer's single transition path. If the pointer
+    // is still held when it completes, the same drag can continue orbiting.
+    if (!dragInteractionStarted && !dragExitTransitioning && projection === 'orthographic') {
+      const exitingPointerId = dragPointerId;
+      dragExitTransitioning = true;
       startPresetTransition();
-      viewer.setView('home', VIEW_TRANSITION_MS);
-      dragExitTransitionUntil = performance.now() + VIEW_TRANSITION_MS;
+      viewer.returnToPerspective({
+        onComplete: (completed) => {
+          dragExitTransitioning = false;
+          if (!completed || dragPointerId !== exitingPointerId || !dragMoved) return;
+          dragInteractionStarted = true;
+          viewer.beginCameraInteraction();
+        }
+      });
       dragLastX = event.clientX;
       dragLastY = event.clientY;
       return;
     }
 
-    if (performance.now() < dragExitTransitionUntil) {
+    if (dragExitTransitioning) {
       dragLastX = event.clientX;
       dragLastY = event.clientY;
       return;
@@ -134,7 +145,6 @@ export function createViewCube(root, viewer) {
     dragPointerId = undefined;
     dragMoved = false;
     dragInteractionStarted = false;
-    dragExitTransitionUntil = 0;
   }
 
   scene?.addEventListener('pointerup', endDrag);
@@ -151,7 +161,7 @@ export function createViewCube(root, viewer) {
 
     if (event.target.closest('.view-cube-close')) {
       startPresetTransition();
-      viewer.setView('home', VIEW_TRANSITION_MS);
+      viewer.returnToPerspective();
       return;
     }
 
@@ -164,7 +174,7 @@ export function createViewCube(root, viewer) {
       startPresetTransition();
     }
 
-    viewer.setView(view);
+    viewer.setOrthographicView(view);
   });
 
   function startPresetTransition() {
@@ -173,7 +183,7 @@ export function createViewCube(root, viewer) {
     presetTransitionTimer = window.setTimeout(() => {
       presetTransitionTimer = undefined;
       root.classList.remove('preset-transition');
-    }, VIEW_TRANSITION_MS);
+    }, VIEW_TRANSITION.durationMs);
   }
 
   viewer.setViewStateChangeHandler(render);
