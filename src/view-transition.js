@@ -1,10 +1,13 @@
-export const VIEW_TRANSITION_MS = 320;
-export const VIEW_TRANSITION_BEZIER = Object.freeze([0.2, 0.8, 0.2, 1]);
+export const VIEW_TRANSITION = Object.freeze({
+  durationMs: 320,
+  bezier: Object.freeze([0.2, 0.8, 0.2, 1]),
+  cssEasing: 'cubic-bezier(.2, .8, .2, 1)'
+});
 
-export function cubicBezierEase(progress) {
+export function viewTransitionEase(progress) {
   if (progress <= 0 || progress >= 1) return progress;
 
-  const [x1, y1, x2, y2] = VIEW_TRANSITION_BEZIER;
+  const [x1, y1, x2, y2] = VIEW_TRANSITION.bezier;
   let lower = 0;
   let upper = 1;
   let parameter = progress;
