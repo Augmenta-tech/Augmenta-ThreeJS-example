@@ -4,7 +4,7 @@ const DRAG_RADIANS_PER_PIXEL = 0.012;
 const DRAG_START_DISTANCE_PX = 3;
 
 export function createViewCube(root, viewer) {
-  if (!root) return { refresh() {} };
+  if (!root) return;
 
   const scene = root.querySelector('.view-cube-scene');
   const cube = root.querySelector('.view-cube-object');
@@ -185,5 +185,4 @@ export function createViewCube(root, viewer) {
   }
 
   viewer.setViewStateChangeHandler(render);
-  return { refresh: render };
 }
