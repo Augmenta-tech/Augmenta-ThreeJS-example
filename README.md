@@ -142,6 +142,7 @@ This separation keeps the SDK reusable by non-Three.js applications and keeps re
 .
 ├── .github/workflows/ci.yml           # Pull-request validation
 ├── .github/workflows/pages.yml        # Build SDK + deploy GitHub Pages
+├── AGENTS.md                           # Concise architecture + behavior invariants
 ├── index.html                          # Static entry point + import map
 ├── augmenta-favicon.png                # White Augmenta symbol used by the page
 ├── src/
@@ -164,6 +165,7 @@ This separation keeps the SDK reusable by non-Three.js applications and keeps re
 │   ├── demo.test.mjs                   # Synthetic World/Scene hierarchy
 │   ├── setup-store.test.mjs            # Partial setup update regression tests
 │   ├── share-link.test.mjs             # Shared connection URL regression tests
+│   ├── view-transition.test.mjs        # Shared ViewCube transition regression tests
 │   ├── zone-slider-parser.test.mjs     # Current Pleiades slider wire-shape regression
 │   └── zone-state.test.mjs             # Zone event state regression tests
 ├── scripts/assemble-site.mjs            # Self-contained Pages artifact assembly
