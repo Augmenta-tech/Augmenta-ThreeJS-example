@@ -63,14 +63,27 @@ button, input, select { font: inherit; }
   z-index: 13;
   top: 14px;
   right: calc(var(--sidebar-width) + 14px);
-  width: 140px;
+  width: 214px;
+  min-height: 190px;
   display: grid;
+  align-content: start;
   justify-items: center;
-  gap: 7px;
+  gap: 0;
   padding: 12px;
   overflow: hidden;
-  border-radius: 16px;
+  opacity: 1;
+  transition:
+    right var(--sidebar-transition-duration) ease,
+    opacity var(--sidebar-transition-duration) ease;
+}
+
+.view-cube::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   border: 1px solid rgba(53, 60, 75, .72);
+  border-radius: 16px;
   background:
     linear-gradient(145deg, rgba(255, 255, 255, .045), rgba(191, 166, 255, .045) 42%, transparent),
     rgba(17, 20, 26, .84);
@@ -79,25 +92,23 @@ button, input, select { font: inherit; }
     inset 0 1px 0 rgba(255, 255, 255, .08);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease;
+}
+
+.view-cube.controls-visible::before {
   opacity: 1;
-  transition:
-    right var(--sidebar-transition-duration) ease,
-    width var(--sidebar-transition-duration) ease,
-    opacity var(--sidebar-transition-duration) ease;
 }
 
-.view-cube.expanded {
-  width: 214px;
-  gap: 10px;
-}
-
-#app.sidebar-hidden .view-cube,
-.view-cube.camera-moving {
+#app.sidebar-hidden .view-cube {
   opacity: 0;
   pointer-events: none;
 }
 
 .view-cube-scene {
+  position: relative;
+  z-index: 1;
   width: 116px;
   height: 108px;
   display: grid;
@@ -186,44 +197,12 @@ button, input, select { font: inherit; }
 .cube-face-top .cube-face-label { transform: rotate(var(--cube-yaw)); }
 .cube-face-bottom .cube-face-label { transform: rotate(calc(0deg - var(--cube-yaw))); }
 
-.view-cube-toggle {
-  position: relative;
-  width: 34px;
-  height: 14px;
-  min-height: 14px;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: #798395;
-}
-
-.view-cube-toggle::before {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 50%;
-  width: 6px;
-  height: 6px;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  transform: translateX(-50%) rotate(45deg);
-  transition: transform 120ms ease, color 120ms ease;
-}
-
-.view-cube.expanded .view-cube-toggle::before {
-  top: 5px;
-  transform: translateX(-50%) rotate(225deg);
-}
-
-.view-cube-toggle:hover {
-  color: var(--accent-hover);
-  background: transparent;
-}
-
 .view-cube-actions {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-height: 0;
+  margin-top: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -235,14 +214,24 @@ button, input, select { font: inherit; }
   pointer-events: none;
   transition:
     max-height var(--sidebar-transition-duration) ease,
+    margin-top var(--sidebar-transition-duration) ease,
     opacity 140ms ease;
 }
 
-.view-cube.expanded .view-cube-actions {
+.view-cube.controls-visible .view-cube-actions {
   max-height: 58px;
+  margin-top: 10px;
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
+}
+
+/* During camera motion keep only the 3D cube visible, even if the hover
+   region or an orthographic mode would otherwise expose the controls. */
+.view-cube.camera-moving::before,
+.view-cube.camera-moving .view-cube-actions {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .view-cube-actions button {
@@ -525,11 +514,9 @@ button, input, select { font: inherit; }
   right: 0;
 }
 
-@media (min-width: 901px) {
-  #app.sidebar-hidden .connection-qr-visibility {
-    opacity: 0;
-    pointer-events: none;
-  }
+#app.sidebar-hidden .connection-qr-visibility {
+  opacity: 0;
+  pointer-events: none;
 }
 
 #app.sidebar-handle-idle {
@@ -1049,22 +1036,13 @@ button.subtle-button.active {
     pointer-events: auto;
   }
 
-  #app.sidebar-hidden .connection-qr-visibility {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
   .viewer-overlay { padding: 16px; }
   .view-cube {
     top: 10px;
     right: 10px;
-    width: 114px;
-    gap: 6px;
-    padding: 10px;
-  }
-  .view-cube.expanded {
     width: 166px;
-    gap: 8px;
+    min-height: 166px;
+    padding: 10px;
   }
   .view-cube-scene {
     width: 94px;

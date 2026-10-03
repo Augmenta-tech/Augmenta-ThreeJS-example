@@ -572,14 +572,12 @@ function updateSidebarTogglePresentation() {
 
 function syncSidebarAccessibility() {
   const hidden = ui.app.classList.contains('sidebar-hidden');
-  const mobile = isMobileLayout();
-  const hideQr = hidden && !mobile;
 
   ui.sidebar.inert = hidden;
   ui.sidebar.toggleAttribute('aria-hidden', hidden);
 
-  ui.connectionQrVisibility.inert = hideQr;
-  ui.connectionQrVisibility.toggleAttribute('aria-hidden', hideQr);
+  ui.connectionQrVisibility.inert = hidden;
+  ui.connectionQrVisibility.toggleAttribute('aria-hidden', hidden);
 
   ui.viewCube.inert = hidden;
   ui.viewCube.toggleAttribute('aria-hidden', hidden);

@@ -6,7 +6,6 @@ export function createViewCube(root, viewer) {
 
   const scene = root.querySelector('.view-cube-scene');
   const cube = root.querySelector('.view-cube-object');
-  const toggle = root.querySelector('.view-cube-toggle');
   const actions = root.querySelector('.view-cube-actions');
   const buttons = [...root.querySelectorAll('[data-view]')];
   const viewIds = new Set(buttons.map((button) => button.dataset.view).filter(Boolean));
@@ -21,6 +20,21 @@ export function createViewCube(root, viewer) {
   let suppressNextClick = false;
   let renderedActiveView = null;
   let renderedProjection = '';
+  let cameraMoving = false;
+  let pointerInside = false;
+  let focusInside = false;
+  let controlsVisible = false;
+
+  function syncControlsVisibility() {
+    const visible = !cameraMoving
+      && (renderedProjection === 'orthographic' || pointerInside || focusInside);
+    if (visible === controlsVisible) return;
+
+    controlsVisible = visible;
+    root.classList.toggle('controls-visible', visible);
+    actions?.toggleAttribute('aria-hidden', !visible);
+    if (actions) actions.inert = !visible;
+  }
 
   function render(state = {}) {
     if (cube && typeof state.cubeTransform === 'string') {
@@ -46,22 +60,28 @@ export function createViewCube(root, viewer) {
       renderedProjection = projection;
     }
 
-    root.classList.toggle('camera-moving', state.moving === true);
+    cameraMoving = state.moving === true;
+    root.classList.toggle('camera-moving', cameraMoving);
+    syncControlsVisibility();
   }
 
-  function setExpanded(expanded) {
-    root.classList.toggle('expanded', expanded);
-    actions?.toggleAttribute('aria-hidden', !expanded);
-    if (actions) actions.inert = !expanded;
-    toggle?.setAttribute('aria-expanded', String(expanded));
-    if (toggle) {
-      toggle.title = expanded ? 'Hide view shortcuts' : 'Show view shortcuts';
-      toggle.setAttribute('aria-label', toggle.title);
-    }
-  }
-
-  setExpanded(false);
-  toggle?.addEventListener('click', () => setExpanded(!root.classList.contains('expanded')));
+  root.addEventListener('pointerenter', () => {
+    pointerInside = true;
+    syncControlsVisibility();
+  });
+  root.addEventListener('pointerleave', () => {
+    pointerInside = false;
+    syncControlsVisibility();
+  });
+  root.addEventListener('focusin', () => {
+    focusInside = true;
+    syncControlsVisibility();
+  });
+  root.addEventListener('focusout', (event) => {
+    if (event.relatedTarget instanceof Node && root.contains(event.relatedTarget)) return;
+    focusInside = false;
+    syncControlsVisibility();
+  });
 
   scene?.addEventListener('pointerdown', (event) => {
     if (!event.isPrimary || event.button !== 0) return;
