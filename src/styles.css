@@ -63,10 +63,10 @@ button, input, select { font: inherit; }
   z-index: 13;
   top: 14px;
   right: calc(var(--sidebar-width) + 14px);
-  width: 214px;
+  width: 140px;
   display: grid;
   justify-items: center;
-  gap: 10px;
+  gap: 7px;
   padding: 12px;
   overflow: hidden;
   border-radius: 16px;
@@ -79,11 +79,22 @@ button, input, select { font: inherit; }
     inset 0 1px 0 rgba(255, 255, 255, .08);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  transition: right var(--sidebar-transition-duration) ease;
+  opacity: 1;
+  transition:
+    right var(--sidebar-transition-duration) ease,
+    width var(--sidebar-transition-duration) ease,
+    opacity var(--sidebar-transition-duration) ease;
 }
 
-#app.sidebar-hidden .view-cube {
-  right: 14px;
+.view-cube.expanded {
+  width: 214px;
+  gap: 10px;
+}
+
+#app.sidebar-hidden .view-cube,
+.view-cube.camera-moving {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .view-cube-scene {
@@ -154,15 +165,6 @@ button, input, select { font: inherit; }
   transform-origin: center;
 }
 
-.cube-face::after {
-  content: "";
-  position: absolute;
-  inset: 5px;
-  border: 1px solid #343b49;
-  border-radius: 4px;
-  pointer-events: none;
-}
-
 .cube-face:hover,
 .cube-face.active {
   color: var(--accent-hover);
@@ -184,13 +186,63 @@ button, input, select { font: inherit; }
 .cube-face-top .cube-face-label { transform: rotate(var(--cube-yaw)); }
 .cube-face-bottom .cube-face-label { transform: rotate(calc(0deg - var(--cube-yaw))); }
 
+.view-cube-toggle {
+  position: relative;
+  width: 34px;
+  height: 14px;
+  min-height: 14px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #798395;
+}
+
+.view-cube-toggle::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateX(-50%) rotate(45deg);
+  transition: transform 120ms ease, color 120ms ease;
+}
+
+.view-cube.expanded .view-cube-toggle::before {
+  top: 5px;
+  transform: translateX(-50%) rotate(225deg);
+}
+
+.view-cube-toggle:hover {
+  color: var(--accent-hover);
+  background: transparent;
+}
+
 .view-cube-actions {
   width: 100%;
+  max-height: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 5px;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    max-height var(--sidebar-transition-duration) ease,
+    opacity 140ms ease;
+}
+
+.view-cube.expanded .view-cube-actions {
+  max-height: 58px;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .view-cube-actions button {
@@ -436,7 +488,8 @@ button, input, select { font: inherit; }
 
 #app.sidebar-no-transition #sidebar,
 #app.sidebar-no-transition .sidebar-toggle,
-#app.sidebar-no-transition .connection-qr-visibility {
+#app.sidebar-no-transition .connection-qr-visibility,
+#app.sidebar-no-transition .view-cube {
   transition: none;
 }
 
@@ -1002,13 +1055,16 @@ button.subtle-button.active {
   }
 
   .viewer-overlay { padding: 16px; }
-  .view-cube,
-  #app.sidebar-hidden .view-cube {
+  .view-cube {
     top: 10px;
     right: 10px;
+    width: 114px;
+    gap: 6px;
+    padding: 10px;
+  }
+  .view-cube.expanded {
     width: 166px;
     gap: 8px;
-    padding: 10px;
   }
   .view-cube-scene {
     width: 94px;

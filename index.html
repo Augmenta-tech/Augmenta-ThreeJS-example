@@ -48,7 +48,15 @@
             <button class="cube-face cube-face-bottom" type="button" data-view="bottom" title="Bottom view"><span class="cube-face-label">Bottom</span></button>
           </div>
         </div>
-        <div class="view-cube-actions">
+        <button
+          class="view-cube-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="view-cube-actions"
+          aria-label="Show view shortcuts"
+          title="Show view shortcuts"
+        ></button>
+        <div id="view-cube-actions" class="view-cube-actions" aria-hidden="true">
           <button type="button" data-view="home" title="Isometric perspective view" aria-label="Isometric perspective view">Iso</button>
           <button type="button" data-view="top" title="Top view" aria-label="Top view">Top</button>
           <button type="button" data-view="front" title="Front view" aria-label="Front view">Front</button>

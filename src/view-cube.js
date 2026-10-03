@@ -6,6 +6,8 @@ export function createViewCube(root, viewer) {
 
   const scene = root.querySelector('.view-cube-scene');
   const cube = root.querySelector('.view-cube-object');
+  const toggle = root.querySelector('.view-cube-toggle');
+  const actions = root.querySelector('.view-cube-actions');
   const buttons = [...root.querySelectorAll('[data-view]')];
   const viewIds = new Set(buttons.map((button) => button.dataset.view).filter(Boolean));
 
@@ -15,6 +17,7 @@ export function createViewCube(root, viewer) {
   let dragLastX = 0;
   let dragLastY = 0;
   let dragMoved = false;
+  let dragInteractionStarted = false;
   let suppressNextClick = false;
   let renderedActiveView = null;
   let renderedProjection = '';
@@ -42,7 +45,23 @@ export function createViewCube(root, viewer) {
       root.dataset.projection = projection;
       renderedProjection = projection;
     }
+
+    root.classList.toggle('camera-moving', state.moving === true);
   }
+
+  function setExpanded(expanded) {
+    root.classList.toggle('expanded', expanded);
+    actions?.toggleAttribute('aria-hidden', !expanded);
+    if (actions) actions.inert = !expanded;
+    toggle?.setAttribute('aria-expanded', String(expanded));
+    if (toggle) {
+      toggle.title = expanded ? 'Hide view shortcuts' : 'Show view shortcuts';
+      toggle.setAttribute('aria-label', toggle.title);
+    }
+  }
+
+  setExpanded(false);
+  toggle?.addEventListener('click', () => setExpanded(!root.classList.contains('expanded')));
 
   scene?.addEventListener('pointerdown', (event) => {
     if (!event.isPrimary || event.button !== 0) return;
@@ -51,6 +70,7 @@ export function createViewCube(root, viewer) {
     dragStartX = dragLastX = event.clientX;
     dragStartY = dragLastY = event.clientY;
     dragMoved = false;
+    dragInteractionStarted = false;
     scene.setPointerCapture(event.pointerId);
   });
 
@@ -69,12 +89,16 @@ export function createViewCube(root, viewer) {
 
     event.preventDefault();
     scene.classList.add('dragging');
+    if (!dragInteractionStarted) {
+      dragInteractionStarted = true;
+      viewer.beginCameraInteraction();
+    }
 
-    // Camera azimuth is the inverse of the cube's visible yaw, so horizontal
-    // drag feels like grabbing and turning the cube itself.
+    // Match OrbitControls exactly: dragging right decreases azimuth and
+    // dragging down decreases polar angle.
     viewer.orbitCamera(
       -dx * DRAG_RADIANS_PER_PIXEL,
-      dy * DRAG_RADIANS_PER_PIXEL
+      -dy * DRAG_RADIANS_PER_PIXEL
     );
     dragLastX = event.clientX;
     dragLastY = event.clientY;
@@ -88,12 +112,14 @@ export function createViewCube(root, viewer) {
     }
     scene?.classList.remove('dragging');
 
+    if (dragInteractionStarted) viewer.endCameraInteraction();
     if (dragMoved) {
       suppressNextClick = true;
       window.setTimeout(() => { suppressNextClick = false; }, 0);
     }
     dragPointerId = undefined;
     dragMoved = false;
+    dragInteractionStarted = false;
   }
 
   scene?.addEventListener('pointerup', endDrag);

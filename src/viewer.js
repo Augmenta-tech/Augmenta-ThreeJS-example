@@ -114,6 +114,7 @@ export function createViewer(host) {
   let insetAnimationFrame;
   let cameraTransitionFrame;
   let cameraTransitionActive = false;
+  let cameraInteractionActive = false;
   let cameraChangeHandler;
   let viewStateChangeHandler;
   let cameraUserControlled = false;
@@ -193,6 +194,7 @@ export function createViewer(host) {
       return {
         activeView,
         mode: camera.isOrthographicCamera ? 'orthographic' : 'perspective',
+        moving: cameraTransitionActive || cameraInteractionActive,
         cubeYaw: 0,
         cubeTransform: 'rotateX(0deg) rotateY(0deg) rotateZ(0deg)'
       };
@@ -208,6 +210,7 @@ export function createViewer(host) {
     return {
       activeView,
       mode: camera.isOrthographicCamera ? 'orthographic' : 'perspective',
+      moving: cameraTransitionActive || cameraInteractionActive,
       cubeYaw: y,
       cubeTransform: `rotateX(${x}deg) rotateY(${y}deg) rotateZ(0deg)`
     };
@@ -276,6 +279,7 @@ export function createViewer(host) {
     controls.target.copy(startTarget);
 
     cameraUserControlled = true;
+    notifyViewState();
     if (duration <= 0) {
       camera.position.copy(position);
       controls.target.copy(target);
@@ -405,10 +409,22 @@ export function createViewer(host) {
     if (cameraOffset.dot(direction) < 0.99999) activeView = 'free';
   }
 
-  controls.addEventListener('start', () => {
+  function beginCameraInteraction() {
     cancelCameraTransition();
+    cameraInteractionActive = true;
     cameraUserControlled = true;
-  });
+    notifyViewState();
+  }
+
+  function endCameraInteraction() {
+    if (!cameraInteractionActive) return;
+    cameraInteractionActive = false;
+    syncManualViewState();
+    notifyViewState();
+  }
+
+  controls.addEventListener('start', beginCameraInteraction);
+  controls.addEventListener('end', endCameraInteraction);
   controls.addEventListener('change', () => {
     // Programmatic camera transitions emit ViewCube state explicitly on every
     // animation frame. Manual movement updates selection and ISO history here.
@@ -421,6 +437,7 @@ export function createViewer(host) {
 
   function resetCamera() {
     cancelCameraTransition();
+    cameraInteractionActive = false;
     cameraUserControlled = false;
     activeView = ISO_VIEW_ID;
     switchCamera('perspective');
@@ -929,6 +946,8 @@ export function createViewer(host) {
     renderSetup,
     clearTracking,
     clearSetup,
+    beginCameraInteraction,
+    endCameraInteraction,
     getCameraView,
     isCameraUserControlled,
     resetCamera,
