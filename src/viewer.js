@@ -394,6 +394,45 @@ export function createViewer(host) {
     return true;
   }
 
+  function leaveOrthographicFromCurrentView({
+    duration = VIEW_TRANSITION.durationMs,
+    onComplete
+  } = {}) {
+    if (!camera.isOrthographicCamera) {
+      onComplete?.(true);
+      return false;
+    }
+
+    const target = controls.target.clone();
+    const offset = camera.position.clone().sub(target);
+    if (offset.lengthSq() < MIN_CAMERA_OFFSET_SQ) {
+      onComplete?.(false);
+      return false;
+    }
+
+    const direction = offset.normalize();
+    const halfHeight = (orthoHalfWidth / Math.max(orthographicCamera.zoom, 1e-6))
+      / currentProjectionAspect();
+    const perspectiveDistance = Math.max(
+      halfHeight / Math.tan(THREE.MathUtils.degToRad(perspectiveCamera.fov) / 2),
+      perspectiveCamera.near * 2
+    );
+    const position = target.clone().addScaledVector(direction, perspectiveDistance);
+
+    activeView = PERSPECTIVE_VIEW_ID;
+    animateCameraTo(position, target, {
+      mode: 'perspective',
+      duration,
+      path: 'direct',
+      easing: viewTransitionEase,
+      onComplete: (completed) => {
+        if (completed) rememberPerspectiveView();
+        onComplete?.(completed);
+      }
+    });
+    return true;
+  }
+
   function setOrthographicView(view, { duration = CAMERA_VIEW_TRANSITION_MS } = {}) {
     if (!isOrthographicView(view)) return false;
 
@@ -464,9 +503,8 @@ export function createViewer(host) {
       && cameraOffset.dot(interactionStartDirection) < ORTHOGRAPHIC_VIEW_ALIGNMENT_DOT
     ) {
       cameraInteractionArmed = false;
-      cameraInteractionActive = false;
       interactionStartDirection.set(0, 0, 0);
-      returnToPerspective();
+      leaveOrthographicFromCurrentView();
     }
   }
 
@@ -532,12 +570,21 @@ export function createViewer(host) {
     notifyViewState();
   }
 
+  function currentProjectionAspect() {
+    const width = Math.max(host.clientWidth, 1);
+    const height = Math.max(host.clientHeight, 1);
+    const virtualWidth = rightInset > 0 && width > rightInset + 80
+      ? width + rightInset
+      : width;
+    return Math.max(virtualWidth / height, 0.1);
+  }
+
   function updateCameraProjection() {
     const width = Math.max(host.clientWidth, 1);
     const height = Math.max(host.clientHeight, 1);
     const hasInset = rightInset > 0 && width > rightInset + 80;
     const virtualWidth = hasInset ? width + rightInset : width;
-    const aspect = Math.max(virtualWidth / height, 0.1);
+    const aspect = currentProjectionAspect();
 
     camera.clearViewOffset();
     if (camera.isPerspectiveCamera) {
@@ -1038,6 +1085,7 @@ export function createViewer(host) {
     setCameraChangeHandler,
     setCameraView,
     returnToPerspective,
+    leaveOrthographicFromCurrentView,
     setOrthographicView,
     setRightInset,
     setViewStateChangeHandler,

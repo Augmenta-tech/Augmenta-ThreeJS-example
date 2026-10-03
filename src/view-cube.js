@@ -103,7 +103,7 @@ export function createViewCube(root, viewer) {
     if (!dragInteractionStarted && !dragExitTransitioning && projection === 'orthographic') {
       const exitingPointerId = dragPointerId;
       dragExitTransitioning = true;
-      viewer.returnToPerspective({
+      viewer.leaveOrthographicFromCurrentView({
         onComplete: (completed) => {
           dragExitTransitioning = false;
           if (!completed || dragPointerId !== exitingPointerId || !dragMoved) return;
