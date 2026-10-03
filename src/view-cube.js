@@ -9,10 +9,10 @@ export function createViewCube(root, viewer) {
   const scene = root.querySelector('.view-cube-scene');
   const cube = root.querySelector('.view-cube-object');
   const actions = root.querySelector('.view-cube-actions');
-  const buttons = [...root.querySelectorAll('[data-view]')];
-  const actionViews = [...(actions?.querySelectorAll('[data-view]') ?? [])]
-    .map((button) => button.dataset.view)
-    .filter(Boolean);
+  const closeButton = root.querySelector('.view-cube-close');
+  const faceButtons = [...root.querySelectorAll('.cube-face[data-view]')];
+  const actionButtons = [...(actions?.querySelectorAll('[data-view]') ?? [])];
+  const buttons = [...faceButtons, ...actionButtons];
   const viewIds = new Set(buttons.map((button) => button.dataset.view).filter(Boolean));
 
   root.style.setProperty('--view-transition-duration', `${VIEW_TRANSITION.durationMs}ms`);
@@ -40,6 +40,12 @@ export function createViewCube(root, viewer) {
     root.classList.toggle('controls-visible', visible);
     actions?.toggleAttribute('aria-hidden', !visible);
     if (actions) actions.inert = !visible;
+
+    // Keep keyboard navigation aligned with what is actually displayed.
+    // In Ortho, Tab is reserved for the six method buttons in display order.
+    for (const button of faceButtons) button.tabIndex = visible ? -1 : 0;
+    for (const button of actionButtons) button.tabIndex = visible ? 0 : -1;
+    if (closeButton) closeButton.tabIndex = -1;
   }
 
   function render(state = {}) {
@@ -208,21 +214,27 @@ export function createViewCube(root, viewer) {
       || event.ctrlKey
       || event.metaKey
       || event.altKey
-      || actionViews.length === 0
+      || actionButtons.length === 0
     ) {
       return;
     }
 
     event.preventDefault();
     const direction = event.shiftKey ? -1 : 1;
-    const currentIndex = actionViews.indexOf(renderedActiveView);
+    const currentIndex = actionButtons.findIndex(
+      (button) => button.dataset.view === renderedActiveView
+    );
     const startIndex = currentIndex >= 0
       ? currentIndex
       : (event.shiftKey ? 0 : -1);
-    const nextIndex = (startIndex + direction + actionViews.length) % actionViews.length;
+    const nextIndex = (startIndex + direction + actionButtons.length) % actionButtons.length;
+    const nextButton = actionButtons[nextIndex];
+    const nextView = nextButton?.dataset.view;
+    if (!nextView) return;
 
     startPresetTransition();
-    viewer.setOrthographicView(actionViews[nextIndex]);
+    viewer.setOrthographicView(nextView);
+    nextButton.focus({ preventScroll: true });
   }, { capture: true });
 
   viewer.setViewStateChangeHandler(render);
