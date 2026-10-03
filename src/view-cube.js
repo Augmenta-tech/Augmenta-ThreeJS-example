@@ -94,7 +94,6 @@ export function createViewCube(root, viewer) {
     if (!dragInteractionStarted && !dragExitTransitioning && projection === 'orthographic') {
       const exitingPointerId = dragPointerId;
       dragExitTransitioning = true;
-      startPresetTransition();
       viewer.returnToPerspective({
         onComplete: (completed) => {
           dragExitTransitioning = false;
@@ -160,7 +159,6 @@ export function createViewCube(root, viewer) {
     if (!(event.target instanceof Element)) return;
 
     if (event.target.closest('.view-cube-close')) {
-      startPresetTransition();
       viewer.returnToPerspective();
       return;
     }
