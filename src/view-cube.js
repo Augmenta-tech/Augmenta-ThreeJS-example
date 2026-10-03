@@ -18,6 +18,7 @@ export function createViewCube(root, viewer) {
   let dragLastY = 0;
   let dragMoved = false;
   let dragInteractionStarted = false;
+  let dragExitTransitionUntil = 0;
   let suppressNextClick = false;
   let presetTransitionTimer;
   let renderedActiveView = null;
@@ -83,6 +84,24 @@ export function createViewCube(root, viewer) {
 
     event.preventDefault();
     scene.classList.add('dragging');
+
+    // Dragging the ViewCube out of Ortho uses the same short return animation
+    // as the Ortho close button. While that transition is running, consume the
+    // drag movement so manual orbiting cannot cancel the camera animation.
+    if (!dragInteractionStarted && projection === 'orthographic') {
+      viewer.setView('home', PRESET_CUBE_TRANSITION_MS);
+      dragExitTransitionUntil = performance.now() + PRESET_CUBE_TRANSITION_MS;
+      dragLastX = event.clientX;
+      dragLastY = event.clientY;
+      return;
+    }
+
+    if (performance.now() < dragExitTransitionUntil) {
+      dragLastX = event.clientX;
+      dragLastY = event.clientY;
+      return;
+    }
+
     if (!dragInteractionStarted) {
       dragInteractionStarted = true;
       viewer.beginCameraInteraction();
@@ -114,6 +133,7 @@ export function createViewCube(root, viewer) {
     dragPointerId = undefined;
     dragMoved = false;
     dragInteractionStarted = false;
+    dragExitTransitionUntil = 0;
   }
 
   scene?.addEventListener('pointerup', endDrag);
