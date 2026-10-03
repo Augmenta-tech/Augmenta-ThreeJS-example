@@ -1,6 +1,7 @@
+import { VIEW_TRANSITION_MS } from './view-transition.js';
+
 const DRAG_RADIANS_PER_PIXEL = 0.012;
 const DRAG_START_DISTANCE_PX = 3;
-const PRESET_CUBE_TRANSITION_MS = 320;
 
 export function createViewCube(root, viewer) {
   if (!root) return { refresh() {} };
@@ -85,12 +86,12 @@ export function createViewCube(root, viewer) {
     event.preventDefault();
     scene.classList.add('dragging');
 
-    // Dragging the ViewCube out of Ortho uses the same short return animation
-    // as the Ortho close button. While that transition is running, consume the
-    // drag movement so manual orbiting cannot cancel the camera animation.
+    // Dragging the ViewCube out of Ortho uses the exact same transition as
+    // the close button: duration, easing and remembered perspective pose.
     if (!dragInteractionStarted && projection === 'orthographic') {
-      viewer.setView('home', PRESET_CUBE_TRANSITION_MS);
-      dragExitTransitionUntil = performance.now() + PRESET_CUBE_TRANSITION_MS;
+      startPresetTransition();
+      viewer.setView('home', VIEW_TRANSITION_MS);
+      dragExitTransitionUntil = performance.now() + VIEW_TRANSITION_MS;
       dragLastX = event.clientX;
       dragLastY = event.clientY;
       return;
@@ -149,7 +150,8 @@ export function createViewCube(root, viewer) {
     if (!(event.target instanceof Element)) return;
 
     if (event.target.closest('.view-cube-close')) {
-      viewer.setView('home', PRESET_CUBE_TRANSITION_MS);
+      startPresetTransition();
+      viewer.setView('home', VIEW_TRANSITION_MS);
       return;
     }
 
@@ -159,16 +161,20 @@ export function createViewCube(root, viewer) {
     if (!view) return;
 
     if (projection === 'orthographic' && view !== renderedActiveView) {
-      root.classList.add('preset-transition');
-      if (presetTransitionTimer) window.clearTimeout(presetTransitionTimer);
-      presetTransitionTimer = window.setTimeout(() => {
-        presetTransitionTimer = undefined;
-        root.classList.remove('preset-transition');
-      }, PRESET_CUBE_TRANSITION_MS);
+      startPresetTransition();
     }
 
     viewer.setView(view);
   });
+
+  function startPresetTransition() {
+    root.classList.add('preset-transition');
+    if (presetTransitionTimer) window.clearTimeout(presetTransitionTimer);
+    presetTransitionTimer = window.setTimeout(() => {
+      presetTransitionTimer = undefined;
+      root.classList.remove('preset-transition');
+    }, VIEW_TRANSITION_MS);
+  }
 
   viewer.setViewStateChangeHandler(render);
   return { refresh: render };
