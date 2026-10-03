@@ -41,6 +41,11 @@ export function createViewCube(root, viewer) {
     actions?.toggleAttribute('aria-hidden', !visible);
     if (actions) actions.inert = !visible;
 
+    if (!visible) {
+      stopPresetTransition();
+      if (actions?.contains(document.activeElement)) document.activeElement.blur();
+    }
+
     // Keep keyboard navigation aligned with what is actually displayed.
     // In Ortho, Tab is reserved for the six method buttons in display order.
     for (const button of faceButtons) button.tabIndex = visible ? -1 : 0;
@@ -190,13 +195,16 @@ export function createViewCube(root, viewer) {
     viewer.setOrthographicView(view);
   });
 
+  function stopPresetTransition() {
+    if (presetTransitionTimer) window.clearTimeout(presetTransitionTimer);
+    presetTransitionTimer = undefined;
+    root.classList.remove('preset-transition');
+  }
+
   function startPresetTransition() {
     root.classList.add('preset-transition');
     if (presetTransitionTimer) window.clearTimeout(presetTransitionTimer);
-    presetTransitionTimer = window.setTimeout(() => {
-      presetTransitionTimer = undefined;
-      root.classList.remove('preset-transition');
-    }, VIEW_TRANSITION.durationMs);
+    presetTransitionTimer = window.setTimeout(stopPresetTransition, VIEW_TRANSITION.durationMs);
   }
 
   window.addEventListener('keydown', (event) => {
