@@ -10,6 +10,9 @@ export function createViewCube(root, viewer) {
   const cube = root.querySelector('.view-cube-object');
   const actions = root.querySelector('.view-cube-actions');
   const buttons = [...root.querySelectorAll('[data-view]')];
+  const actionViews = [...(actions?.querySelectorAll('[data-view]') ?? [])]
+    .map((button) => button.dataset.view)
+    .filter(Boolean);
   const viewIds = new Set(buttons.map((button) => button.dataset.view).filter(Boolean));
 
   root.style.setProperty('--view-transition-duration', `${VIEW_TRANSITION.durationMs}ms`);
@@ -189,6 +192,30 @@ export function createViewCube(root, viewer) {
       root.classList.remove('preset-transition');
     }, VIEW_TRANSITION.durationMs);
   }
+
+  window.addEventListener('keydown', (event) => {
+    if (
+      projection !== 'orthographic'
+      || event.key !== 'Tab'
+      || event.ctrlKey
+      || event.metaKey
+      || event.altKey
+      || actionViews.length === 0
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    const direction = event.shiftKey ? -1 : 1;
+    const currentIndex = actionViews.indexOf(renderedActiveView);
+    const startIndex = currentIndex >= 0
+      ? currentIndex
+      : (event.shiftKey ? 0 : -1);
+    const nextIndex = (startIndex + direction + actionViews.length) % actionViews.length;
+
+    startPresetTransition();
+    viewer.setOrthographicView(actionViews[nextIndex]);
+  });
 
   viewer.setViewStateChangeHandler(render);
 }

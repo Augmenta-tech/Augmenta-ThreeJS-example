@@ -261,13 +261,15 @@ button, input, select { font: inherit; }
   width: 24px;
   height: 24px;
   min-height: 24px;
+  display: grid;
+  place-items: center;
   padding: 0;
   border: 0;
   border-radius: 6px;
   background: transparent;
   color: #7f899b;
-  font-size: 18px;
-  line-height: 1;
+  font-size: 0;
+  line-height: 0;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -281,6 +283,27 @@ button, input, select { font: inherit; }
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
+}
+
+.view-cube-close::before,
+.view-cube-close::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 1.5px;
+  border-radius: 999px;
+  background: currentColor;
+  transform-origin: center;
+}
+
+.view-cube-close::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.view-cube-close::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
 }
 
 .view-cube-close:hover {

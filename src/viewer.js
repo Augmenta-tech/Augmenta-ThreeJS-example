@@ -119,6 +119,7 @@ export function createViewer(host) {
   let cameraTransition;
   let cameraInteractionArmed = false;
   let cameraInteractionActive = false;
+  let orthographicOrbitExitPending = false;
   let cameraChangeHandler;
   let viewStateChangeHandler;
   let cameraUserControlled = false;
@@ -416,28 +417,10 @@ export function createViewer(host) {
     return true;
   }
 
-  function exitOrthographicForOrbit() {
-    if (!camera.isOrthographicCamera) return false;
-
-    cancelCameraTransition();
-    activeView = PERSPECTIVE_VIEW_ID;
-    switchCamera('perspective');
-    cameraUserControlled = true;
-    rememberPerspectiveView();
-    controls.update();
-    notifyViewState();
-    return true;
-  }
-
   function orbitCamera(deltaAzimuth, deltaPolar) {
     if (!Number.isFinite(deltaAzimuth) || !Number.isFinite(deltaPolar)) return false;
     if (deltaAzimuth === 0 && deltaPolar === 0) return true;
-    if (cameraTransition) return false;
-
-    // A drag out of Ortho keeps the camera exactly where the drag reached it;
-    // only the projection changes. The remembered pre-Ortho perspective pose
-    // is reserved for the explicit close button.
-    exitOrthographicForOrbit();
+    if (cameraTransition || camera.isOrthographicCamera) return false;
 
     cameraOffset.copy(camera.position).sub(controls.target);
     if (cameraOffset.lengthSq() < MIN_CAMERA_OFFSET_SQ) return false;
@@ -475,21 +458,31 @@ export function createViewer(host) {
     if (cameraOffset.lengthSq() < MIN_CAMERA_OFFSET_SQ) return;
     cameraOffset.normalize();
 
-    // Pan and zoom preserve direction and stay in Ortho. Once an actual orbit
-    // starts, switch projection in place so the drag continues from the camera
-    // pose the user reached instead of restoring the pre-Ortho perspective pose.
+    // Pan and zoom preserve direction and stay in Ortho. A real orbit marks
+    // the gesture for an animated return to the remembered perspective view
+    // when the drag ends.
     if (
       interactionStartDirection.lengthSq() >= MIN_CAMERA_OFFSET_SQ
       && cameraOffset.dot(interactionStartDirection) < ORTHOGRAPHIC_VIEW_ALIGNMENT_DOT
     ) {
-      exitOrthographicForOrbit();
+      orthographicOrbitExitPending = true;
     }
   }
 
   function beginCameraInteraction() {
     cancelCameraTransition();
+
+    // OrbitControls damping can keep producing small camera changes after a
+    // drag. Flush that residual motion before arming a new gesture, otherwise
+    // a later click with no movement can briefly reveal the folded ViewCube.
+    const dampingEnabled = controls.enableDamping;
+    controls.enableDamping = false;
+    controls.update();
+    controls.enableDamping = dampingEnabled;
+
     cameraInteractionArmed = true;
     cameraUserControlled = true;
+    orthographicOrbitExitPending = false;
 
     interactionStartDirection.set(0, 0, 0);
     if (camera.isOrthographicCamera) {
@@ -507,6 +500,14 @@ export function createViewer(host) {
 
     if (wasActive) syncManualViewState();
     interactionStartDirection.set(0, 0, 0);
+
+    if (orthographicOrbitExitPending && camera.isOrthographicCamera) {
+      orthographicOrbitExitPending = false;
+      returnToPerspective();
+      return;
+    }
+
+    orthographicOrbitExitPending = false;
     if (wasActive) notifyViewState();
   }
 
@@ -528,6 +529,7 @@ export function createViewer(host) {
     cancelCameraTransition();
     cameraInteractionArmed = false;
     cameraInteractionActive = false;
+    orthographicOrbitExitPending = false;
     cameraUserControlled = false;
     activeView = PERSPECTIVE_VIEW_ID;
     switchCamera('perspective');
@@ -1038,7 +1040,6 @@ export function createViewer(host) {
     clearSetup,
     beginCameraInteraction,
     endCameraInteraction,
-    exitOrthographicForOrbit,
     getCameraView,
     isCameraUserControlled,
     resetCamera,
