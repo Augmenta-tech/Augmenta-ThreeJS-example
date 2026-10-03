@@ -116,9 +116,7 @@ export function createViewer(host) {
   let orthoHalfWidth = 4;
   let rightInset = 0;
   let insetAnimationFrame;
-  let cameraTransitionFrame;
-  let cameraTransitionActive = false;
-  let cameraTransitionCompleteHandler;
+  let cameraTransition;
   let cameraInteractionActive = false;
   let orthographicOrbitExitPending = false;
   let cameraChangeHandler;
@@ -237,12 +235,11 @@ export function createViewer(host) {
   }
 
   function cancelCameraTransition() {
-    if (cameraTransitionFrame) cancelAnimationFrame(cameraTransitionFrame);
-    cameraTransitionFrame = undefined;
-    cameraTransitionActive = false;
+    if (!cameraTransition) return;
 
-    const onComplete = cameraTransitionCompleteHandler;
-    cameraTransitionCompleteHandler = undefined;
+    if (cameraTransition.frame) cancelAnimationFrame(cameraTransition.frame);
+    const { onComplete } = cameraTransition;
+    cameraTransition = undefined;
     onComplete?.(false);
   }
 
@@ -305,8 +302,8 @@ export function createViewer(host) {
       ? shortestAngleDelta(startSpherical.theta, endSpherical.theta)
       : 0;
 
-    cameraTransitionActive = true;
-    cameraTransitionCompleteHandler = onComplete;
+    const transition = { frame: undefined, onComplete };
+    cameraTransition = transition;
     switchCamera(mode);
     camera.position.copy(startPosition);
     controls.target.copy(startTarget);
@@ -317,11 +314,9 @@ export function createViewer(host) {
       camera.position.copy(position);
       controls.target.copy(target);
       controls.update();
-      cameraTransitionActive = false;
-      const complete = cameraTransitionCompleteHandler;
-      cameraTransitionCompleteHandler = undefined;
+      cameraTransition = undefined;
       notifyViewState();
-      complete?.(true);
+      onComplete?.(true);
       return;
     }
 
@@ -354,22 +349,20 @@ export function createViewer(host) {
       notifyViewState();
 
       if (t < 1) {
-        cameraTransitionFrame = requestAnimationFrame(tick);
+        transition.frame = requestAnimationFrame(tick);
         return;
       }
 
-      cameraTransitionFrame = undefined;
+      transition.frame = undefined;
       camera.position.copy(position);
       controls.target.copy(target);
       controls.update();
-      cameraTransitionActive = false;
-      const complete = cameraTransitionCompleteHandler;
-      cameraTransitionCompleteHandler = undefined;
+      if (cameraTransition === transition) cameraTransition = undefined;
       notifyViewState();
-      complete?.(true);
+      onComplete?.(true);
     };
 
-    cameraTransitionFrame = requestAnimationFrame(tick);
+    transition.frame = requestAnimationFrame(tick);
   }
 
   function returnToPerspective({
@@ -378,7 +371,7 @@ export function createViewer(host) {
   } = {}) {
     activeView = PERSPECTIVE_VIEW_ID;
 
-    if (camera.isPerspectiveCamera && !cameraTransitionActive) {
+    if (camera.isPerspectiveCamera && !Boolean(cameraTransition)) {
       rememberPerspectiveView();
       onComplete?.(true);
       notifyViewState();
@@ -424,7 +417,7 @@ export function createViewer(host) {
   function orbitCamera(deltaAzimuth, deltaPolar) {
     if (!Number.isFinite(deltaAzimuth) || !Number.isFinite(deltaPolar)) return false;
     if (deltaAzimuth === 0 && deltaPolar === 0) return true;
-    if (cameraTransitionActive || camera.isOrthographicCamera) return false;
+    if (Boolean(cameraTransition) || camera.isOrthographicCamera) return false;
 
     cameraOffset.copy(camera.position).sub(controls.target);
     if (cameraOffset.lengthSq() < MIN_CAMERA_OFFSET_SQ) return false;
@@ -511,7 +504,7 @@ export function createViewer(host) {
   controls.addEventListener('change', () => {
     // Programmatic camera transitions emit ViewCube state explicitly on every
     // animation frame. Manual movement updates selection and perspective history here.
-    if (!cameraTransitionActive) {
+    if (!Boolean(cameraTransition)) {
       syncManualViewState();
       notifyViewState();
     }
