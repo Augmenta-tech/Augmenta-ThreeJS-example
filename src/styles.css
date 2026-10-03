@@ -176,12 +176,16 @@ button, input, select { font: inherit; }
 
 .view-cube-actions {
   width: 100%;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
   gap: 5px;
 }
 
 .view-cube-actions button {
+  flex: 0 0 auto;
+  width: auto;
   min-width: 0;
   min-height: 0;
   height: 26px;
@@ -190,9 +194,10 @@ button, input, select { font: inherit; }
   border-radius: 8px;
   background: rgba(255, 255, 255, .075);
   color: rgba(225, 235, 233, .72);
-  padding: 0 4px;
+  padding: 0 7px;
   font-size: 10px;
   font-weight: 650;
+  white-space: nowrap;
   text-transform: uppercase;
 }
 
