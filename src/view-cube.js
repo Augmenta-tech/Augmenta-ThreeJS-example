@@ -129,7 +129,7 @@ export function createViewCube(root, viewer) {
     if (!(event.target instanceof Element)) return;
 
     if (event.target.closest('.view-cube-close')) {
-      viewer.setView('home');
+      viewer.setView('home', PRESET_CUBE_TRANSITION_MS);
       return;
     }
 
