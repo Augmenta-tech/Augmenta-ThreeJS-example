@@ -16,6 +16,8 @@ const PERSPECTIVE_MIN_POLAR_ANGLE = THREE.MathUtils.degToRad(2);
 const PERSPECTIVE_MAX_POLAR_ANGLE = THREE.MathUtils.degToRad(88.5);
 const ORTHOGRAPHIC_MIN_POLAR_ANGLE = 0.001;
 const ORTHOGRAPHIC_MAX_POLAR_ANGLE = Math.PI - 0.001;
+const MIN_CAMERA_OFFSET_SQ = 1e-8;
+const ORTHOGRAPHIC_VIEW_ALIGNMENT_DOT = 0.99999;
 const ISO_VIEW_ID = 'home'; // Kept for persisted-state compatibility.
 const VIEW_DIRECTIONS = Object.freeze({
   // Three.js right-handed world axes, matching THREE.AxesHelper.
@@ -190,11 +192,11 @@ export function createViewer(host) {
 
   function currentViewState() {
     cameraOffset.copy(camera.position).sub(controls.target);
-    if (cameraOffset.lengthSq() < 1e-8) {
+    if (cameraOffset.lengthSq() < MIN_CAMERA_OFFSET_SQ) {
       return {
         activeView,
         mode: camera.isOrthographicCamera ? 'orthographic' : 'perspective',
-        moving: cameraTransitionActive || cameraInteractionActive,
+        moving: isCameraMoving(),
         cubeYaw: 0,
         cubeTransform: 'rotateX(0deg) rotateY(0deg) rotateZ(0deg)'
       };
@@ -210,10 +212,14 @@ export function createViewer(host) {
     return {
       activeView,
       mode: camera.isOrthographicCamera ? 'orthographic' : 'perspective',
-      moving: cameraTransitionActive || cameraInteractionActive,
+      moving: isCameraMoving(),
       cubeYaw: y,
       cubeTransform: `rotateX(${x}deg) rotateY(${y}deg) rotateZ(0deg)`
     };
+  }
+
+  function isCameraMoving() {
+    return cameraTransitionActive || cameraInteractionActive;
   }
 
   function notifyViewState() {
@@ -259,7 +265,7 @@ export function createViewer(host) {
     const startTarget = controls.target.clone();
     const startOffset = startPosition.clone().sub(startTarget);
     const endOffset = position.clone().sub(target);
-    const canOrbit = startOffset.lengthSq() > 1e-8 && endOffset.lengthSq() > 1e-8;
+    const canOrbit = startOffset.lengthSq() > MIN_CAMERA_OFFSET_SQ && endOffset.lengthSq() > MIN_CAMERA_OFFSET_SQ;
     const animatedTarget = new THREE.Vector3();
     const animatedOffset = new THREE.Vector3();
     const animatedSpherical = new THREE.Spherical();
@@ -363,7 +369,7 @@ export function createViewer(host) {
 
     cancelCameraTransition();
     cameraOffset.copy(camera.position).sub(controls.target);
-    if (cameraOffset.lengthSq() < 1e-8) return false;
+    if (cameraOffset.lengthSq() < MIN_CAMERA_OFFSET_SQ) return false;
 
     cameraSpherical.setFromVector3(cameraOffset);
     cameraSpherical.theta += deltaAzimuth;
@@ -398,7 +404,7 @@ export function createViewer(host) {
     if (!direction) return;
 
     cameraOffset.copy(camera.position).sub(controls.target);
-    if (cameraOffset.lengthSq() < 1e-8) {
+    if (cameraOffset.lengthSq() < MIN_CAMERA_OFFSET_SQ) {
       activeView = 'free';
       return;
     }
@@ -406,7 +412,7 @@ export function createViewer(host) {
     // Orthographic pan and zoom keep the same camera direction and therefore
     // keep the selected face. Only a real rotation clears the face selection.
     cameraOffset.normalize();
-    if (cameraOffset.dot(direction) < 0.99999) activeView = 'free';
+    if (cameraOffset.dot(direction) < ORTHOGRAPHIC_VIEW_ALIGNMENT_DOT) activeView = 'free';
   }
 
   function beginCameraInteraction() {

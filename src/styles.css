@@ -226,14 +226,6 @@ button, input, select { font: inherit; }
   pointer-events: auto;
 }
 
-/* During camera motion keep only the 3D cube visible, even if the hover
-   region or an orthographic mode would otherwise expose the controls. */
-.view-cube.camera-moving::before,
-.view-cube.camera-moving .view-cube-actions {
-  opacity: 0;
-  pointer-events: none;
-}
-
 .view-cube-actions button {
   flex: 0 0 auto;
   width: auto;
