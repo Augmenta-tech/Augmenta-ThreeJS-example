@@ -19,7 +19,7 @@ const ORTHOGRAPHIC_MIN_POLAR_ANGLE = 0.001;
 const ORTHOGRAPHIC_MAX_POLAR_ANGLE = Math.PI - 0.001;
 const MIN_CAMERA_OFFSET_SQ = 1e-8;
 const ORTHOGRAPHIC_VIEW_ALIGNMENT_DOT = 0.99999;
-const ISO_VIEW_ID = 'home'; // Kept for persisted-state compatibility.
+const PERSPECTIVE_VIEW_ID = 'home'; // Persisted value kept for backward compatibility.
 const VIEW_DIRECTIONS = Object.freeze({
   // Three.js right-handed world axes, matching THREE.AxesHelper.
   front: new THREE.Vector3(0, 0, 1),
@@ -124,7 +124,7 @@ export function createViewer(host) {
   let cameraChangeHandler;
   let viewStateChangeHandler;
   let cameraUserControlled = false;
-  let activeView = ISO_VIEW_ID;
+  let activeView = PERSPECTIVE_VIEW_ID;
 
   function getCameraView() {
     return {
@@ -179,7 +179,7 @@ export function createViewer(host) {
       ? view.activeView
       : view?.mode === 'orthographic'
         ? 'free'
-        : ISO_VIEW_ID;
+        : PERSPECTIVE_VIEW_ID;
 
     switchCamera(view?.mode === 'orthographic' ? 'orthographic' : 'perspective');
     camera.position.fromArray(position);
@@ -376,7 +376,7 @@ export function createViewer(host) {
     duration = VIEW_TRANSITION.durationMs,
     onComplete
   } = {}) {
-    activeView = ISO_VIEW_ID;
+    activeView = PERSPECTIVE_VIEW_ID;
 
     if (camera.isPerspectiveCamera && !cameraTransitionActive) {
       rememberPerspectiveView();
@@ -421,14 +421,6 @@ export function createViewer(host) {
     return true;
   }
 
-  // Compatibility wrapper for callers that still use the legacy "home" view
-  // identifier. New code should use the explicit projection methods above.
-  function setView(view, duration = CAMERA_VIEW_TRANSITION_MS) {
-    return view === ISO_VIEW_ID
-      ? returnToPerspective({ duration })
-      : setOrthographicView(view, { duration });
-  }
-
   function orbitCamera(deltaAzimuth, deltaPolar) {
     if (!Number.isFinite(deltaAzimuth) || !Number.isFinite(deltaPolar)) return false;
     if (deltaAzimuth === 0 && deltaPolar === 0) return true;
@@ -448,7 +440,7 @@ export function createViewer(host) {
     cameraOffset.setFromSpherical(cameraSpherical);
     camera.position.copy(controls.target).add(cameraOffset);
     cameraUserControlled = true;
-    activeView = ISO_VIEW_ID;
+    activeView = PERSPECTIVE_VIEW_ID;
     controls.update();
     return true;
   }
@@ -461,7 +453,7 @@ export function createViewer(host) {
 
   function syncManualViewState() {
     if (camera.isPerspectiveCamera) {
-      activeView = ISO_VIEW_ID;
+      activeView = PERSPECTIVE_VIEW_ID;
       rememberPerspectiveView();
       return;
     }
@@ -518,7 +510,7 @@ export function createViewer(host) {
   controls.addEventListener('end', endCameraInteraction);
   controls.addEventListener('change', () => {
     // Programmatic camera transitions emit ViewCube state explicitly on every
-    // animation frame. Manual movement updates selection and ISO history here.
+    // animation frame. Manual movement updates selection and perspective history here.
     if (!cameraTransitionActive) {
       syncManualViewState();
       notifyViewState();
@@ -530,7 +522,7 @@ export function createViewer(host) {
     cancelCameraTransition();
     cameraInteractionActive = false;
     cameraUserControlled = false;
-    activeView = ISO_VIEW_ID;
+    activeView = PERSPECTIVE_VIEW_ID;
     switchCamera('perspective');
     camera.position.copy(homePosition);
     controls.target.copy(homeTarget);
@@ -1048,7 +1040,6 @@ export function createViewer(host) {
     returnToPerspective,
     setOrthographicView,
     setRightInset,
-    setView,
     setViewStateChangeHandler,
     setVisibility
   };
