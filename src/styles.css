@@ -83,7 +83,7 @@ button, input, select { font: inherit; }
   width: 224px;
   aspect-ratio: 1 / 1;
   box-sizing: border-box;
-  grid-template-rows: 24px minmax(0, 1fr) 57px;
+  grid-template-rows: 24px minmax(0, 1fr) auto;
   row-gap: 4px;
 }
 
@@ -1130,7 +1130,7 @@ button.subtle-button.active {
   .view-cube.controls-visible,
   #app.sidebar-hidden .view-cube.controls-visible {
     width: 180px;
-    grid-template-rows: 20px minmax(0, 1fr) 49px;
+    grid-template-rows: 20px minmax(0, 1fr) auto;
     row-gap: 3px;
   }
   .view-cube-scene {
