@@ -59,7 +59,9 @@ button, input, select { font: inherit; }
 .viewer-overlay p { margin: 4px 0 0; color: #aeb6c5; font-size: 12px; }
 
 .view-cube {
-  --view-cube-fade-duration: 440ms;
+  --view-cube-fade-in-duration: 220ms;
+  --view-cube-fade-out-duration: 440ms;
+  --view-cube-opacity-duration: var(--view-cube-fade-out-duration);
   position: absolute;
   z-index: 13;
   top: 14px;
@@ -76,7 +78,7 @@ button, input, select { font: inherit; }
   transition:
     right var(--sidebar-transition-duration) ease,
     width var(--sidebar-transition-duration) ease,
-    opacity var(--view-cube-fade-duration) ease;
+    opacity var(--view-cube-opacity-duration) ease;
 }
 
 .view-cube.controls-visible {
@@ -115,6 +117,10 @@ button, input, select { font: inherit; }
   right: 14px;
   opacity: 0;
   pointer-events: none;
+}
+
+#app.sidebar-hidden .view-cube.camera-interacting {
+  --view-cube-opacity-duration: var(--view-cube-fade-in-duration);
 }
 
 #app.sidebar-hidden .view-cube.camera-interacting,
