@@ -11,15 +11,17 @@ const PANEL_INSET_ANIMATION_DURATION_MS = 220;
 const MIN_GEOMETRY_SIZE = 0.001;
 const MIN_ARROW_LENGTH_M = 0.001;
 const MIN_VISIBLE_SPEED_MPS = 0.001;
-const CAMERA_FLOOR_CLEARANCE_M = 0.02;
 const PERSPECTIVE_MIN_POLAR_ANGLE = THREE.MathUtils.degToRad(2);
-const PERSPECTIVE_MAX_POLAR_ANGLE = THREE.MathUtils.degToRad(88.5);
+const PERSPECTIVE_MAX_POLAR_ANGLE = THREE.MathUtils.degToRad(178.5);
 const ORTHOGRAPHIC_MIN_POLAR_ANGLE = 0.001;
 const ORTHOGRAPHIC_MAX_POLAR_ANGLE = Math.PI - 0.001;
+const MIN_CAMERA_DISTANCE = 0.05;
+const MAX_CAMERA_DISTANCE = 500;
 const MIN_CAMERA_OFFSET_SQ = 1e-8;
 const ORTHOGRAPHIC_VIEW_ALIGNMENT_DOT = 0.99999;
 const DEFAULT_ORTHO_HALF_WIDTH = 4;
-const MIN_CAMERA_ZOOM = 1e-6;
+const MIN_CAMERA_ZOOM = 0.05;
+const MAX_CAMERA_ZOOM = 50;
 const MIN_PROJECTION_ASPECT = 0.1;
 const MIN_VIEWPORT_AFTER_INSET_PX = 80;
 const PERSPECTIVE_VIEW_ID = 'home'; // Persisted value kept for backward compatibility.
@@ -175,14 +177,23 @@ export function createViewer(host) {
     }
 
     if (restoringOrthographic && Number.isFinite(view?.zoom) && view.zoom > 0) {
-      orthographicCamera.zoom = view.zoom;
+      orthographicCamera.zoom = THREE.MathUtils.clamp(
+        view.zoom,
+        MIN_CAMERA_ZOOM,
+        MAX_CAMERA_ZOOM
+      );
     }
 
-    perspectiveCamera.zoom = Number.isFinite(view?.perspectiveZoom) && view.perspectiveZoom > 0
+    const restoredPerspectiveZoom = Number.isFinite(view?.perspectiveZoom) && view.perspectiveZoom > 0
       ? view.perspectiveZoom
       : !restoringOrthographic && Number.isFinite(view?.zoom) && view.zoom > 0
         ? view.zoom
         : 1;
+    perspectiveCamera.zoom = THREE.MathUtils.clamp(
+      restoredPerspectiveZoom,
+      MIN_CAMERA_ZOOM,
+      MAX_CAMERA_ZOOM
+    );
 
     activeView = view?.mode === 'orthographic' && isOrthographicView(view?.activeView)
       ? view.activeView
@@ -423,9 +434,10 @@ export function createViewer(host) {
     // Pleiades drives orthographic framing from the ArcRotate camera radius.
     // Preserve that radius/target and match the perspective scale optically,
     // so leaving Ortho does not move the camera in or out.
-    perspectiveCamera.zoom = Math.max(
+    perspectiveCamera.zoom = THREE.MathUtils.clamp(
       distance * Math.tan(perspectiveHalfAngle) / Math.max(orthoHalfHeight, MIN_CAMERA_ZOOM),
-      MIN_CAMERA_ZOOM
+      MIN_CAMERA_ZOOM,
+      MAX_CAMERA_ZOOM
     );
 
     cancelCameraTransition();
@@ -1090,16 +1102,6 @@ export function createViewer(host) {
   renderer.setAnimationLoop(() => {
     controls.update();
     zoneRenderer.animate(performance.now());
-
-    // Perspective orbiting stays above the world floor. Orthographic face
-    // views intentionally include top and bottom, so they are not clamped.
-    if (
-      camera.isPerspectiveCamera
-      && camera.position.y < FLOOR_Y + CAMERA_FLOOR_CLEARANCE_M
-    ) {
-      camera.position.y = FLOOR_Y + CAMERA_FLOOR_CLEARANCE_M;
-    }
-
     renderer.render(scene, camera);
   });
 
@@ -1178,8 +1180,10 @@ function configureControls(controls) {
   controls.rotateSpeed = 0.6;
   controls.panSpeed = 0.72;
   controls.zoomSpeed = 0.9;
-  controls.minDistance = 0.05;
-  controls.maxDistance = 500;
+  controls.minDistance = MIN_CAMERA_DISTANCE;
+  controls.maxDistance = MAX_CAMERA_DISTANCE;
+  controls.minZoom = MIN_CAMERA_ZOOM;
+  controls.maxZoom = MAX_CAMERA_ZOOM;
   controls.zoomToCursor = false;
   controls.minPolarAngle = PERSPECTIVE_MIN_POLAR_ANGLE;
   controls.maxPolarAngle = PERSPECTIVE_MAX_POLAR_ANGLE;

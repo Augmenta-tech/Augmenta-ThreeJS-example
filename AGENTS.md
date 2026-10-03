@@ -16,6 +16,7 @@ Keep this example small, browser-native, and easy to inspect.
 - Keep shared ViewCube transition timing/easing in `src/view-transition.js`; do not duplicate those values in CSS or other JavaScript.
 - In Ortho, Tab order follows the displayed method order: Top, Front, Right, Left, Back, Bottom. Shift+Tab reverses it. Escape exits Ortho without folding the sidebar.
 - Preserve persisted camera-state compatibility when changing stored field names or view identifiers.
+- Perspective orbit intentionally extends below the floor to nearly the opposite pole; do not reintroduce a floor-height clamp. Keep broad but finite min/max camera distance and zoom limits.
 
 ## Runtime and dependencies
 

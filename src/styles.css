@@ -373,8 +373,8 @@ button, input, select { font: inherit; }
 
 .view-cube-actions button:hover {
   color: #f5f7fb;
-  border-color: var(--accent-hover);
-  background: var(--accent-strong-hover);
+  border-color: var(--accent-border);
+  background: #4b425f;
 }
 
 .view-cube-actions button.active,
