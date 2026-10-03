@@ -76,7 +76,6 @@ button, input, select { font: inherit; }
   transition:
     right var(--sidebar-transition-duration) ease,
     width var(--sidebar-transition-duration) ease,
-    min-height var(--sidebar-transition-duration) ease,
     opacity var(--view-cube-fade-duration) ease;
 }
 
@@ -243,7 +242,6 @@ button, input, select { font: inherit; }
 
 .view-cube.controls-visible .view-cube-title {
   height: 24px;
-  margin-bottom: 0;
   align-self: center;
   line-height: 24px;
   opacity: 1;
