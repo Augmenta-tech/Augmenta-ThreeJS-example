@@ -8,6 +8,7 @@ import { collectZoneAddresses } from './zone-state.js';
 const FLOOR_Y = 0;
 const PANEL_INSET_ANIMATION_DURATION_MS = 220;
 const CAMERA_VIEW_TRANSITION_MS = 550;
+const VIEW_CUBE_TRANSITION_BEZIER = Object.freeze([0.2, 0.8, 0.2, 1]);
 const MIN_GEOMETRY_SIZE = 0.001;
 const MIN_ARROW_LENGTH_M = 0.001;
 const MIN_VISIBLE_SPEED_MPS = 0.001;
@@ -270,7 +271,8 @@ export function createViewer(host) {
     target,
     mode,
     duration = CAMERA_VIEW_TRANSITION_MS,
-    interpolation = 'orbit'
+    interpolation = 'orbit',
+    easing = 'default'
   ) {
     cancelCameraTransition();
 
@@ -313,8 +315,8 @@ export function createViewer(host) {
     const startedAt = performance.now();
     const tick = (now) => {
       const t = Math.min((now - startedAt) / duration, 1);
-      const progress = interpolation === 'linear'
-        ? t
+      const progress = easing === 'view-cube'
+        ? cubicBezierEase(t, ...VIEW_CUBE_TRANSITION_BEZIER)
         : 1 - Math.pow(1 - t, 5);
       animatedTarget.lerpVectors(startTarget, target, progress);
 
@@ -363,7 +365,8 @@ export function createViewer(host) {
         perspectiveTarget.clone(),
         'perspective',
         duration,
-        'linear'
+        'linear',
+        'view-cube'
       );
       return true;
     }
@@ -1018,6 +1021,30 @@ function normalizeDegrees(value) {
 
 function shortestAngleDelta(from, to) {
   return THREE.MathUtils.euclideanModulo(to - from + Math.PI, Math.PI * 2) - Math.PI;
+}
+
+function cubicBezierEase(progress, x1, y1, x2, y2) {
+  if (progress <= 0 || progress >= 1) return progress;
+
+  let lower = 0;
+  let upper = 1;
+  let parameter = progress;
+
+  // CSS cubic-bezier easing is defined by x->y, so invert x numerically.
+  for (let i = 0; i < 12; i += 1) {
+    parameter = (lower + upper) / 2;
+    if (cubicBezierCoordinate(parameter, x1, x2) < progress) lower = parameter;
+    else upper = parameter;
+  }
+
+  return cubicBezierCoordinate(parameter, y1, y2);
+}
+
+function cubicBezierCoordinate(t, control1, control2) {
+  const inverse = 1 - t;
+  return 3 * inverse * inverse * t * control1
+    + 3 * inverse * t * t * control2
+    + t * t * t;
 }
 
 function validVector3(value) {
