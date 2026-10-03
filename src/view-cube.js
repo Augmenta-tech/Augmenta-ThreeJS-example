@@ -21,6 +21,7 @@ export function createViewCube(root, viewer) {
   }
 
   root.addEventListener('click', (event) => {
+    if (!(event.target instanceof Element)) return;
     const button = event.target.closest('[data-view]');
     if (!button || !root.contains(button)) return;
     const view = button.dataset.view;
