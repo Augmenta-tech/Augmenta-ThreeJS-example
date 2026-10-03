@@ -136,10 +136,6 @@ The example intentionally keeps protocol responsibilities out of the Three.js la
 
 This separation keeps the SDK reusable by non-Three.js applications and keeps rendering/UI decisions out of the protocol library.
 
-## TODO
-
-- **Pleiades simulator velocity:** propagate the simulated motion into `handledCluster->velocity` before WebSocket output; ideally derive it from actual frame displacement / delta time so noise and clamping are reflected. The SDK and Three.js example already consume the field correctly.
-
 ## Project structure
 
 ```text
@@ -154,6 +150,8 @@ This separation keeps the SDK reusable by non-Three.js applications and keeps re
 │   ├── setup-store.js                  # Setup cache + partial update merging
 │   ├── motion.js                       # Consumer-side velocity → speed helper
 │   ├── qr.js                           # QR rendering + copy interaction
+│   ├── view-cube.js                    # ViewCube UI, Ortho shortcuts + keyboard navigation
+│   ├── view-transition.js              # Shared camera/ViewCube transition timing + easing
 │   ├── viewer.js                       # Three.js scene, camera, clusters + points
 │   ├── zones.js                        # Zone geometry, presence + XY pad rendering
 │   ├── zone-state.js                   # Pure zone-event state extraction/cache input
