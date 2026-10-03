@@ -1,10 +1,9 @@
-const VIEW_IDS = new Set(['home', 'front', 'back', 'right', 'left', 'top', 'bottom']);
-
 export function createViewCube(root, viewer) {
   if (!root) return { refresh() {} };
 
   const cube = root.querySelector('.view-cube-object');
   const buttons = [...root.querySelectorAll('[data-view]')];
+  const viewIds = new Set(buttons.map((button) => button.dataset.view).filter(Boolean));
 
   function render(state = {}) {
     if (cube && typeof state.cubeTransform === 'string') {
@@ -14,7 +13,7 @@ export function createViewCube(root, viewer) {
       cube.style.setProperty('--cube-yaw', `${state.cubeYaw}deg`);
     }
 
-    const activeView = VIEW_IDS.has(state.activeView) ? state.activeView : 'home';
+    const activeView = viewIds.has(state.activeView) ? state.activeView : 'home';
     for (const button of buttons) {
       button.classList.toggle('active', button.dataset.view === activeView);
       button.setAttribute('aria-pressed', String(button.dataset.view === activeView));
@@ -28,8 +27,7 @@ export function createViewCube(root, viewer) {
     const button = event.target.closest('[data-view]');
     if (!button || !root.contains(button)) return;
     const view = button.dataset.view;
-    if (!VIEW_IDS.has(view)) return;
-    viewer.setView(view);
+    if (view) viewer.setView(view);
   });
 
   viewer.setViewStateChangeHandler(render);
