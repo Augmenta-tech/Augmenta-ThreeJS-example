@@ -345,9 +345,11 @@ button, input, select { font: inherit; }
 .view-cube-actions button {
   width: 100%;
   min-width: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
+  text-indent: 0;
   line-height: 1;
   min-height: 0;
   height: 26px;
@@ -1183,6 +1185,7 @@ button.subtle-button.active {
   }
   .view-cube-actions button {
     height: 22px;
+    padding-inline: 4px;
   }
   .connection-qr-visibility {
     left: 12px;
