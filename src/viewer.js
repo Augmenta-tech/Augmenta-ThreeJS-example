@@ -536,7 +536,10 @@ export function createViewer(host) {
     cameraInteractionArmed = false;
     cameraInteractionActive = false;
 
-    if (wasActive) syncManualViewState();
+    // An Ortho -> perspective transition already owns the camera pose. Do not
+    // snapshot an intermediate animation frame as the new perspective history
+    // when the pointer is released before that transition has finished.
+    if (wasActive && !cameraTransition) syncManualViewState();
     interactionStartDirection.set(0, 0, 0);
     if (wasActive) notifyViewState();
   }
