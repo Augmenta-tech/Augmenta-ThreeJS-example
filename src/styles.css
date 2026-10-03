@@ -368,11 +368,16 @@ button, input, select { font: inherit; }
   text-transform: uppercase;
 }
 
-.view-cube-actions button:hover,
-.view-cube-actions button.active {
+.view-cube-actions button:hover {
   color: var(--accent-hover);
   border-color: var(--accent-border);
   background: var(--accent-focus);
+}
+
+.view-cube-actions button.active {
+  color: #f5f7fb;
+  border-color: var(--accent);
+  background: var(--accent-strong);
 }
 
 .view-cube button:focus-visible {
