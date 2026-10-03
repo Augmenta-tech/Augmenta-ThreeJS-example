@@ -104,6 +104,8 @@ export function createViewer(host) {
   const velocityDirection = new THREE.Vector3();
   const homePosition = new THREE.Vector3(0, 2.5, 7.5);
   const homeTarget = new THREE.Vector3(0, 1.2, 0);
+  const isoPosition = homePosition.clone();
+  const isoTarget = homeTarget.clone();
   const cameraOffset = new THREE.Vector3();
   const cameraSpherical = new THREE.Spherical();
   let homeOrthoHalfWidth = 4;
@@ -124,7 +126,9 @@ export function createViewer(host) {
       mode: camera.isOrthographicCamera ? 'orthographic' : 'perspective',
       zoom: camera.zoom,
       orthoHalfWidth,
-      activeView
+      activeView,
+      isoPosition: isoPosition.toArray(),
+      isoTarget: isoTarget.toArray()
     };
   }
 
@@ -134,6 +138,19 @@ export function createViewer(host) {
     if (!position || !target) return false;
 
     cancelCameraTransition();
+
+    const savedIsoPosition = validVector3(view?.isoPosition);
+    const savedIsoTarget = validVector3(view?.isoTarget);
+    if (savedIsoPosition && savedIsoTarget) {
+      isoPosition.fromArray(savedIsoPosition);
+      isoTarget.fromArray(savedIsoTarget);
+    } else if (view?.mode !== 'orthographic') {
+      // Backward compatibility with camera preferences saved before ISO
+      // history was persisted separately.
+      isoPosition.fromArray(position);
+      isoTarget.fromArray(target);
+    }
+
     if (Number.isFinite(view?.orthoHalfWidth) && view.orthoHalfWidth > 0) {
       orthoHalfWidth = view.orthoHalfWidth;
     }
@@ -141,13 +158,9 @@ export function createViewer(host) {
       orthographicCamera.zoom = view.zoom;
     }
 
-    activeView = view?.activeView === 'free'
-      ? 'free'
-      : VIEW_IDS.has(view?.activeView)
-        ? view.activeView
-        : view?.mode === 'orthographic'
-          ? activeView
-          : 'home';
+    activeView = view?.mode === 'orthographic'
+      ? (VIEW_DIRECTIONS[view?.activeView] ? view.activeView : 'free')
+      : 'home';
 
     switchCamera(view?.mode === 'orthographic' ? 'orthographic' : 'perspective');
     camera.position.fromArray(position);
@@ -317,12 +330,18 @@ export function createViewer(host) {
   function setView(view, duration = CAMERA_VIEW_TRANSITION_MS) {
     if (!VIEW_IDS.has(view)) return false;
 
-    activeView = view;
     if (view === 'home') {
-      animateCameraTo(homePosition.clone(), homeTarget.clone(), 'perspective', duration);
+      activeView = 'home';
+      animateCameraTo(isoPosition.clone(), isoTarget.clone(), 'perspective', duration);
       return true;
     }
 
+    // Entering an orthographic face view must not destroy the perspective
+    // composition the user was working in. ISO is a projection mode/history,
+    // not a fixed home pose.
+    if (camera.isPerspectiveCamera) rememberIsoView();
+
+    activeView = view;
     const direction = VIEW_DIRECTIONS[view];
     const distance = Math.max(homePosition.distanceTo(homeTarget), 2);
     const target = homeTarget.clone();
@@ -353,21 +372,50 @@ export function createViewer(host) {
     cameraOffset.setFromSpherical(cameraSpherical);
     camera.position.copy(controls.target).add(cameraOffset);
     cameraUserControlled = true;
-    activeView = 'free';
+    activeView = camera.isPerspectiveCamera ? 'home' : 'free';
     controls.update();
     return true;
+  }
+
+  function rememberIsoView() {
+    if (!camera.isPerspectiveCamera) return;
+    isoPosition.copy(camera.position);
+    isoTarget.copy(controls.target);
+  }
+
+  function syncManualViewState() {
+    if (camera.isPerspectiveCamera) {
+      activeView = 'home';
+      rememberIsoView();
+      return;
+    }
+
+    const direction = VIEW_DIRECTIONS[activeView];
+    if (!direction) return;
+
+    cameraOffset.copy(camera.position).sub(controls.target);
+    if (cameraOffset.lengthSq() < 1e-8) {
+      activeView = 'free';
+      return;
+    }
+
+    // Orthographic pan and zoom keep the same camera direction and therefore
+    // keep the selected face. Only a real rotation clears the face selection.
+    cameraOffset.normalize();
+    if (cameraOffset.dot(direction) < 0.99999) activeView = 'free';
   }
 
   controls.addEventListener('start', () => {
     cancelCameraTransition();
     cameraUserControlled = true;
-    activeView = 'free';
-    notifyViewState();
   });
   controls.addEventListener('change', () => {
     // Programmatic camera transitions emit ViewCube state explicitly on every
-    // animation frame. Manual OrbitControls movement still follows this event.
-    if (!cameraTransitionActive) notifyViewState();
+    // animation frame. Manual movement updates selection and ISO history here.
+    if (!cameraTransitionActive) {
+      syncManualViewState();
+      notifyViewState();
+    }
     cameraChangeHandler?.(getCameraView());
   });
 
@@ -378,6 +426,8 @@ export function createViewer(host) {
     switchCamera('perspective');
     camera.position.copy(homePosition);
     controls.target.copy(homeTarget);
+    isoPosition.copy(homePosition);
+    isoTarget.copy(homeTarget);
     controls.update();
     notifyViewState();
   }
@@ -784,6 +834,8 @@ export function createViewer(host) {
     // refreshes cannot overwrite the persisted view.
     if (!cameraUserControlled) {
       controls.target.copy(center);
+      isoPosition.copy(homePosition);
+      isoTarget.copy(homeTarget);
       controls.update();
     }
   }
@@ -825,6 +877,10 @@ export function createViewer(host) {
     zoneRenderer.resetViews();
     homePosition.set(0, 2.5, 7.5);
     homeTarget.set(0, 1.2, 0);
+    if (!cameraUserControlled) {
+      isoPosition.copy(homePosition);
+      isoTarget.copy(homeTarget);
+    }
     homeOrthoHalfWidth = 4;
     orthoHalfWidth = 4;
   }
