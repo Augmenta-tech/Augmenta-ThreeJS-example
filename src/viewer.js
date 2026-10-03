@@ -495,7 +495,7 @@ export function createViewer(host) {
     cameraOffset.normalize();
 
     // Pan and zoom preserve direction and stay in Ortho. The first real orbit
-    // immediately starts the animated return to the remembered perspective view.
+    // transitions from the current Ortho framing into its matching perspective view.
     if (
       interactionStartDirection.lengthSq() >= MIN_CAMERA_OFFSET_SQ
       && cameraOffset.dot(interactionStartDirection) < ORTHOGRAPHIC_VIEW_ALIGNMENT_DOT
