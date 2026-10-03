@@ -111,6 +111,7 @@ export function createViewer(host) {
   let rightInset = 0;
   let insetAnimationFrame;
   let cameraTransitionFrame;
+  let cameraTransitionActive = false;
   let cameraChangeHandler;
   let viewStateChangeHandler;
   let cameraUserControlled = false;
@@ -200,9 +201,9 @@ export function createViewer(host) {
   }
 
   function cancelCameraTransition() {
-    if (!cameraTransitionFrame) return;
-    cancelAnimationFrame(cameraTransitionFrame);
+    if (cameraTransitionFrame) cancelAnimationFrame(cameraTransitionFrame);
     cameraTransitionFrame = undefined;
+    cameraTransitionActive = false;
   }
 
   function configureProjectionControls() {
@@ -237,6 +238,23 @@ export function createViewer(host) {
 
     const startPosition = camera.position.clone();
     const startTarget = controls.target.clone();
+    const startOffset = startPosition.clone().sub(startTarget);
+    const endOffset = position.clone().sub(target);
+    const canOrbit = startOffset.lengthSq() > 1e-8 && endOffset.lengthSq() > 1e-8;
+    const animatedTarget = new THREE.Vector3();
+    const animatedOffset = new THREE.Vector3();
+    const animatedSpherical = new THREE.Spherical();
+    const startSpherical = canOrbit
+      ? new THREE.Spherical().setFromVector3(startOffset)
+      : undefined;
+    const endSpherical = canOrbit
+      ? new THREE.Spherical().setFromVector3(endOffset)
+      : undefined;
+    const thetaDelta = canOrbit
+      ? shortestAngleDelta(startSpherical.theta, endSpherical.theta)
+      : 0;
+
+    cameraTransitionActive = true;
     switchCamera(mode);
     camera.position.copy(startPosition);
     controls.target.copy(startTarget);
@@ -246,6 +264,7 @@ export function createViewer(host) {
       camera.position.copy(position);
       controls.target.copy(target);
       controls.update();
+      cameraTransitionActive = false;
       notifyViewState();
       return;
     }
@@ -254,9 +273,29 @@ export function createViewer(host) {
     const tick = (now) => {
       const t = Math.min((now - startedAt) / duration, 1);
       const eased = 1 - Math.pow(1 - t, 5);
-      camera.position.lerpVectors(startPosition, position, eased);
-      controls.target.lerpVectors(startTarget, target, eased);
+      animatedTarget.lerpVectors(startTarget, target, eased);
+
+      if (canOrbit) {
+        animatedSpherical.radius = THREE.MathUtils.lerp(
+          startSpherical.radius,
+          endSpherical.radius,
+          eased
+        );
+        animatedSpherical.phi = THREE.MathUtils.lerp(
+          startSpherical.phi,
+          endSpherical.phi,
+          eased
+        );
+        animatedSpherical.theta = startSpherical.theta + thetaDelta * eased;
+        animatedOffset.setFromSpherical(animatedSpherical);
+        camera.position.copy(animatedTarget).add(animatedOffset);
+      } else {
+        camera.position.lerpVectors(startPosition, position, eased);
+      }
+
+      controls.target.copy(animatedTarget);
       controls.update();
+      notifyViewState();
 
       if (t < 1) {
         cameraTransitionFrame = requestAnimationFrame(tick);
@@ -265,6 +304,7 @@ export function createViewer(host) {
         camera.position.copy(position);
         controls.target.copy(target);
         controls.update();
+        cameraTransitionActive = false;
         notifyViewState();
       }
     };
@@ -297,7 +337,9 @@ export function createViewer(host) {
     cameraUserControlled = true;
   });
   controls.addEventListener('change', () => {
-    notifyViewState();
+    // Programmatic camera transitions emit ViewCube state explicitly on every
+    // animation frame. Manual OrbitControls movement still follows this event.
+    if (!cameraTransitionActive) notifyViewState();
     cameraChangeHandler?.(getCameraView());
   });
 
@@ -817,6 +859,10 @@ export function createViewer(host) {
 
 function normalizeDegrees(value) {
   return ((((value + 180) % 360) + 360) % 360) - 180;
+}
+
+function shortestAngleDelta(from, to) {
+  return THREE.MathUtils.euclideanModulo(to - from + Math.PI, Math.PI * 2) - Math.PI;
 }
 
 function validVector3(value) {
