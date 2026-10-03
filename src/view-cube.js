@@ -194,9 +194,17 @@ export function createViewCube(root, viewer) {
   }
 
   window.addEventListener('keydown', (event) => {
+    if (projection !== 'orthographic') return;
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      viewer.returnToPerspective();
+      return;
+    }
+
     if (
-      projection !== 'orthographic'
-      || event.key !== 'Tab'
+      event.key !== 'Tab'
       || event.ctrlKey
       || event.metaKey
       || event.altKey
@@ -215,7 +223,7 @@ export function createViewCube(root, viewer) {
 
     startPresetTransition();
     viewer.setOrthographicView(actionViews[nextIndex]);
-  });
+  }, { capture: true });
 
   viewer.setViewStateChangeHandler(render);
 }

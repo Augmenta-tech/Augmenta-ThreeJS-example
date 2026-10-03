@@ -119,7 +119,6 @@ export function createViewer(host) {
   let cameraTransition;
   let cameraInteractionArmed = false;
   let cameraInteractionActive = false;
-  let orthographicOrbitExitPending = false;
   let cameraChangeHandler;
   let viewStateChangeHandler;
   let cameraUserControlled = false;
@@ -458,14 +457,16 @@ export function createViewer(host) {
     if (cameraOffset.lengthSq() < MIN_CAMERA_OFFSET_SQ) return;
     cameraOffset.normalize();
 
-    // Pan and zoom preserve direction and stay in Ortho. A real orbit marks
-    // the gesture for an animated return to the remembered perspective view
-    // when the drag ends.
+    // Pan and zoom preserve direction and stay in Ortho. The first real orbit
+    // immediately starts the animated return to the remembered perspective view.
     if (
       interactionStartDirection.lengthSq() >= MIN_CAMERA_OFFSET_SQ
       && cameraOffset.dot(interactionStartDirection) < ORTHOGRAPHIC_VIEW_ALIGNMENT_DOT
     ) {
-      orthographicOrbitExitPending = true;
+      cameraInteractionArmed = false;
+      cameraInteractionActive = false;
+      interactionStartDirection.set(0, 0, 0);
+      returnToPerspective();
     }
   }
 
@@ -482,7 +483,6 @@ export function createViewer(host) {
 
     cameraInteractionArmed = true;
     cameraUserControlled = true;
-    orthographicOrbitExitPending = false;
 
     interactionStartDirection.set(0, 0, 0);
     if (camera.isOrthographicCamera) {
@@ -500,14 +500,6 @@ export function createViewer(host) {
 
     if (wasActive) syncManualViewState();
     interactionStartDirection.set(0, 0, 0);
-
-    if (orthographicOrbitExitPending && camera.isOrthographicCamera) {
-      orthographicOrbitExitPending = false;
-      returnToPerspective();
-      return;
-    }
-
-    orthographicOrbitExitPending = false;
     if (wasActive) notifyViewState();
   }
 
@@ -529,7 +521,6 @@ export function createViewer(host) {
     cancelCameraTransition();
     cameraInteractionArmed = false;
     cameraInteractionActive = false;
-    orthographicOrbitExitPending = false;
     cameraUserControlled = false;
     activeView = PERSPECTIVE_VIEW_ID;
     switchCamera('perspective');
