@@ -40,11 +40,11 @@ export function createViewCube(root, viewer) {
     actions?.toggleAttribute('aria-hidden', !visible);
     if (actions) actions.inert = !visible;
 
-    window[visible ? 'addEventListener' : 'removeEventListener'](
-      'keydown',
-      handleOrthoKeydown,
-      { capture: true }
-    );
+    if (visible) {
+      window.addEventListener('keydown', handleOrthoKeydown, { capture: true });
+    } else {
+      window.removeEventListener('keydown', handleOrthoKeydown, { capture: true });
+    }
 
     if (!visible) {
       stopPresetTransition();
