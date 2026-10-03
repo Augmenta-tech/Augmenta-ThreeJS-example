@@ -2,6 +2,7 @@ import { APP_VERSION } from './app-info.js';
 import { createConnectionController } from './connection.js';
 import { createSetupStore } from './setup-store.js';
 import { createViewer } from './viewer.js';
+import { createViewCube } from './view-cube.js';
 import { createDebugPanel } from './debug.js';
 import { makeDemoFrame, makeDemoSetup } from './demo.js';
 import {
@@ -49,6 +50,7 @@ const ui = {
 ui.appVersion.textContent = `Version ${APP_VERSION}`;
 
 const viewer = createViewer($('#canvas-host'));
+createViewCube($('#view-cube'), viewer);
 const debug = createDebugPanel(ui.summary, ui.debug);
 
 let disconnectCleanupTimer;

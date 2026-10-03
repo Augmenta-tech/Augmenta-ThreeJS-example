@@ -7,10 +7,16 @@ import { collectZoneAddresses } from './zone-state.js';
 
 const FLOOR_Y = 0;
 const PANEL_INSET_ANIMATION_DURATION_MS = 220;
+const CAMERA_VIEW_TRANSITION_MS = 550;
 const MIN_GEOMETRY_SIZE = 0.001;
 const MIN_ARROW_LENGTH_M = 0.001;
 const MIN_VISIBLE_SPEED_MPS = 0.001;
 const CAMERA_FLOOR_CLEARANCE_M = 0.02;
+const PERSPECTIVE_MIN_POLAR_ANGLE = THREE.MathUtils.degToRad(2);
+const PERSPECTIVE_MAX_POLAR_ANGLE = THREE.MathUtils.degToRad(88.5);
+const ORTHOGRAPHIC_MIN_POLAR_ANGLE = 0.001;
+const ORTHOGRAPHIC_MAX_POLAR_ANGLE = Math.PI - 0.001;
+const VIEW_IDS = new Set(['home', 'front', 'back', 'right', 'left', 'top', 'bottom']);
 const GHOST_COLOR = new THREE.Color(0x8a909b);
 const LOOK_AT_MARKER_OPACITY = 0.58;
 const LOOK_AT_MARKER_GHOST_OPACITY = 0.24;
@@ -36,7 +42,9 @@ export function createViewer(host) {
   scene.background = new THREE.Color(0x0c0f14);
   scene.fog = new THREE.FogExp2(0x0c0f14, 0.014);
 
-  const camera = new THREE.PerspectiveCamera(48, 1, 0.02, 500);
+  const perspectiveCamera = new THREE.PerspectiveCamera(48, 1, 0.02, 500);
+  const orthographicCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.02, 500);
+  let camera = perspectiveCamera;
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -87,15 +95,26 @@ export function createViewer(host) {
   const velocityDirection = new THREE.Vector3();
   const homePosition = new THREE.Vector3(0, 2.5, 7.5);
   const homeTarget = new THREE.Vector3(0, 1.2, 0);
+  const cameraOffset = new THREE.Vector3();
+  const cameraSpherical = new THREE.Spherical();
+  let homeOrthoHalfWidth = 4;
+  let orthoHalfWidth = 4;
   let rightInset = 0;
   let insetAnimationFrame;
+  let cameraTransitionFrame;
   let cameraChangeHandler;
+  let viewStateChangeHandler;
   let cameraUserControlled = false;
+  let activeView = 'home';
 
   function getCameraView() {
     return {
       position: camera.position.toArray(),
-      target: controls.target.toArray()
+      target: controls.target.toArray(),
+      mode: camera.isOrthographicCamera ? 'orthographic' : 'perspective',
+      zoom: camera.zoom,
+      orthoHalfWidth,
+      activeView
     };
   }
 
@@ -104,10 +123,27 @@ export function createViewer(host) {
     const target = validVector3(view?.target);
     if (!position || !target) return false;
 
+    cancelCameraTransition();
+    if (Number.isFinite(view?.orthoHalfWidth) && view.orthoHalfWidth > 0) {
+      orthoHalfWidth = view.orthoHalfWidth;
+    }
+    if (Number.isFinite(view?.zoom) && view.zoom > 0) {
+      orthographicCamera.zoom = view.zoom;
+    }
+
+    activeView = VIEW_IDS.has(view?.activeView)
+      ? view.activeView
+      : view?.mode === 'orthographic'
+        ? activeView
+        : 'home';
+
+    switchCamera(view?.mode === 'orthographic' ? 'orthographic' : 'perspective');
     camera.position.fromArray(position);
     controls.target.fromArray(target);
     cameraUserControlled = true;
+    updateCameraProjection();
     controls.update();
+    notifyViewState();
     return true;
   }
 
@@ -115,36 +151,182 @@ export function createViewer(host) {
     cameraChangeHandler = typeof handler === 'function' ? handler : undefined;
   }
 
+  function setViewStateChangeHandler(handler) {
+    viewStateChangeHandler = typeof handler === 'function' ? handler : undefined;
+    notifyViewState();
+  }
+
   function isCameraUserControlled() {
     return cameraUserControlled;
   }
 
+  function currentViewState() {
+    cameraOffset.copy(camera.position).sub(controls.target);
+    if (cameraOffset.lengthSq() < 1e-8) {
+      return {
+        activeView,
+        mode: camera.isOrthographicCamera ? 'orthographic' : 'perspective',
+        cubeTransform: 'rotateX(0deg) rotateY(0deg) rotateZ(0deg)'
+      };
+    }
+
+    cameraSpherical.setFromVector3(cameraOffset);
+    const x = Math.round((THREE.MathUtils.radToDeg(cameraSpherical.phi) - 90) * 10) / 10;
+    const yaw = normalizeDegrees(THREE.MathUtils.radToDeg(cameraSpherical.theta) - 180);
+    const y = Math.round(yaw * 10) / 10;
+    return {
+      activeView,
+      mode: camera.isOrthographicCamera ? 'orthographic' : 'perspective',
+      cubeTransform: `rotateX(${x}deg) rotateY(${y}deg) rotateZ(0deg)`
+    };
+  }
+
+  function notifyViewState() {
+    viewStateChangeHandler?.(currentViewState());
+  }
+
+  function cancelCameraTransition() {
+    if (!cameraTransitionFrame) return;
+    cancelAnimationFrame(cameraTransitionFrame);
+    cameraTransitionFrame = undefined;
+  }
+
+  function configureProjectionControls() {
+    controls.minPolarAngle = camera.isOrthographicCamera
+      ? ORTHOGRAPHIC_MIN_POLAR_ANGLE
+      : PERSPECTIVE_MIN_POLAR_ANGLE;
+    controls.maxPolarAngle = camera.isOrthographicCamera
+      ? ORTHOGRAPHIC_MAX_POLAR_ANGLE
+      : PERSPECTIVE_MAX_POLAR_ANGLE;
+  }
+
+  function switchCamera(mode) {
+    const nextCamera = mode === 'orthographic' ? orthographicCamera : perspectiveCamera;
+    if (camera === nextCamera) {
+      configureProjectionControls();
+      updateCameraProjection();
+      return;
+    }
+
+    nextCamera.position.copy(camera.position);
+    nextCamera.quaternion.copy(camera.quaternion);
+    nextCamera.up.copy(camera.up);
+    camera = nextCamera;
+    controls.object = camera;
+    configureProjectionControls();
+    updateCameraProjection();
+    controls.update();
+  }
+
+  function animateCameraTo(position, target, mode, duration = CAMERA_VIEW_TRANSITION_MS) {
+    cancelCameraTransition();
+
+    const startPosition = camera.position.clone();
+    const startTarget = controls.target.clone();
+    switchCamera(mode);
+    camera.position.copy(startPosition);
+    controls.target.copy(startTarget);
+
+    cameraUserControlled = true;
+    if (duration <= 0) {
+      camera.position.copy(position);
+      controls.target.copy(target);
+      controls.update();
+      notifyViewState();
+      return;
+    }
+
+    const startedAt = performance.now();
+    const tick = (now) => {
+      const t = Math.min((now - startedAt) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 5);
+      camera.position.lerpVectors(startPosition, position, eased);
+      controls.target.lerpVectors(startTarget, target, eased);
+      controls.update();
+
+      if (t < 1) {
+        cameraTransitionFrame = requestAnimationFrame(tick);
+      } else {
+        cameraTransitionFrame = undefined;
+        camera.position.copy(position);
+        controls.target.copy(target);
+        controls.update();
+        notifyViewState();
+      }
+    };
+
+    cameraTransitionFrame = requestAnimationFrame(tick);
+  }
+
+  function setView(view, duration = CAMERA_VIEW_TRANSITION_MS) {
+    if (!VIEW_IDS.has(view)) return false;
+
+    activeView = view;
+    if (view === 'home') {
+      animateCameraTo(homePosition.clone(), homeTarget.clone(), 'perspective', duration);
+      return true;
+    }
+
+    const directions = {
+      front: new THREE.Vector3(0, 0, -1),
+      back: new THREE.Vector3(0, 0, 1),
+      right: new THREE.Vector3(1, 0, 0),
+      left: new THREE.Vector3(-1, 0, 0),
+      top: new THREE.Vector3(0, 1, 0),
+      bottom: new THREE.Vector3(0, -1, 0)
+    };
+    const direction = directions[view];
+    const distance = Math.max(homePosition.distanceTo(homeTarget), 2);
+    const target = homeTarget.clone();
+    const position = target.clone().addScaledVector(direction, distance);
+
+    orthographicCamera.zoom = 1;
+    orthoHalfWidth = homeOrthoHalfWidth;
+    animateCameraTo(position, target, 'orthographic', duration);
+    return true;
+  }
+
   controls.addEventListener('start', () => {
+    cancelCameraTransition();
     cameraUserControlled = true;
   });
   controls.addEventListener('change', () => {
+    notifyViewState();
     cameraChangeHandler?.(getCameraView());
   });
 
   function resetCamera() {
+    cancelCameraTransition();
     cameraUserControlled = false;
+    activeView = 'home';
+    switchCamera('perspective');
     camera.position.copy(homePosition);
     controls.target.copy(homeTarget);
     controls.update();
+    notifyViewState();
   }
 
   function updateCameraProjection() {
     const width = Math.max(host.clientWidth, 1);
     const height = Math.max(host.clientHeight, 1);
-    camera.clearViewOffset();
+    const hasInset = rightInset > 0 && width > rightInset + 80;
+    const virtualWidth = hasInset ? width + rightInset : width;
+    const aspect = Math.max(virtualWidth / height, 0.1);
 
-    if (rightInset > 0 && width > rightInset + 80) {
-      const virtualWidth = width + rightInset;
-      camera.aspect = Math.max(virtualWidth / height, 0.1);
-      camera.setViewOffset(virtualWidth, height, rightInset, 0, width, height);
+    camera.clearViewOffset();
+    if (camera.isPerspectiveCamera) {
+      camera.aspect = aspect;
     } else {
-      camera.aspect = Math.max(width / height, 0.1);
-      camera.updateProjectionMatrix();
+      const halfHeight = orthoHalfWidth / aspect;
+      camera.left = -orthoHalfWidth;
+      camera.right = orthoHalfWidth;
+      camera.top = halfHeight;
+      camera.bottom = -halfHeight;
+    }
+    camera.updateProjectionMatrix();
+
+    if (hasInset) {
+      camera.setViewOffset(virtualWidth, height, rightInset, 0, width, height);
     }
   }
 
@@ -510,8 +692,9 @@ export function createViewer(host) {
     const size = bounds.getSize(new THREE.Vector3());
     const center = bounds.getCenter(new THREE.Vector3());
     const span = Math.max(size.x, size.y, size.z, 1);
-    const fov = THREE.MathUtils.degToRad(camera.fov);
+    const fov = THREE.MathUtils.degToRad(perspectiveCamera.fov);
     const distance = Math.max(span / (2 * Math.tan(fov / 2)) * 1.35, 2);
+    homeOrthoHalfWidth = Math.max(span * 0.82 + 1.8, 1);
 
     homeTarget.copy(center);
     // A centered, slightly elevated front view similar to Pleiades' default,
@@ -566,6 +749,8 @@ export function createViewer(host) {
     zoneRenderer.resetViews();
     homePosition.set(0, 2.5, 7.5);
     homeTarget.set(0, 1.2, 0);
+    homeOrthoHalfWidth = 4;
+    orthoHalfWidth = 4;
   }
 
   function disposeView(view) {
@@ -595,9 +780,12 @@ export function createViewer(host) {
     controls.update();
     zoneRenderer.animate(performance.now());
 
-    // Orbiting stays above the world floor. With screenSpacePanning=false,
-    // right-drag panning also remains parallel to the floor plane.
-    if (camera.position.y < FLOOR_Y + CAMERA_FLOOR_CLEARANCE_M) {
+    // Perspective orbiting stays above the world floor. Orthographic face
+    // views intentionally include top and bottom, so they are not clamped.
+    if (
+      camera.isPerspectiveCamera
+      && camera.position.y < FLOOR_Y + CAMERA_FLOOR_CLEARANCE_M
+    ) {
       camera.position.y = FLOOR_Y + CAMERA_FLOOR_CLEARANCE_M;
     }
 
@@ -615,8 +803,14 @@ export function createViewer(host) {
     setCameraChangeHandler,
     setCameraView,
     setRightInset,
+    setView,
+    setViewStateChangeHandler,
     setVisibility
   };
+}
+
+function normalizeDegrees(value) {
+  return ((((value + 180) % 360) + 360) % 360) - 180;
 }
 
 function validVector3(value) {
@@ -659,8 +853,8 @@ function configureControls(controls) {
   controls.minDistance = 0.05;
   controls.maxDistance = 500;
   controls.zoomToCursor = false;
-  controls.minPolarAngle = THREE.MathUtils.degToRad(2);
-  controls.maxPolarAngle = THREE.MathUtils.degToRad(88.5);
+  controls.minPolarAngle = PERSPECTIVE_MIN_POLAR_ANGLE;
+  controls.maxPolarAngle = PERSPECTIVE_MAX_POLAR_ANGLE;
   controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
   controls.mouseButtons.MIDDLE = THREE.MOUSE.DOLLY;
   controls.mouseButtons.RIGHT = THREE.MOUSE.PAN;
