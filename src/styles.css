@@ -233,8 +233,10 @@ button, input, select { font: inherit; }
   z-index: 2;
   top: var(--view-cube-panel-gap);
   left: var(--view-cube-panel-gap);
-  height: auto;
+  height: 24px;
   margin: 0;
+  display: flex;
+  align-items: center;
   color: rgba(143, 153, 170, .5);
   font-size: 9px;
   font-weight: 600;
