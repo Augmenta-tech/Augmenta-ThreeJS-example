@@ -172,7 +172,8 @@ export function createViewer(host) {
 
     cameraSpherical.setFromVector3(cameraOffset);
     const x = Math.round((THREE.MathUtils.radToDeg(cameraSpherical.phi) - 90) * 10) / 10;
-    const y = Math.round(-THREE.MathUtils.radToDeg(cameraSpherical.theta) * 10) / 10;
+    const yaw = normalizeDegrees(THREE.MathUtils.radToDeg(cameraSpherical.theta) - 180);
+    const y = Math.round(yaw * 10) / 10;
     return {
       activeView,
       mode: camera.isOrthographicCamera ? 'orthographic' : 'perspective',
@@ -267,8 +268,8 @@ export function createViewer(host) {
     }
 
     const directions = {
-      front: new THREE.Vector3(0, 0, 1),
-      back: new THREE.Vector3(0, 0, -1),
+      front: new THREE.Vector3(0, 0, -1),
+      back: new THREE.Vector3(0, 0, 1),
       right: new THREE.Vector3(1, 0, 0),
       left: new THREE.Vector3(-1, 0, 0),
       top: new THREE.Vector3(0, 1, 0),
@@ -806,6 +807,10 @@ export function createViewer(host) {
     setViewStateChangeHandler,
     setVisibility
   };
+}
+
+function normalizeDegrees(value) {
+  return ((((value + 180) % 360) + 360) % 360) - 180;
 }
 
 function validVector3(value) {
