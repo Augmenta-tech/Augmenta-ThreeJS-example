@@ -66,6 +66,7 @@ button, input, select { font: inherit; }
   --view-cube-title-height: 12px;
   --view-cube-scene-width: 116px;
   --view-cube-scene-height: 94px;
+  --view-cube-ortho-scene-height: 74px;
   --view-cube-action-height: 26px;
   --view-cube-action-gap: 5px;
   --view-cube-panel-gap: 6px;
@@ -90,7 +91,7 @@ button, input, select { font: inherit; }
 
 .view-cube.controls-visible {
   width: var(--view-cube-panel-width);
-  grid-template-rows: var(--view-cube-title-height) var(--view-cube-scene-height) auto;
+  grid-template-rows: var(--view-cube-ortho-scene-height) auto;
   row-gap: var(--view-cube-panel-gap);
   padding: var(--view-cube-panel-gap);
 }
@@ -227,29 +228,25 @@ button, input, select { font: inherit; }
 .cube-face-bottom .cube-face-label { transform: rotate(calc(0deg - var(--cube-yaw))); }
 
 .view-cube-title {
-  position: relative;
+  position: absolute;
   z-index: 2;
-  height: 0;
+  top: calc(var(--view-cube-panel-gap) + 6px);
+  left: var(--view-cube-panel-gap);
+  height: var(--view-cube-title-height);
   margin: 0;
-  overflow: hidden;
   color: rgba(143, 153, 170, .5);
   font-size: 9px;
   font-weight: 600;
   line-height: var(--view-cube-title-height);
   letter-spacing: .08em;
-  text-align: center;
+  text-align: left;
   text-transform: uppercase;
   opacity: 0;
   pointer-events: none;
-  transition:
-    height 140ms ease,
-    opacity 140ms ease;
+  transition: opacity 140ms ease;
 }
 
 .view-cube.controls-visible .view-cube-title {
-  height: var(--view-cube-title-height);
-  align-self: center;
-  line-height: var(--view-cube-title-height);
   opacity: 1;
 }
 
@@ -331,8 +328,9 @@ button, input, select { font: inherit; }
 
 .view-cube.controls-visible .view-cube-scene {
   width: 100%;
-  height: var(--view-cube-scene-height);
+  height: var(--view-cube-ortho-scene-height);
   min-height: 0;
+  place-items: start center;
 }
 
 .view-cube.controls-visible .view-cube-actions {
@@ -1167,6 +1165,7 @@ button.subtle-button.active {
     --view-cube-panel-width: 180px;
     --view-cube-scene-width: 94px;
     --view-cube-scene-height: 74px;
+    --view-cube-ortho-scene-height: 58px;
     --view-cube-action-height: 22px;
     --view-cube-panel-gap: 5px;
     top: 10px;
@@ -1178,7 +1177,7 @@ button.subtle-button.active {
   .view-cube.controls-visible,
   #app.sidebar-hidden .view-cube.controls-visible {
     width: var(--view-cube-panel-width);
-    grid-template-rows: var(--view-cube-title-height) var(--view-cube-scene-height) auto;
+    grid-template-rows: var(--view-cube-ortho-scene-height) auto;
     row-gap: var(--view-cube-panel-gap);
     padding: var(--view-cube-panel-gap);
   }
