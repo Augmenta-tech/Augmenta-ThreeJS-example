@@ -97,6 +97,8 @@ button, input, select { font: inherit; }
 .view-cube-object {
   --cube-size: 74px;
   --cube-transform: rotateX(-28deg) rotateY(-36deg) rotateZ(0deg);
+  --cube-yaw: -36deg;
+  --cube-yaw-inverse: 36deg;
   position: relative;
   width: var(--cube-size);
   height: var(--cube-size);
@@ -121,7 +123,7 @@ button, input, select { font: inherit; }
     rgba(30, 48, 50, .94);
   color: rgba(242, 250, 249, .86);
   padding: 0;
-  font-size: 10px;
+  font-size: 0;
   font-weight: 720;
   text-align: center;
   text-transform: uppercase;
@@ -130,6 +132,16 @@ button, input, select { font: inherit; }
     inset 0 -16px 22px rgba(0, 0, 0, .18);
   backface-visibility: hidden;
   cursor: pointer;
+}
+
+.cube-face::before {
+  content: attr(data-view);
+  display: block;
+  color: inherit;
+  font-size: 10px;
+  line-height: 1;
+  pointer-events: none;
+  transform-origin: center;
 }
 
 .cube-face::after {
@@ -156,6 +168,11 @@ button, input, select { font: inherit; }
 .cube-face-left { transform: rotateY(-90deg) translateZ(calc(var(--cube-size) / 2)); }
 .cube-face-top { transform: rotateX(90deg) translateZ(calc(var(--cube-size) / 2)); }
 .cube-face-bottom { transform: rotateX(-90deg) translateZ(calc(var(--cube-size) / 2)); }
+
+/* Top and bottom rotate around the camera-facing axis as the cube yaws.
+   Counter-rotate only their labels so the words always remain upright. */
+.cube-face-top::before { transform: rotate(var(--cube-yaw)); }
+.cube-face-bottom::before { transform: rotate(var(--cube-yaw-inverse)); }
 
 .view-cube-actions {
   width: 100%;
@@ -985,7 +1002,7 @@ button.subtle-button.active {
   .view-cube-object {
     --cube-size: 58px;
   }
-  .cube-face,
+  .cube-face::before,
   .view-cube-actions button {
     font-size: 9px;
   }

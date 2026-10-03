@@ -10,6 +10,10 @@ export function createViewCube(root, viewer) {
     if (cube && typeof state.cubeTransform === 'string') {
       cube.style.setProperty('--cube-transform', state.cubeTransform);
     }
+    if (cube && Number.isFinite(state.cubeYaw)) {
+      cube.style.setProperty('--cube-yaw', `${state.cubeYaw}deg`);
+      cube.style.setProperty('--cube-yaw-inverse', `${-state.cubeYaw}deg`);
+    }
 
     const activeView = VIEW_IDS.has(state.activeView) ? state.activeView : 'home';
     for (const button of buttons) {

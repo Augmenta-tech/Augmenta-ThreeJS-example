@@ -166,6 +166,7 @@ export function createViewer(host) {
       return {
         activeView,
         mode: camera.isOrthographicCamera ? 'orthographic' : 'perspective',
+        cubeYaw: 0,
         cubeTransform: 'rotateX(0deg) rotateY(0deg) rotateZ(0deg)'
       };
     }
@@ -177,6 +178,7 @@ export function createViewer(host) {
     return {
       activeView,
       mode: camera.isOrthographicCamera ? 'orthographic' : 'perspective',
+      cubeYaw: y,
       cubeTransform: `rotateX(${x}deg) rotateY(${y}deg) rotateZ(0deg)`
     };
   }
