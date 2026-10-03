@@ -333,6 +333,7 @@ button, input, select { font: inherit; }
 }
 
 .view-cube.controls-visible .view-cube-scene {
+  grid-row: 2;
   width: 100%;
   height: var(--view-cube-ortho-scene-height);
   min-height: 0;
@@ -340,6 +341,7 @@ button, input, select { font: inherit; }
 }
 
 .view-cube.controls-visible .view-cube-actions {
+  grid-row: 3;
   max-height: calc(
     var(--view-cube-action-height) + var(--view-cube-action-height) + var(--view-cube-action-gap)
   );
