@@ -25,7 +25,6 @@ export function createViewCube(root, viewer) {
   let dragLastY = 0;
   let dragMoved = false;
   let dragInteractionStarted = false;
-  let dragExitTransitioning = false;
   let suppressNextClick = false;
   let presetTransitionTimer;
   let renderedActiveView = null;
@@ -109,31 +108,11 @@ export function createViewCube(root, viewer) {
     event.preventDefault();
     scene.classList.add('dragging');
 
-    // Exit Ortho through the viewer's single transition path. If the pointer
-    // is still held when it completes, the same drag can continue orbiting.
-    if (!dragInteractionStarted && !dragExitTransitioning && projection === 'orthographic') {
-      const exitingPointerId = dragPointerId;
-      dragExitTransitioning = true;
-      viewer.leaveOrthographicFromCurrentView({
-        onComplete: (completed) => {
-          dragExitTransitioning = false;
-          if (!completed || dragPointerId !== exitingPointerId || !dragMoved) return;
-          dragInteractionStarted = true;
-          viewer.beginCameraInteraction();
-        }
-      });
-      dragLastX = event.clientX;
-      dragLastY = event.clientY;
-      return;
-    }
-
-    if (dragExitTransitioning) {
-      dragLastX = event.clientX;
-      dragLastY = event.clientY;
-      return;
-    }
-
     if (!dragInteractionStarted) {
+      // Dragging out of Ortho preserves the current direction/pan/zoom instead
+      // of restoring the saved perspective composition. The same pointer move
+      // then continues naturally as a perspective orbit.
+      if (projection === 'orthographic') viewer.leaveOrthographicFromCurrentView();
       dragInteractionStarted = true;
       viewer.beginCameraInteraction();
     }
