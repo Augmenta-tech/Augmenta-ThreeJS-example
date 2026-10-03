@@ -26,8 +26,8 @@ export function createViewCube(root, viewer) {
   let controlsVisible;
 
   function syncControlsVisibility() {
-    const visible = !cameraMoving
-      && (projection === 'orthographic' || pointerInside || focusInside);
+    const visible = projection === 'orthographic'
+      || (!cameraMoving && (pointerInside || focusInside));
     if (visible === controlsVisible) return;
 
     controlsVisible = visible;
@@ -56,6 +56,8 @@ export function createViewCube(root, viewer) {
 
     projection = state.mode === 'orthographic' ? 'orthographic' : 'perspective';
     cameraMoving = state.moving === true;
+    root.classList.toggle('orthographic', projection === 'orthographic');
+    root.classList.toggle('camera-moving', cameraMoving);
     syncControlsVisibility();
   }
 
@@ -147,6 +149,12 @@ export function createViewCube(root, viewer) {
       return;
     }
     if (!(event.target instanceof Element)) return;
+
+    if (event.target.closest('.view-cube-close')) {
+      viewer.setView('home');
+      return;
+    }
+
     const button = event.target.closest('[data-view]');
     if (!button || !root.contains(button)) return;
     const view = button.dataset.view;

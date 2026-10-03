@@ -40,7 +40,7 @@ const ui = {
   app: $('#app'), sidebar: $('#sidebar'), sidebarResizer: $('#sidebar-resizer'), serverAddress: $('#server-address'), port: $('#port'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
   demo: $('#demo'), status: $('#status'), note: $('#connection-note'), summary: $('#summary'),
   debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'), scenes: $('#scenes'),
-  sidebarToggle: $('#sidebar-toggle'), viewerTitle: $('.viewer-title'), connectionQrVisibility: $('.connection-qr-visibility'), viewCube: $('#view-cube'),
+  sidebarToggle: $('#sidebar-toggle'), viewerTitle: $('.viewer-title'), connectionQrVisibility: $('.connection-qr-visibility'),
   connectionSection: $('#connection-section'), connectionAdvanced: $('#connection-advanced'), connectionAdvancedSummary: $('#connection-advanced-summary'),
   displaySection: $('#display-section'), displayAdvanced: $('#display-advanced'), displaySectionSummary: $('#display-section-summary'),
   debugSection: $('#debug-section'), appVersion: $('#app-version'),
@@ -578,9 +578,6 @@ function syncSidebarAccessibility() {
 
   ui.connectionQrVisibility.inert = hidden;
   ui.connectionQrVisibility.toggleAttribute('aria-hidden', hidden);
-
-  ui.viewCube.inert = hidden;
-  ui.viewCube.toggleAttribute('aria-hidden', hidden);
 }
 
 function setSidebarHidden(hidden, animate = true) {

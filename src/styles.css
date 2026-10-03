@@ -102,8 +102,15 @@ button, input, select { font: inherit; }
 }
 
 #app.sidebar-hidden .view-cube {
+  right: 14px;
   opacity: 0;
   pointer-events: none;
+}
+
+#app.sidebar-hidden .view-cube.camera-moving,
+#app.sidebar-hidden .view-cube.orthographic {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .view-cube-scene {
@@ -196,6 +203,41 @@ button, input, select { font: inherit; }
    Counter-rotate only their labels so the words stay upright and centered. */
 .cube-face-top .cube-face-label { transform: rotate(var(--cube-yaw)); }
 .cube-face-bottom .cube-face-label { transform: rotate(calc(0deg - var(--cube-yaw))); }
+
+.view-cube-close {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #7f899b;
+  font-size: 18px;
+  line-height: 1;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    color 120ms ease,
+    background 120ms ease,
+    opacity 140ms ease;
+}
+
+.view-cube.controls-visible .view-cube-close {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.view-cube-close:hover {
+  color: var(--accent-hover);
+  background: var(--accent-focus);
+}
 
 .view-cube-actions {
   position: relative;
@@ -1029,7 +1071,8 @@ button.subtle-button.active {
   }
 
   .viewer-overlay { padding: 16px; }
-  .view-cube {
+  .view-cube,
+  #app.sidebar-hidden .view-cube {
     top: 10px;
     right: 10px;
     width: 166px;
