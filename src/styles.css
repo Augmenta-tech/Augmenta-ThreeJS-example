@@ -65,7 +65,7 @@ button, input, select { font: inherit; }
   --view-cube-panel-width: 224px;
   --view-cube-title-height: 12px;
   --view-cube-scene-width: 116px;
-  --view-cube-scene-height: 108px;
+  --view-cube-scene-height: 94px;
   --view-cube-action-height: 26px;
   --view-cube-action-gap: 5px;
   --view-cube-panel-gap: 6px;
@@ -1161,7 +1161,7 @@ button.subtle-button.active {
   #app.sidebar-hidden .view-cube {
     --view-cube-panel-width: 180px;
     --view-cube-scene-width: 94px;
-    --view-cube-scene-height: 86px;
+    --view-cube-scene-height: 74px;
     --view-cube-action-height: 22px;
     --view-cube-panel-gap: 5px;
     top: 10px;

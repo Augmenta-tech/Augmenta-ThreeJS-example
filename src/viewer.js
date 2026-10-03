@@ -8,7 +8,6 @@ import { VIEW_TRANSITION, viewTransitionEase } from './view-transition.js';
 
 const FLOOR_Y = 0;
 const PANEL_INSET_ANIMATION_DURATION_MS = 220;
-const ORTHOGRAPHIC_ENTRY_TRANSITION_MS = 550;
 const MIN_GEOMETRY_SIZE = 0.001;
 const MIN_ARROW_LENGTH_M = 0.001;
 const MIN_VISIBLE_SPEED_MPS = 0.001;
@@ -282,9 +281,10 @@ export function createViewer(host) {
     target,
     {
       mode,
-      duration = ORTHOGRAPHIC_ENTRY_TRANSITION_MS,
+      duration = VIEW_TRANSITION.durationMs,
       path = 'orbit',
-      easing = easeOutQuint
+      easing = easeOutQuint,
+      targetOrthoHalfWidth
     }
   ) {
     cancelCameraTransition();
@@ -308,6 +308,10 @@ export function createViewer(host) {
     const thetaDelta = canOrbit
       ? shortestAngleDelta(startSpherical.theta, endSpherical.theta)
       : 0;
+    const startOrthoHalfWidth = orthoHalfWidth;
+    const animateOrthoFraming = mode === 'orthographic'
+      && Number.isFinite(targetOrthoHalfWidth)
+      && targetOrthoHalfWidth > 0;
 
     switchCamera(mode);
     camera.position.copy(startPosition);
@@ -318,6 +322,10 @@ export function createViewer(host) {
     if (duration <= 0) {
       camera.position.copy(position);
       controls.target.copy(target);
+      if (animateOrthoFraming) {
+        orthoHalfWidth = targetOrthoHalfWidth;
+        updateCameraProjection();
+      }
       controls.update();
       cameraTransitionFrame = undefined;
       notifyViewState();
@@ -349,6 +357,14 @@ export function createViewer(host) {
       }
 
       controls.target.copy(animatedTarget);
+      if (animateOrthoFraming) {
+        orthoHalfWidth = THREE.MathUtils.lerp(
+          startOrthoHalfWidth,
+          targetOrthoHalfWidth,
+          progress
+        );
+        updateCameraProjection();
+      }
       controls.update();
       notifyViewState();
 
@@ -360,6 +376,10 @@ export function createViewer(host) {
       cameraTransitionFrame = undefined;
       camera.position.copy(position);
       controls.target.copy(target);
+      if (animateOrthoFraming) {
+        orthoHalfWidth = targetOrthoHalfWidth;
+        updateCameraProjection();
+      }
       controls.update();
       notifyViewState();
     };
@@ -418,24 +438,43 @@ export function createViewer(host) {
     return true;
   }
 
-  function setOrthographicView(view, { duration = ORTHOGRAPHIC_ENTRY_TRANSITION_MS } = {}) {
+  function setOrthographicView(view, { duration = VIEW_TRANSITION.durationMs } = {}) {
     if (!isOrthographicView(view)) return false;
 
-    // Entering an orthographic face view must not destroy the perspective
-    // composition the user was working in.
-    if (camera.isPerspectiveCamera) rememberPerspectiveView();
+    const enteringFromPerspective = camera.isPerspectiveCamera;
+    if (enteringFromPerspective) rememberPerspectiveView();
 
     activeView = view;
     const direction = VIEW_DIRECTIONS[view];
-    const distance = Math.max(homePosition.distanceTo(homeTarget), 2);
     const target = homeTarget.clone();
+    const distance = Math.max(homePosition.distanceTo(homeTarget), 2);
     const position = target.clone().addScaledVector(direction, distance);
+    const targetOrthoHalfWidth = homeOrthoHalfWidth;
 
     orthographicCamera.zoom = 1;
-    orthoHalfWidth = homeOrthoHalfWidth;
+
+    if (enteringFromPerspective) {
+      // Match the first Ortho frame to the current perspective framing. From
+      // there, Pleiades-style direct position/target motion and the shared
+      // ViewCube easing carry both camera and framing to the face preset.
+      const currentDistance = camera.position.distanceTo(controls.target);
+      const perspectiveHalfHeight = currentDistance
+        * Math.tan(THREE.MathUtils.degToRad(perspectiveCamera.fov) / 2)
+        / Math.max(perspectiveCamera.zoom, MIN_CAMERA_ZOOM);
+      orthoHalfWidth = Math.max(
+        perspectiveHalfHeight * projectionMetrics().aspect,
+        MIN_CAMERA_ZOOM
+      );
+    } else {
+      orthoHalfWidth = targetOrthoHalfWidth;
+    }
+
     animateCameraTo(position, target, {
       mode: 'orthographic',
-      duration: camera.isOrthographicCamera ? 0 : duration
+      duration: enteringFromPerspective ? duration : 0,
+      path: 'direct',
+      easing: viewTransitionEase,
+      targetOrthoHalfWidth
     });
     return true;
   }
