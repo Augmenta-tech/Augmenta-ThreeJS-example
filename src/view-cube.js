@@ -70,11 +70,10 @@ export function createViewCube(root, viewer) {
     dragStartY = dragLastY = event.clientY;
     dragMoved = false;
     dragInteractionStarted = false;
-    scene.setPointerCapture(event.pointerId);
   });
 
   scene?.addEventListener('pointermove', (event) => {
-    if (event.pointerId !== dragPointerId || !scene.hasPointerCapture(event.pointerId)) return;
+    if (event.pointerId !== dragPointerId) return;
 
     const dx = event.clientX - dragLastX;
     const dy = event.clientY - dragLastY;
@@ -85,6 +84,13 @@ export function createViewCube(root, viewer) {
       ) >= DRAG_START_DISTANCE_PX;
     }
     if (!dragMoved) return;
+
+    // Capture only after the gesture is actually a drag. Capturing on
+    // pointer-down retargets the eventual desktop click to the scene element,
+    // which prevents cube-face buttons from receiving their click.
+    if (!scene.hasPointerCapture(event.pointerId)) {
+      scene.setPointerCapture(event.pointerId);
+    }
 
     event.preventDefault();
     scene.classList.add('dragging');
