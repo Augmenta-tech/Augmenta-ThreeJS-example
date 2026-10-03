@@ -40,6 +40,12 @@ export function createViewCube(root, viewer) {
     actions?.toggleAttribute('aria-hidden', !visible);
     if (actions) actions.inert = !visible;
 
+    window[visible ? 'addEventListener' : 'removeEventListener'](
+      'keydown',
+      handleOrthoKeydown,
+      { capture: true }
+    );
+
     if (!visible) {
       stopPresetTransition();
       if (actions?.contains(document.activeElement)) document.activeElement.blur();
@@ -186,9 +192,7 @@ export function createViewCube(root, viewer) {
     presetTransitionTimer = window.setTimeout(stopPresetTransition, VIEW_TRANSITION.durationMs);
   }
 
-  window.addEventListener('keydown', (event) => {
-    if (projection !== 'orthographic') return;
-
+  function handleOrthoKeydown(event) {
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -222,7 +226,7 @@ export function createViewCube(root, viewer) {
     startPresetTransition();
     viewer.setOrthographicView(nextView);
     nextButton.focus({ preventScroll: true });
-  }, { capture: true });
+  }
 
   viewer.setViewStateChangeHandler(render);
 }
