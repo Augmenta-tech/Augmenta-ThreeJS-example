@@ -393,7 +393,7 @@ export function createViewer(host) {
     if (distance * distance < MIN_CAMERA_OFFSET_SQ) return false;
 
     const orthoHalfHeight = (orthoHalfWidth / Math.max(orthographicCamera.zoom, 1e-6))
-      / currentProjectionAspect();
+      / projectionMetrics().aspect;
     const perspectiveHalfAngle = THREE.MathUtils.degToRad(perspectiveCamera.fov) / 2;
 
     // Pleiades drives orthographic framing from the ArcRotate camera radius.
@@ -555,21 +555,23 @@ export function createViewer(host) {
     notifyViewState();
   }
 
-  function currentProjectionAspect() {
-    const width = Math.max(host.clientWidth, 1);
-    const height = Math.max(host.clientHeight, 1);
-    const virtualWidth = rightInset > 0 && width > rightInset + 80
-      ? width + rightInset
-      : width;
-    return Math.max(virtualWidth / height, 0.1);
-  }
-
-  function updateCameraProjection() {
+  function projectionMetrics() {
     const width = Math.max(host.clientWidth, 1);
     const height = Math.max(host.clientHeight, 1);
     const hasInset = rightInset > 0 && width > rightInset + 80;
     const virtualWidth = hasInset ? width + rightInset : width;
-    const aspect = currentProjectionAspect();
+
+    return {
+      width,
+      height,
+      hasInset,
+      virtualWidth,
+      aspect: Math.max(virtualWidth / height, 0.1)
+    };
+  }
+
+  function updateCameraProjection() {
+    const { width, height, hasInset, virtualWidth, aspect } = projectionMetrics();
 
     camera.clearViewOffset();
     if (camera.isPerspectiveCamera) {
