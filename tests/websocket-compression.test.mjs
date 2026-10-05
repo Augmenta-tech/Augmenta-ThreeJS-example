@@ -9,7 +9,20 @@ const compressedFixture = Uint8Array.from([
 ]);
 
 test('bundled zstd decoder can decode Augmenta binary payloads synchronously after init', async () => {
-  const { ZSTDDecoder } = await import('zstddec');
+  const zstdRoot = new URL('../.pages-runtime/node_modules/zstddec/', import.meta.url);
+  const packageJson = JSON.parse(readFileSync(new URL('package.json', zstdRoot), 'utf8'));
+  const packageExports = packageJson.exports;
+  const entrypoint = (
+    typeof packageExports === 'string'
+      ? packageExports
+      : packageExports?.['.']?.default
+        ?? packageExports?.default
+        ?? packageJson.module
+        ?? packageJson.main
+  );
+  assert.equal(typeof entrypoint, 'string');
+
+  const { ZSTDDecoder } = await import(new URL(entrypoint, zstdRoot).href);
   const decoder = new ZSTDDecoder();
   await decoder.init();
 
