@@ -56,7 +56,7 @@ const PALETTE = [
   0x2ec4b6  // aqua
 ];
 
-export function createViewer(host) {
+export function createViewer(host, { onFramePresented } = {}) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x0c0f14);
   scene.fog = new THREE.FogExp2(0x0c0f14, 0.014);
@@ -106,6 +106,8 @@ export function createViewer(host) {
   };
 
   const views = new Map();
+  // One pending state frame per scene bounds application-side buffering.
+  const pendingFrames = new Map();
   const zoneRenderer = createZoneRenderer();
   const unitBox = new THREE.BoxGeometry(1, 1, 1);
   const unitBoxEdges = new THREE.EdgesGeometry(unitBox);
@@ -703,6 +705,22 @@ export function createViewer(host) {
     insetAnimationFrame = requestAnimationFrame(tick);
   }
 
+  function queueFrame(frame) {
+    const sceneAddress = frame.getSceneInfo().getAddress() || '';
+    pendingFrames.set(sceneAddress, frame);
+  }
+
+  function flushPendingFrames() {
+    if (pendingFrames.size === 0) return;
+
+    const frames = Array.from(pendingFrames.values());
+    pendingFrames.clear();
+    for (const frame of frames) {
+      renderFrame(frame);
+      onFramePresented?.(frame);
+    }
+  }
+
   function renderFrame(frame) {
     const sceneAddress = frame.getSceneInfo().getAddress() || '';
     const active = new Set();
@@ -1086,6 +1104,7 @@ export function createViewer(host) {
   }
 
   function clearTracking() {
+    pendingFrames.clear();
     for (const view of views.values()) disposeView(view);
     views.clear();
 
@@ -1131,12 +1150,14 @@ export function createViewer(host) {
   });
 
   renderer.setAnimationLoop(() => {
+    flushPendingFrames();
     controls.update();
     zoneRenderer.animate(performance.now());
     renderer.render(scene, camera);
   });
 
   return {
+    queueFrame,
     renderFrame,
     renderSetup,
     clearTracking,
