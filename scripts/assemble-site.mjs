@@ -14,9 +14,9 @@ const root = process.cwd();
 const out = join(root, '_site');
 const rev = (process.env.GITHUB_SHA || 'local').slice(0, 12);
 const threeRoot = join(root, '.pages-runtime', 'node_modules', 'three');
-const zstdRoot = join(root, '.pages-runtime', 'node_modules', 'zstddec', 'dist');
+const zstdRoot = join(root, '.pages-runtime', 'node_modules', 'zstddec');
 const sdkOut = join(out, 'vendor', 'AugmentaClientSDK-JS', rev, 'dist', 'esm');
-const zstdOut = join(out, 'vendor', 'zstddec', rev, 'dist');
+const zstdOut = join(out, 'vendor', 'zstddec', rev);
 
 function requirePath(path, label) {
   if (!existsSync(path)) {
@@ -34,7 +34,26 @@ function replaceRequired(source, search, replacement) {
 requirePath(join(root, 'vendor', 'AugmentaClientSDK-JS', 'dist', 'esm'), 'built Augmenta SDK');
 requirePath(join(root, 'vendor', 'qrcode-generator', 'qrcode.js'), 'vendored QR generator');
 requirePath(join(threeRoot, 'build', 'three.module.js'), 'Three.js runtime');
-requirePath(join(zstdRoot, 'zstddec.modern.js'), 'Zstd browser decoder');
+requirePath(join(zstdRoot, 'package.json'), 'Zstd decoder package');
+
+const zstdPackage = JSON.parse(readFileSync(join(zstdRoot, 'package.json'), 'utf8'));
+const zstdExports = zstdPackage.exports;
+const zstdEntrypoint = (
+  typeof zstdExports === 'string'
+    ? zstdExports
+    : zstdExports?.['.']?.browser
+      ?? zstdExports?.['.']?.default
+      ?? zstdExports?.browser
+      ?? zstdExports?.default
+      ?? zstdPackage.browser
+      ?? zstdPackage.module
+      ?? zstdPackage.main
+);
+if (typeof zstdEntrypoint !== 'string' || !zstdEntrypoint) {
+  throw new Error('Could not resolve the zstddec browser entrypoint.');
+}
+const zstdEntrypointRelative = zstdEntrypoint.replace(/^\.\//, '');
+requirePath(join(zstdRoot, zstdEntrypointRelative), 'Zstd browser decoder entrypoint');
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(join(out, 'src'), { recursive: true });
@@ -58,9 +77,9 @@ cpSync(
   sdkOut,
   { recursive: true }
 );
-// zstddec embeds the WebAssembly decoder in its browser module, so copying the
-// built dist directory keeps compressed Augmenta streams self-contained on
-// GitHub Pages with no runtime CDN dependency.
+// zstddec embeds the WebAssembly decoder in its browser package, so copying the
+// package keeps compressed Augmenta streams self-contained on GitHub Pages with
+// no runtime CDN dependency.
 cpSync(zstdRoot, zstdOut, { recursive: true });
 copyFileSync(
   join(root, 'vendor', 'qrcode-generator', 'qrcode.js'),
@@ -108,8 +127,8 @@ html = replaceRequired(
 );
 html = replaceRequired(
   html,
-  'https://cdn.jsdelivr.net/npm/zstddec@0.3.1/dist/zstddec.modern.js',
-  `./vendor/zstddec/${rev}/dist/zstddec.modern.js`
+  'https://cdn.jsdelivr.net/npm/zstddec@0.3.1/+esm',
+  `./vendor/zstddec/${rev}/${zstdEntrypointRelative}`
 );
 html = replaceRequired(html, './src/styles.css', `./src/styles.css?v=${rev}`);
 html = replaceRequired(html, './src/qr.js', `./src/qr.js?v=${rev}`);
