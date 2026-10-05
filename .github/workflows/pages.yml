@@ -42,7 +42,7 @@ jobs:
       - name: Install Pages runtime dependencies
         shell: bash
         run: |
-          npm install --prefix .pages-runtime --no-save --no-package-lock --ignore-scripts three@0.186.1
+          npm install --prefix .pages-runtime --no-save --no-package-lock --ignore-scripts three@0.186.1 zstddec@0.3.1
 
       - name: Validate example JavaScript
         shell: bash
