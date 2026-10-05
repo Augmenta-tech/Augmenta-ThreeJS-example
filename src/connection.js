@@ -6,6 +6,26 @@ import { APP_VERSION } from './app-info.js';
 const RECONNECT_DELAY_MS = 1000;
 const CONNECTION_ATTEMPT_TIMEOUT_MS = 2500;
 
+let zstdDecompressorPromise;
+
+async function getZstdDecompressor() {
+  if (!zstdDecompressorPromise) {
+    zstdDecompressorPromise = import('zstddec')
+      .then(async ({ ZSTDDecoder }) => {
+        const decoder = new ZSTDDecoder();
+        await decoder.init();
+        return (data) => decoder.decode(data);
+      })
+      .catch((error) => {
+        // Allow a later reconnect attempt to retry initialization if loading the
+        // local decoder failed transiently.
+        zstdDecompressorPromise = undefined;
+        throw error;
+      });
+  }
+  return zstdDecompressorPromise;
+}
+
 // Three.js is Y-up, right-handed and metre-based. Ask Augmenta/Pleiades to
 // deliver tracking and setup data directly in that convention.
 const THREE_JS_AXIS_TRANSFORM = Object.freeze({
@@ -38,6 +58,7 @@ export function createConnectionController({
   let targetIndex = 0;
   let targetKey = '';
   let attemptTimer;
+  let connectionAttemptGeneration = 0;
 
   function getState() {
     return { wantsConnection, socketOpen, retrying, activeVersion, phase, note };
@@ -70,6 +91,7 @@ export function createConnectionController({
   }
 
   function stopTransport(reason = 'User disconnect') {
+    connectionAttemptGeneration += 1;
     clearReconnectTimer();
     clearAttemptTimer();
     socketOpen = false;
@@ -107,7 +129,7 @@ export function createConnectionController({
 
     reconnectTimer = window.setTimeout(() => {
       reconnectTimer = undefined;
-      attemptConnection();
+      void attemptConnection();
     }, delay);
   }
 
@@ -119,14 +141,15 @@ export function createConnectionController({
     publish('connecting', `Server uses protocol V${version}. Reconnecting with the matching parser…`);
     reconnectTimer = window.setTimeout(() => {
       reconnectTimer = undefined;
-      attemptConnection();
+      void attemptConnection();
     }, 0);
   }
 
-  function attemptConnection() {
+  async function attemptConnection() {
     if (!wantsConnection) return;
 
     clearReconnectTimer();
+    const attemptGeneration = ++connectionAttemptGeneration;
 
     let target;
     let protocol;
@@ -160,10 +183,25 @@ export function createConnectionController({
       publish('connecting', `Connecting to ${target.label} with protocol V${version}…`);
     }
 
+    let decompressor;
+    try {
+      decompressor = await getZstdDecompressor();
+    } catch (error) {
+      if (attemptGeneration !== connectionAttemptGeneration || !wantsConnection) return;
+      wantsConnection = false;
+      retrying = false;
+      const message = error instanceof Error ? error.message : String(error);
+      publish('error', `Could not initialize Zstd decompression: ${message}`);
+      return;
+    }
+
+    if (attemptGeneration !== connectionAttemptGeneration || !wantsConnection) return;
+
     const connection = new AugmentaWebSocketClient(target.url, {
       clientName: 'Augmenta Three.js Debug Viewer',
       applicationName: 'Augmenta ThreeJS Example',
       applicationVersion: APP_VERSION,
+      decompressor,
       options: {
         version,
         downSample,
@@ -171,7 +209,11 @@ export function createConnectionController({
         streamClusters,
         streamClusterPoints,
         streamZonePoints: true,
-        useCompression: false,
+        // Keep the realtime stream compressed by default, matching the Unity,
+        // TouchDesigner and VVVV clients. This cuts WebSocket bandwidth and
+        // backlog pressure; zstddec is initialized before the connection and
+        // the JS SDK invokes it synchronously before parsing each binary frame.
+        useCompression: true,
         displayPointIntensity: true,
         // Quaternions preserve Pleiades' exact OBB orientation. The viewer
         // performs the left-handed -> right-handed basis reflection explicitly.
@@ -196,7 +238,7 @@ export function createConnectionController({
       socketOpen = true;
       publish(
         'connected',
-        `Connected to ${target.label}. Protocol V${activeVersion}; uncompressed debug stream.`
+        `Connected to ${target.label}. Protocol V${activeVersion}; Zstd-compressed debug stream.`
       );
     });
 
@@ -274,7 +316,7 @@ export function createConnectionController({
     autoNegotiatedVersion = undefined;
     wantsConnection = true;
     retrying = false;
-    attemptConnection();
+    void attemptConnection();
   }
 
   function stop() {
@@ -290,7 +332,7 @@ export function createConnectionController({
     retrying = false;
     autoNegotiatedVersion = undefined;
     stopTransport(reason);
-    attemptConnection();
+    void attemptConnection();
   }
 
   return { getState, start, stop, restart };
