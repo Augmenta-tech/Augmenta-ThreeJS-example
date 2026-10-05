@@ -51,7 +51,15 @@ const ui = {
 
 ui.appVersion.textContent = `Version ${APP_VERSION}`;
 
-const viewer = createViewer($('#canvas-host'));
+const viewer = createViewer($('#canvas-host'), {
+  onFramePresented: (frame) => {
+    lastFrame = frame;
+    const now = performance.now();
+    frameTimes.push(now);
+    frameTimes = frameTimes.filter((time) => time >= now - FPS_WINDOW_MS);
+    renderDebug();
+  }
+});
 createViewCube($('#view-cube'), viewer);
 const debug = createDebugPanel(ui.summary, ui.debug);
 
@@ -314,12 +322,10 @@ function trackFrame(frame) {
     if (frameSceneAddress && frameSceneAddress !== scene.getAddress()) return;
   }
 
-  lastFrame = frame;
-  const now = performance.now();
-  frameTimes.push(now);
-  frameTimes = frameTimes.filter((time) => time >= now - FPS_WINDOW_MS);
-  viewer.renderFrame(frame);
-  renderDebug();
+  // Network delivery can be faster than the display loop. Keep only the
+  // freshest pending state per scene instead of mutating Three.js for frames
+  // that could never be presented.
+  viewer.queueFrame(frame);
 }
 
 function clearDisconnectCleanupTimer() {
