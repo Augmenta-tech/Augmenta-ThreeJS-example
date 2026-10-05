@@ -712,7 +712,7 @@ button.subtle-button.active {
 .connection-log { margin-top: 10px; }
 .connection-data-request { margin-top: var(--section-space-relaxed); }
 .connection-data-request > label { margin-bottom: 6px; }
-.data-request-toggles { grid-template-columns: 1fr; }
+.data-request-toggles { grid-template-columns: 1fr 1fr; }
 
 .field-subtitle {
   margin: 5px 0 0;
