@@ -9,7 +9,7 @@ const compressedFixture = Uint8Array.from([
 ]);
 
 test('bundled zstd decoder can decode Augmenta binary payloads synchronously after init', async () => {
-  const { ZSTDDecoder } = await import('../.pages-runtime/node_modules/zstddec/dist/zstddec.modern.js');
+  const { ZSTDDecoder } = await import('zstddec');
   const decoder = new ZSTDDecoder();
   await decoder.init();
 
@@ -32,6 +32,6 @@ test('Three.js runtime requests compression and ships the decoder in the Pages a
   assert.match(connection, /useCompression:\s*true/);
   assert.match(connection, /decompressor,/);
   assert.match(connection, /import\('zstddec'\)/);
-  assert.match(index, /zstddec@0\.3\.1/);
-  assert.match(assemble, /zstddec\.modern\.js/);
+  assert.match(index, /zstddec@0\.3\.1\\/\\+esm/);
+  assert.match(assemble, /zstdEntrypointRelative/);
 });
