@@ -710,6 +710,9 @@ button.subtle-button.active {
 
 .hint { margin: 12px 0 0; color: #737d8e; font-size: 10.5px; line-height: 1.45; }
 .connection-log { margin-top: 10px; }
+.connection-data-request { margin-top: var(--section-space-relaxed); }
+.connection-data-request > label { margin-bottom: 6px; }
+.data-request-toggles { grid-template-columns: 1fr; }
 
 .field-subtitle {
   margin: 5px 0 0;

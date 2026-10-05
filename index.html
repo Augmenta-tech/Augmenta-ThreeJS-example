@@ -125,6 +125,17 @@
 
           <p id="connection-note" class="hint connection-log">Connect retries every second until stopped. Auto protocol matches the server version; maximum debug stream stays enabled.</p>
 
+          <div class="connection-data-request">
+            <label>Data request</label>
+            <div class="toggles data-request-toggles">
+              <div class="toggle-column">
+                <label><input id="request-clusters" type="checkbox" checked> Clusters</label>
+                <label><input id="request-cluster-points" type="checkbox" checked> Cluster point cloud</label>
+                <label><input id="request-general-points" type="checkbox" checked> General point cloud (Volumetric)</label>
+              </div>
+            </div>
+          </div>
+
           <details id="connection-advanced" class="advanced-panel">
             <summary>
               <span class="advanced-label">Advanced</span>
@@ -176,7 +187,8 @@
           <div class="toggles">
             <div class="toggle-column">
               <label><input id="show-clusters" type="checkbox" checked> Clusters</label>
-              <label><input id="show-points" type="checkbox" checked> Point clouds</label>
+              <label><input id="show-cluster-points" type="checkbox" checked> Cluster point cloud</label>
+              <label><input id="show-general-points" type="checkbox" checked> General point cloud (Volumetric)</label>
             </div>
             <div class="toggle-column">
               <label><input id="show-scene" type="checkbox" checked> Scenes</label>

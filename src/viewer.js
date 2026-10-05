@@ -98,7 +98,8 @@ export function createViewer(host) {
 
   const visibility = {
     clusters: true,
-    points: true,
+    clusterPoints: true,
+    generalPoints: true,
     scene: true,
     zones: true,
     vectors: true
@@ -726,8 +727,11 @@ export function createViewer(host) {
         hideCluster(view);
       }
 
-      if (object.hasPointCloud()) updatePoints(view, object.getPointCloud());
-      else view.points.visible = false;
+      if (object.hasPointCloud()) updatePoints(view, object.getPointCloud(), object.hasCluster());
+      else {
+        view.hasPointCloud = false;
+        view.points.visible = false;
+      }
     });
 
     for (const [key, view] of views) {
@@ -812,6 +816,8 @@ export function createViewer(host) {
       points,
       label,
       labelText: id === undefined ? '' : String(id),
+      hasPointCloud: false,
+      pointCloudKind: 'general',
       color,
       sceneAddress
     };
@@ -913,7 +919,7 @@ export function createViewer(host) {
     view.lookAtMarker.visible = visibility.vectors;
   }
 
-  function updatePoints(view, cloud) {
+  function updatePoints(view, cloud, clusterBacked) {
     const data = cloud.getPointsData();
     const position = view.points.geometry.getAttribute('position');
 
@@ -926,7 +932,16 @@ export function createViewer(host) {
       view.points.geometry.setAttribute('position', nextPosition);
     }
 
-    view.points.visible = data.length > 0;
+    view.hasPointCloud = data.length > 0;
+    view.pointCloudKind = clusterBacked ? 'cluster' : 'general';
+    applyPointVisibility(view);
+  }
+
+  function applyPointVisibility(view) {
+    const enabled = view.pointCloudKind === 'cluster'
+      ? visibility.clusterPoints
+      : visibility.generalPoints;
+    view.points.visible = view.hasPointCloud && enabled;
   }
 
   function hideCluster(view) {
@@ -1051,20 +1066,22 @@ export function createViewer(host) {
     });
   }
 
-  function setVisibility({ clusters, points, scene, zones, vectors }) {
+  function setVisibility({ clusters, clusterPoints, generalPoints, scene, zones, vectors }) {
     visibility.clusters = clusters;
-    visibility.points = points;
+    visibility.clusterPoints = clusterPoints;
+    visibility.generalPoints = generalPoints;
     visibility.scene = scene;
     visibility.zones = zones;
     visibility.vectors = vectors;
 
     clusterGroup.visible = clusters;
-    pointGroup.visible = points;
+    pointGroup.visible = clusterPoints || generalPoints;
     vectorGroup.visible = vectors;
     for (const view of views.values()) {
+      applyPointVisibility(view);
       view.lookAtMarker.visible = vectors && view.lookAtMarker.userData.hasDirection;
     }
-    labelGroup.visible = clusters || points;
+    labelGroup.visible = clusters || clusterPoints;
     applySetupVisibility();
   }
 

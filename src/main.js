@@ -44,7 +44,9 @@ const ui = {
   connectionSection: $('#connection-section'), connectionAdvanced: $('#connection-advanced'), connectionAdvancedSummary: $('#connection-advanced-summary'),
   displaySection: $('#display-section'), displayAdvanced: $('#display-advanced'), displaySectionSummary: $('#display-section-summary'),
   debugSection: $('#debug-section'), appVersion: $('#app-version'),
-  showClusters: $('#show-clusters'), showPoints: $('#show-points'), showScene: $('#show-scene'), showZones: $('#show-zones'), showVectors: $('#show-vectors')
+  requestClusters: $('#request-clusters'), requestClusterPoints: $('#request-cluster-points'), requestGeneralPoints: $('#request-general-points'),
+  showClusters: $('#show-clusters'), showClusterPoints: $('#show-cluster-points'), showGeneralPoints: $('#show-general-points'),
+  showScene: $('#show-scene'), showZones: $('#show-zones'), showVectors: $('#show-vectors')
 };
 
 ui.appVersion.textContent = `Version ${APP_VERSION}`;
@@ -134,9 +136,15 @@ function savePreferences() {
 
   const value = {
     connection: localConnectionPreferences,
+    dataRequest: {
+      clusters: ui.requestClusters.checked,
+      clusterPoints: ui.requestClusterPoints.checked,
+      generalPoints: ui.requestGeneralPoints.checked
+    },
     display: {
       clusters: ui.showClusters.checked,
-      points: ui.showPoints.checked,
+      clusterPoints: ui.showClusterPoints.checked,
+      generalPoints: ui.showGeneralPoints.checked,
       sceneBounds: ui.showScene.checked,
       zones: ui.showZones.checked,
       vectors: ui.showVectors.checked,
@@ -180,6 +188,7 @@ function rememberLocalConnectionSetting(key, value) {
 function restorePreferences() {
   const savedPreferences = loadPreferences();
   const connection = isObject(savedPreferences.connection) ? savedPreferences.connection : {};
+  const dataRequest = isObject(savedPreferences.dataRequest) ? savedPreferences.dataRequest : {};
   const sharedConnection = readConnectionOptionsFromUrl(window.location.href);
   const display = isObject(savedPreferences.display) ? savedPreferences.display : {};
   const uiPreferences = isObject(savedPreferences.ui) ? savedPreferences.ui : {};
@@ -192,8 +201,25 @@ function restorePreferences() {
   localConnectionPreferences = normalizeConnectionOptions(getConnectionSettings());
   applyConnectionSettings(resolveConnectionOptions(localConnectionPreferences, sharedConnection));
 
+  if (typeof dataRequest.clusters === 'boolean') ui.requestClusters.checked = dataRequest.clusters;
+  if (typeof dataRequest.clusterPoints === 'boolean') {
+    ui.requestClusterPoints.checked = dataRequest.clusterPoints;
+  }
+  if (typeof dataRequest.generalPoints === 'boolean') {
+    ui.requestGeneralPoints.checked = dataRequest.generalPoints;
+  }
+
   if (typeof display.clusters === 'boolean') ui.showClusters.checked = display.clusters;
-  if (typeof display.points === 'boolean') ui.showPoints.checked = display.points;
+  if (typeof display.clusterPoints === 'boolean') {
+    ui.showClusterPoints.checked = display.clusterPoints;
+  } else if (typeof display.points === 'boolean') {
+    ui.showClusterPoints.checked = display.points;
+  }
+  if (typeof display.generalPoints === 'boolean') {
+    ui.showGeneralPoints.checked = display.generalPoints;
+  } else if (typeof display.points === 'boolean') {
+    ui.showGeneralPoints.checked = display.points;
+  }
   if (typeof display.sceneBounds === 'boolean') {
     ui.showScene.checked = display.sceneBounds;
   } else if (typeof display.zones === 'boolean') {
@@ -448,7 +474,10 @@ function getConnectionSettings() {
     address: ui.serverAddress.value,
     port: ui.port.value,
     protocol: ui.protocol.value,
-    downsample: ui.downsample.value
+    downsample: ui.downsample.value,
+    streamClusters: ui.requestClusters.checked,
+    streamClusterPoints: ui.requestClusterPoints.checked,
+    streamClouds: ui.requestGeneralPoints.checked
   };
 }
 
@@ -511,7 +540,8 @@ function toggleSimulation() {
 function applyVisibility() {
   viewer.setVisibility({
     clusters: ui.showClusters.checked,
-    points: ui.showPoints.checked,
+    clusterPoints: ui.showClusterPoints.checked,
+    generalPoints: ui.showGeneralPoints.checked,
     scene: ui.showScene.checked,
     zones: ui.showZones.checked,
     vectors: ui.showVectors.checked
@@ -717,11 +747,22 @@ ui.protocol.addEventListener('change', () => {
 ui.downsample.addEventListener('change', () => {
   restartConnection('Downsample changed');
 });
-[ui.showClusters, ui.showPoints, ui.showScene, ui.showZones, ui.showVectors]
+[ui.requestClusters, ui.requestClusterPoints, ui.requestGeneralPoints]
   .forEach((input) => input.addEventListener('change', () => {
-    applyVisibility();
     savePreferences();
+    restartConnection('Data request changed');
   }));
+[
+  ui.showClusters,
+  ui.showClusterPoints,
+  ui.showGeneralPoints,
+  ui.showScene,
+  ui.showZones,
+  ui.showVectors
+].forEach((input) => input.addEventListener('change', () => {
+  applyVisibility();
+  savePreferences();
+}));
 
 function syncPreferencesToUi() {
   restorePreferences();

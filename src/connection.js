@@ -131,12 +131,18 @@ export function createConnectionController({
     let target;
     let protocol;
     let downSample;
+    let streamClouds;
+    let streamClusters;
+    let streamClusterPoints;
     try {
       const settings = getSettings();
       const targets = ensureTargetPlan(settings.address, settings.port);
       target = targets[targetIndex];
       protocol = String(settings.protocol);
       downSample = Math.max(1, Math.floor(Number(settings.downsample) || 1));
+      streamClouds = settings.streamClouds !== false;
+      streamClusters = settings.streamClusters !== false;
+      streamClusterPoints = settings.streamClusterPoints !== false;
     } catch (error) {
       wantsConnection = false;
       retrying = false;
@@ -161,9 +167,9 @@ export function createConnectionController({
       options: {
         version,
         downSample,
-        streamClouds: true,
-        streamClusters: true,
-        streamClusterPoints: true,
+        streamClouds,
+        streamClusters,
+        streamClusterPoints,
         streamZonePoints: true,
         useCompression: false,
         displayPointIntensity: true,
