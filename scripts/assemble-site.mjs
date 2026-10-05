@@ -14,7 +14,9 @@ const root = process.cwd();
 const out = join(root, '_site');
 const rev = (process.env.GITHUB_SHA || 'local').slice(0, 12);
 const threeRoot = join(root, '.pages-runtime', 'node_modules', 'three');
+const zstdRoot = join(root, '.pages-runtime', 'node_modules', 'zstddec', 'dist');
 const sdkOut = join(out, 'vendor', 'AugmentaClientSDK-JS', rev, 'dist', 'esm');
+const zstdOut = join(out, 'vendor', 'zstddec', rev, 'dist');
 
 function requirePath(path, label) {
   if (!existsSync(path)) {
@@ -32,10 +34,12 @@ function replaceRequired(source, search, replacement) {
 requirePath(join(root, 'vendor', 'AugmentaClientSDK-JS', 'dist', 'esm'), 'built Augmenta SDK');
 requirePath(join(root, 'vendor', 'qrcode-generator', 'qrcode.js'), 'vendored QR generator');
 requirePath(join(threeRoot, 'build', 'three.module.js'), 'Three.js runtime');
+requirePath(join(zstdRoot, 'zstddec.modern.js'), 'Zstd browser decoder');
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(join(out, 'src'), { recursive: true });
 mkdirSync(sdkOut, { recursive: true });
+mkdirSync(zstdOut, { recursive: true });
 mkdirSync(join(out, 'vendor', 'qrcode-generator'), { recursive: true });
 
 copyFileSync(join(root, 'index.html'), join(out, 'index.html'));
@@ -54,6 +58,10 @@ cpSync(
   sdkOut,
   { recursive: true }
 );
+// zstddec embeds the WebAssembly decoder in its browser module, so copying the
+// built dist directory keeps compressed Augmenta streams self-contained on
+// GitHub Pages with no runtime CDN dependency.
+cpSync(zstdRoot, zstdOut, { recursive: true });
 copyFileSync(
   join(root, 'vendor', 'qrcode-generator', 'qrcode.js'),
   join(out, 'vendor', 'qrcode-generator', 'qrcode.js')
@@ -97,6 +105,11 @@ html = replaceRequired(
   html,
   './vendor/AugmentaClientSDK-JS/dist/esm/index.js',
   `./vendor/AugmentaClientSDK-JS/${rev}/dist/esm/index.js`
+);
+html = replaceRequired(
+  html,
+  'https://cdn.jsdelivr.net/npm/zstddec@0.3.1/dist/zstddec.modern.js',
+  `./vendor/zstddec/${rev}/dist/zstddec.modern.js`
 );
 html = replaceRequired(html, './src/styles.css', `./src/styles.css?v=${rev}`);
 html = replaceRequired(html, './src/qr.js', `./src/qr.js?v=${rev}`);
