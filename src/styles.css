@@ -176,11 +176,11 @@ button, input, select { font: inherit; }
   display: grid;
   place-items: center;
   appearance: none;
-  border: 1px solid #353c4b;
+  border: 1px solid rgba(53, 60, 75, .88);
   border-radius: 6px;
   background:
     linear-gradient(145deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .02)),
-    #1a1f29;
+    rgba(26, 31, 41, .82);
   color: #c5ccd8;
   padding: 0;
   font-weight: 720;
@@ -212,7 +212,7 @@ button, input, select { font: inherit; }
   border-color: var(--accent-border);
   background:
     linear-gradient(145deg, var(--accent-focus), rgba(255, 255, 255, .035)),
-    #222834;
+    rgba(34, 40, 52, .88);
 }
 
 .cube-face-front { transform: translateZ(calc(var(--cube-size) / 2)); }
