@@ -21,6 +21,8 @@ Keep this example small, browser-native, and easy to inspect.
 ## Runtime and dependencies
 
 - GitHub Pages output must be self-contained at runtime. Keep Three.js and the built SDK copied into the assembled artifact by `scripts/assemble-site.mjs`.
+- Keep application-side tracking buffering bounded: one pending frame per Scene, continuous state latest-wins, transient cluster/zone edges conflated rather than queued as full frames.
+- Keep Three.js point-cloud buffers owned by the renderer. Do not attach SDK point arrays directly because they may be views into a complete decompressed WebSocket payload; reuse capacity and dispose replaced geometries.
 - Avoid adding dependencies for behavior that can stay simple and local.
 
 ## Validation
