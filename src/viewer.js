@@ -5,6 +5,7 @@ import { speedFromVelocity } from './motion.js';
 import { createZoneRenderer } from './zones.js';
 import { collectZoneAddresses } from './zone-state.js';
 import { VIEW_TRANSITION, viewTransitionEase } from './view-transition.js';
+import { conflateTrackingFrames } from './frame-buffer.js';
 
 const FLOOR_Y = 0;
 const PANEL_INSET_ANIMATION_DURATION_MS = 220;
@@ -707,7 +708,11 @@ export function createViewer(host, { onFramePresented } = {}) {
 
   function queueFrame(frame) {
     const sceneAddress = frame.getSceneInfo().getAddress() || '';
-    pendingFrames.set(sceneAddress, frame);
+    const previous = pendingFrames.get(sceneAddress);
+    pendingFrames.set(
+      sceneAddress,
+      previous ? conflateTrackingFrames(previous, frame) : frame
+    );
   }
 
   function flushPendingFrames() {
@@ -939,20 +944,49 @@ export function createViewer(host, { onFramePresented } = {}) {
 
   function updatePoints(view, cloud, clusterBacked) {
     const data = cloud.getPointsData();
-    const position = view.points.geometry.getAttribute('position');
+    const requiredFloats = data.length;
+    let geometry = view.points.geometry;
+    let position = geometry.getAttribute('position');
 
-    if (position && position.array.length === data.length) {
-      position.array.set(data);
-      position.needsUpdate = true;
-    } else {
-      const nextPosition = new THREE.BufferAttribute(data, 3);
+    if (!position || position.array.length < requiredFloats) {
+      // Own the renderer buffer instead of attaching the SDK Float32Array
+      // directly. SDK point arrays can be views into a complete decompressed
+      // WebSocket frame; retaining them would keep that whole frame alive.
+      const capacity = pointBufferCapacity(requiredFloats);
+      const nextGeometry = new THREE.BufferGeometry();
+      const nextPosition = new THREE.BufferAttribute(new Float32Array(capacity), 3);
       nextPosition.setUsage(THREE.DynamicDrawUsage);
-      view.points.geometry.setAttribute('position', nextPosition);
+      nextGeometry.setAttribute('position', nextPosition);
+
+      if (geometry.boundingSphere) {
+        nextGeometry.boundingSphere = geometry.boundingSphere.clone();
+      }
+
+      view.points.geometry = nextGeometry;
+      geometry.dispose();
+      geometry = nextGeometry;
+      position = nextPosition;
     }
 
-    view.hasPointCloud = data.length > 0;
+    if (position && requiredFloats > 0) {
+      position.array.set(data, 0);
+      position.needsUpdate = true;
+    }
+    geometry.setDrawRange(0, requiredFloats / 3);
+
+    view.hasPointCloud = requiredFloats > 0;
     view.pointCloudKind = clusterBacked ? 'cluster' : 'general';
     applyPointVisibility(view);
+  }
+
+  function pointBufferCapacity(requiredFloats) {
+    if (requiredFloats <= 0) return 0;
+
+    // Grow in small point-count chunks so variable clouds reuse their GPU
+    // buffer without reallocating on every minor size fluctuation.
+    const chunkPoints = 256;
+    const requiredPoints = Math.ceil(requiredFloats / 3);
+    return Math.ceil(requiredPoints / chunkPoints) * chunkPoints * 3;
   }
 
   function applyPointVisibility(view) {
