@@ -166,7 +166,6 @@ function savePreferences() {
         connection: ui.connectionSection.open,
         connectionAdvanced: ui.connectionAdvanced.open,
         display: ui.displaySection.open,
-        displayAdvanced: ui.displayAdvanced.open,
         debug: ui.debugSection.open
       }
     }
