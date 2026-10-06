@@ -14,6 +14,7 @@ test('connection share URL preserves the page and embeds current connection opti
       address: '192.168.1.42',
       port: '6060',
       protocol: '3',
+      compression: 'uncompressed',
       downsample: '2'
     }
   );
@@ -24,6 +25,7 @@ test('connection share URL preserves the page and embeds current connection opti
   assert.equal(parsed.searchParams.get('address'), '192.168.1.42');
   assert.equal(parsed.searchParams.get('port'), '6060');
   assert.equal(parsed.searchParams.get('protocol'), '3');
+  assert.equal(parsed.searchParams.get('compression'), 'uncompressed');
   assert.equal(parsed.searchParams.get('downsample'), '2');
   assert.equal(parsed.hash, '');
 });
@@ -31,19 +33,20 @@ test('connection share URL preserves the page and embeds current connection opti
 test('connection options in a shared URL are validated', () => {
   assert.deepEqual(
     readConnectionOptionsFromUrl(
-      'https://example.test/?address=augmenta-WA12031.local&port=6060&protocol=auto&downsample=4'
+      'https://example.test/?address=augmenta-WA12031.local&port=6060&protocol=auto&compression=compressed&downsample=4'
     ),
     {
       address: 'augmenta-WA12031.local',
       port: '6060',
       protocol: 'auto',
+      compression: 'compressed',
       downsample: '4'
     }
   );
 
   assert.deepEqual(
     readConnectionOptionsFromUrl(
-      'https://example.test/?address=%20&port=70000&protocol=9&downsample=0'
+      'https://example.test/?address=%20&port=70000&protocol=9&compression=invalid&downsample=0'
     ),
     {}
   );
@@ -51,11 +54,12 @@ test('connection options in a shared URL are validated', () => {
 
 test('regenerating a share URL replaces stale connection query values', () => {
   const url = buildConnectionShareUrl(
-    'https://example.test/?address=old&port=1&protocol=2&downsample=99',
+    'https://example.test/?address=old&port=1&protocol=2&compression=uncompressed&downsample=99',
     {
       address: '10.0.0.5',
       port: 6060,
       protocol: 'auto',
+      compression: 'compressed',
       downsample: 1
     }
   );
@@ -64,6 +68,7 @@ test('regenerating a share URL replaces stale connection query values', () => {
     address: '10.0.0.5',
     port: '6060',
     protocol: 'auto',
+    compression: 'compressed',
     downsample: '1'
   });
 });
@@ -74,23 +79,27 @@ test('shared connection options override a local view without mutating local pre
     address: 'augmenta-local.local',
     port: '6060',
     protocol: 'auto',
+    compression: 'compressed',
     downsample: '1'
   };
   const shared = {
     address: '192.168.1.42',
-    protocol: '3'
+    protocol: '3',
+    compression: 'uncompressed'
   };
 
   assert.deepEqual(resolveConnectionOptions(local, shared), {
     address: '192.168.1.42',
     port: '6060',
     protocol: '3',
+    compression: 'uncompressed',
     downsample: '1'
   });
   assert.deepEqual(local, {
     address: 'augmenta-local.local',
     port: '6060',
     protocol: 'auto',
+    compression: 'compressed',
     downsample: '1'
   });
 });
@@ -100,11 +109,13 @@ test('connection option normalization keeps only valid local values', () => {
     address: '  augmenta-server  ',
     port: 6060,
     protocol: '2',
+    compression: 'uncompressed',
     downsample: 4
   }), {
     address: 'augmenta-server',
     port: '6060',
     protocol: '2',
+    compression: 'uncompressed',
     downsample: '4'
   });
 
@@ -112,6 +123,7 @@ test('connection option normalization keeps only valid local values', () => {
     address: '   ',
     port: 0,
     protocol: '7',
+    compression: 'invalid',
     downsample: -1
   }), {});
 });
