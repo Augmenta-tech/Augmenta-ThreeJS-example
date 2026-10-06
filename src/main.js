@@ -42,7 +42,7 @@ const ui = {
   debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'), scenes: $('#scenes'),
   sidebarToggle: $('#sidebar-toggle'), viewerTitle: $('.viewer-title'), connectionQrVisibility: $('.connection-qr-visibility'),
   connectionSection: $('#connection-section'), connectionAdvanced: $('#connection-advanced'), connectionAdvancedSummary: $('#connection-advanced-summary'),
-  displaySection: $('#display-section'), displayAdvanced: $('#display-advanced'), displaySectionSummary: $('#display-section-summary'),
+  displaySection: $('#display-section'), displaySectionSummary: $('#display-section-summary'),
   debugSection: $('#debug-section'), appVersion: $('#app-version'),
   requestClusters: $('#request-clusters'), requestClusterPoints: $('#request-cluster-points'), requestGeneralPoints: $('#request-general-points'),
   showClusters: $('#show-clusters'), showClusterPoints: $('#show-cluster-points'), showGeneralPoints: $('#show-general-points'),
@@ -246,7 +246,6 @@ function restorePreferences() {
     ['connection', ui.connectionSection],
     ['connectionAdvanced', ui.connectionAdvanced],
     ['display', ui.displaySection],
-    ['displayAdvanced', ui.displayAdvanced],
     ['debug', ui.debugSection]
   ]) {
     if (typeof sectionPreferences[key] === 'boolean') {
@@ -570,8 +569,7 @@ ui.scenes.addEventListener('change', () => {
 for (const section of [
   ui.connectionSection,
   ui.connectionAdvanced,
-  ui.displaySection,
-  ui.displayAdvanced
+  ui.displaySection
 ]) {
   section.addEventListener('toggle', savePreferences);
 }
