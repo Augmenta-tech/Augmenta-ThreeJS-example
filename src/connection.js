@@ -157,6 +157,7 @@ export function createConnectionController({
     let streamClouds;
     let streamClusters;
     let streamClusterPoints;
+    let useCompression;
     try {
       const settings = getSettings();
       const targets = ensureTargetPlan(settings.address, settings.port);
@@ -166,6 +167,7 @@ export function createConnectionController({
       streamClouds = settings.streamClouds !== false;
       streamClusters = settings.streamClusters !== false;
       streamClusterPoints = settings.streamClusterPoints !== false;
+      useCompression = settings.useCompression !== false;
     } catch (error) {
       wantsConnection = false;
       retrying = false;
@@ -184,15 +186,17 @@ export function createConnectionController({
     }
 
     let decompressor;
-    try {
-      decompressor = await getZstdDecompressor();
-    } catch (error) {
-      if (attemptGeneration !== connectionAttemptGeneration || !wantsConnection) return;
-      wantsConnection = false;
-      retrying = false;
-      const message = error instanceof Error ? error.message : String(error);
-      publish('error', `Could not initialize Zstd decompression: ${message}`);
-      return;
+    if (useCompression) {
+      try {
+        decompressor = await getZstdDecompressor();
+      } catch (error) {
+        if (attemptGeneration !== connectionAttemptGeneration || !wantsConnection) return;
+        wantsConnection = false;
+        retrying = false;
+        const message = error instanceof Error ? error.message : String(error);
+        publish('error', `Could not initialize Zstd decompression: ${message}`);
+        return;
+      }
     }
 
     if (attemptGeneration !== connectionAttemptGeneration || !wantsConnection) return;
@@ -209,11 +213,10 @@ export function createConnectionController({
         streamClusters,
         streamClusterPoints,
         streamZonePoints: true,
-        // Keep the realtime stream compressed by default, matching the Unity,
-        // TouchDesigner and VVVV clients. This cuts WebSocket bandwidth and
-        // backlog pressure; zstddec is initialized before the connection and
-        // the JS SDK invokes it synchronously before parsing each binary frame.
-        useCompression: true,
+        // Compression stays enabled by default, matching the Unity,
+        // TouchDesigner and VVVV clients, but Advanced can disable it for
+        // diagnostics or compatibility checks.
+        useCompression,
         displayPointIntensity: true,
         // Quaternions preserve Pleiades' exact OBB orientation. The viewer
         // performs the left-handed -> right-handed basis reflection explicitly.
@@ -238,7 +241,7 @@ export function createConnectionController({
       socketOpen = true;
       publish(
         'connected',
-        `Connected to ${target.label}. Protocol V${activeVersion}; Zstd-compressed debug stream.`
+        `Connected to ${target.label}. Protocol V${activeVersion}; ${useCompression ? 'Zstd-compressed' : 'uncompressed'} debug stream.`
       );
     });
 
