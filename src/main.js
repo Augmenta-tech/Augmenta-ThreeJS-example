@@ -37,7 +37,7 @@ function refreshFavicon() {
 refreshFavicon();
 
 const ui = {
-  app: $('#app'), sidebar: $('#sidebar'), sidebarResizer: $('#sidebar-resizer'), serverAddress: $('#server-address'), port: $('#port'), protocol: $('#protocol'), downsample: $('#downsample'), connect: $('#connect'),
+  app: $('#app'), sidebar: $('#sidebar'), sidebarResizer: $('#sidebar-resizer'), serverAddress: $('#server-address'), port: $('#port'), protocol: $('#protocol'), compression: $('#compression'), downsample: $('#downsample'), connect: $('#connect'),
   demo: $('#demo'), status: $('#status'), note: $('#connection-note'), summary: $('#summary'),
   debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'), scenes: $('#scenes'),
   sidebarToggle: $('#sidebar-toggle'), viewerTitle: $('.viewer-title'), connectionQrVisibility: $('.connection-qr-visibility'),
@@ -182,6 +182,7 @@ function applyConnectionSettings(settings) {
   if (typeof settings.address === 'string') ui.serverAddress.value = settings.address;
   if (typeof settings.port === 'string') ui.port.value = settings.port;
   if (typeof settings.protocol === 'string') ui.protocol.value = settings.protocol;
+  if (typeof settings.compression === 'string') ui.compression.value = settings.compression;
   if (typeof settings.downsample === 'string') ui.downsample.value = settings.downsample;
 }
 
@@ -418,8 +419,9 @@ function updateDisplaySectionSummary() {
 function updateConnectionAdvancedSummary() {
   const protocolLabel = ui.protocol.selectedOptions[0]?.textContent?.split(' — ')[0]
     ?? ui.protocol.value;
+  const compressionLabel = ui.compression.selectedOptions[0]?.textContent ?? ui.compression.value;
   ui.connectionAdvancedSummary.textContent =
-    `${ui.port.value || '—'} · ${protocolLabel} · ×${ui.downsample.value || '—'}`;
+    `${ui.port.value || '—'} · ${protocolLabel} · ${compressionLabel} · ×${ui.downsample.value || '—'}`;
 }
 
 function syncSceneSelector() {
@@ -478,7 +480,9 @@ function getConnectionSettings() {
     address: ui.serverAddress.value,
     port: ui.port.value,
     protocol: ui.protocol.value,
+    compression: ui.compression.value,
     downsample: ui.downsample.value,
+    useCompression: ui.compression.value !== 'uncompressed',
     streamClusters: ui.requestClusters.checked,
     streamClusterPoints: ui.requestClusterPoints.checked,
     streamClouds: ui.requestGeneralPoints.checked
@@ -746,6 +750,10 @@ ui.port.addEventListener('change', () => {
 ui.protocol.addEventListener('change', () => {
   saveConnectionField('protocol', ui.protocol.value);
   restartConnection('Protocol changed');
+});
+ui.compression.addEventListener('change', () => {
+  saveConnectionField('compression', ui.compression.value);
+  restartConnection('Compression changed');
 });
 ui.downsample.addEventListener('change', () => {
   restartConnection('Downsample changed');
