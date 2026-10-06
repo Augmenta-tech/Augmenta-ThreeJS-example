@@ -37,12 +37,13 @@ test('bundled zstd decoder can decode Augmenta binary payloads synchronously aft
   );
 });
 
-test('Three.js runtime requests compression and ships the decoder in the Pages artifact', () => {
+test('Three.js runtime supports selectable compression and ships the decoder in the Pages artifact', () => {
   const connection = readFileSync(new URL('../src/connection.js', import.meta.url), 'utf8');
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const assemble = readFileSync(new URL('../scripts/assemble-site.mjs', import.meta.url), 'utf8');
 
-  assert.match(connection, /useCompression:\s*true/);
+  assert.match(connection, /useCompression\s*=\s*settings\.useCompression\s*!==\s*false/);
+  assert.match(connection, /useCompression,/);
   assert.match(connection, /decompressor,/);
   assert.match(connection, /import\('zstddec'\)/);
   assert.match(index, /zstddec@0\.3\.1\/\+esm/);

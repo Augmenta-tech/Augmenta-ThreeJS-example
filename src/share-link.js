@@ -1,4 +1,4 @@
-const CONNECTION_QUERY_KEYS = ['address', 'port', 'protocol', 'downsample'];
+const CONNECTION_QUERY_KEYS = ['address', 'port', 'protocol', 'compression', 'downsample'];
 
 export function normalizeConnectionOptions(settings) {
   const options = {};
@@ -14,6 +14,11 @@ export function normalizeConnectionOptions(settings) {
   const protocol = String(settings?.protocol ?? '');
   if (['auto', '2', '3'].includes(protocol)) {
     options.protocol = protocol;
+  }
+
+  const compression = String(settings?.compression ?? '');
+  if (['compressed', 'uncompressed'].includes(compression)) {
+    options.compression = compression;
   }
 
   const downsample = Number(settings?.downsample);
@@ -51,6 +56,7 @@ export function readConnectionOptionsFromUrl(urlValue) {
     address: url.searchParams.get('address'),
     port: url.searchParams.get('port'),
     protocol: url.searchParams.get('protocol'),
+    compression: url.searchParams.get('compression'),
     downsample: url.searchParams.get('downsample')
   });
 }
