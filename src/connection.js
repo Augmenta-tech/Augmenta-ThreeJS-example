@@ -209,11 +209,10 @@ export function createConnectionController({
         streamClusters,
         streamClusterPoints,
         streamZonePoints: true,
-        // Keep the realtime stream compressed by default, matching the Unity,
-        // TouchDesigner and VVVV clients. This cuts WebSocket bandwidth and
-        // backlog pressure; zstddec is initialized before the connection and
-        // the JS SDK invokes it synchronously before parsing each binary frame.
-        useCompression: true,
+        // TEMPORARY memory/backpressure diagnostic: request the raw
+        // uncompressed realtime stream so we can reproduce the historical
+        // server-side WebSocket backlog under the same browser client.
+        useCompression: false,
         displayPointIntensity: true,
         // Quaternions preserve Pleiades' exact OBB orientation. The viewer
         // performs the left-handed -> right-handed basis reflection explicitly.
@@ -238,7 +237,7 @@ export function createConnectionController({
       socketOpen = true;
       publish(
         'connected',
-        `Connected to ${target.label}. Protocol V${activeVersion}; Zstd-compressed debug stream.`
+        `Connected to ${target.label}. Protocol V${activeVersion}; uncompressed debug stream.`
       );
     });
 
