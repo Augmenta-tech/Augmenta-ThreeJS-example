@@ -39,7 +39,7 @@ refreshFavicon();
 const ui = {
   app: $('#app'), sidebar: $('#sidebar'), sidebarResizer: $('#sidebar-resizer'), serverAddress: $('#server-address'), port: $('#port'), protocol: $('#protocol'), compression: $('#compression'), downsample: $('#downsample'), connect: $('#connect'),
   demo: $('#demo'), status: $('#status'), note: $('#connection-note'), summary: $('#summary'),
-  debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'), scenes: $('#scenes'),
+  debug: $('#debug-content'), clear: $('#clear'), resetCamera: $('#reset-camera'), scenes: $('#scenes'), worldName: $('#world-name'),
   sidebarToggle: $('#sidebar-toggle'), viewerTitle: $('.viewer-title'), connectionQrVisibility: $('.connection-qr-visibility'),
   connectionSection: $('#connection-section'), connectionAdvanced: $('#connection-advanced'), connectionAdvancedSummary: $('#connection-advanced-summary'),
   displaySection: $('#display-section'), displaySectionSummary: $('#display-section-summary'),
@@ -426,6 +426,8 @@ function updateConnectionAdvancedSummary() {
 
 function syncSceneSelector() {
   const previous = ui.scenes.value;
+  const world = setupStore.getRoot();
+  ui.worldName.value = world?.isWorld() ? (world.getName() || '—') : '—';
   scenes = setupStore.getScenes();
 
   ui.scenes.innerHTML = [
