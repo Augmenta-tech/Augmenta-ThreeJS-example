@@ -724,14 +724,6 @@ button.subtle-button.active {
 
 .display-world,
 .display-scenes { margin-bottom: var(--section-space-relaxed); }
-.field-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--section-space);
-  margin-bottom: 6px;
-}
-.field-heading label { margin: 0; }
 .display-world input,
 .display-scenes select { min-height: 34px; }
 .toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
