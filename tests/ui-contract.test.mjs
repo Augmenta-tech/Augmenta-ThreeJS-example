@@ -32,3 +32,20 @@ test('every hard-coded #id selector in the main UI map exists in index.html', ()
 
   assert.deepEqual(missing, []);
 });
+
+
+test('Display shows the current World as a read-only field above Scenes', () => {
+  const display = indexSource.match(/<details id="display-section"[\s\S]*?<\/details>/)?.[0];
+  assert.ok(display, 'Display panel must exist');
+
+  const field = display.match(/<input[^>]*id="world-name"[^>]*>/)?.[0];
+  assert.ok(field, 'World field must exist');
+  assert.match(field, /\breadonly\b/);
+  assert.ok(display.indexOf('id="world-name"') < display.indexOf('id="scenes"'));
+
+  const sync = mainSource.match(/function syncSceneSelector\(\) \{([\s\S]*?)\n\}/)?.[1];
+  assert.ok(sync, 'scene selector synchronization must exist');
+  assert.match(sync, /setupStore\.getRoot\(\)/);
+  assert.match(sync, /ui\.worldName\.value\s*=/);
+  assert.match(sync, /world\.getName\(\)/);
+});
