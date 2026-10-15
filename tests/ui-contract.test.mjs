@@ -49,3 +49,14 @@ test('Display shows the current World as a read-only field above Scenes', () => 
   assert.match(sync, /ui\.worldName\.value\s*=/);
   assert.match(sync, /world\.getName\(\)/);
 });
+
+test('Reset camera appears above World and Scenes in the Display panel', () => {
+  const display = indexSource.match(/<details id="display-section"[\s\S]*?<\/details>/)?.[0];
+  assert.ok(display, 'Display panel must exist');
+
+  const panelContent = display.slice(display.indexOf('<div class="panel-content">') + '<div class="panel-content">'.length);
+  assert.match(panelContent, /^\s*<div class="panel-actions">\s*<button id="reset-camera" class="text-action" type="button">Reset camera<\/button>\s*<\/div>/);
+  assert.ok(display.indexOf('id="reset-camera"') < display.indexOf('id="world-name"'));
+  assert.ok(display.indexOf('id="reset-camera"') < display.indexOf('id="scenes"'));
+  assert.match(mainSource, /ui\.resetCamera\.addEventListener\('click', viewer\.resetCamera\)/);
+});
